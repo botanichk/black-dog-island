@@ -1,0 +1,226 @@
+;; Eww Island — прототип 1 (X11 / XFCE)
+;; Только чтение информации и переключение рабочих столов. Без трея и без резервирования места.
+
+(defpoll clock :interval "1s" "date +%H:%M")
+
+;; Событийно: xprop -spy печатает индекс рабочего стола при каждом изменении.
+(deflisten cur_ws :initial "0" "xprop -spy -root _NET_CURRENT_DESKTOP | sed -u -n 's/.*= //p'")
+;; Путь раскрывает shell при выполнении: ${...}-интерполяция в конфиге здесь недоступна.
+;; shortcut: путь привязан к ~/eww-island, при переносе конфига в ~/.config/eww его нужно обновить.
+(deflisten title :initial "" "$HOME/eww-island/adapters/x11/active-title.sh")
+
+;; shortcut: громкость опрашивается раз в 2 с; при заметной нагрузке перейти на `pactl subscribe`.
+(defpoll volume :interval "2s" "pactl get-sink-mute @DEFAULT_SINK@ | grep -q yes && echo MUTE || pactl get-sink-volume @DEFAULT_SINK@ | grep -o '[0-9]*%' | head -1")
+;; Раскладка событийно: адаптер слушает XkbStateNotify через собственный X11-хелпер.
+(deflisten layout :initial "" "$HOME/eww-island/adapters/x11/layout.sh")
+;; shortcut: погода опрашивается раз в 15 минут, без кеша; при проблемах с сетью будет "—".
+(defpoll weather :interval "15m" "$HOME/eww-island/adapters/weather/current.sh")
+
+;; Погода для выпадающей панели: Open-Meteo + координаты из Noctalia.
+;; Данные кешируются адаптером на 10 минут, поэтому опрос чаще не нужен.
+(defpoll w-city :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh city")
+(defpoll w-temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh temp")
+(defpoll w-feels :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh feels")
+(defpoll w-desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh desc")
+(defpoll w-wind :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh wind")
+(defpoll w-hum :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh hum")
+(defpoll w-d0name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0name")
+(defpoll w-d0desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0desc")
+(defpoll w-d0temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0temp")
+(defpoll w-d0sun :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0sun")
+(defpoll w-d0set :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0set")
+(defpoll w-d1name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1name")
+(defpoll w-d1desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1desc")
+(defpoll w-d1temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1temp")
+(defpoll w-d2name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2name")
+(defpoll w-d2desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2desc")
+(defpoll w-d2temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2temp")
+(defpoll w-d3name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3name")
+(defpoll w-d3desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3desc")
+(defpoll w-d3temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3temp")
+
+;; Wi-Fi: список сетей через NetworkManager. Опрос раз в минуту, список меняется
+;; медленно, а nmcli отвечает быстро.
+;; :initial обязателен: цикл "for" читает значение при сборке, до первого опроса
+;; переменная ещё пустая, и Eww спотыкается на разборе JSON.
+(defpoll wf-state :interval "1m" :initial "отключено" "$HOME/eww-island/adapters/x11/wifi.sh state")
+(defpoll wf-ssid :interval "1m" :initial "—" "$HOME/eww-island/adapters/x11/wifi.sh ssid")
+(defpoll wf-signal :interval "1m" :initial "0" "$HOME/eww-island/adapters/x11/wifi.sh signal")
+(defpoll wf-bars :interval "1m" :initial "▁" "$HOME/eww-island/adapters/x11/wifi.sh bars")
+;; Уровень сигнала словом: от него зависят иконка (веер из дуг) и её цвет.
+(defpoll wf-level :interval "1m" :initial "none" "$HOME/eww-island/adapters/x11/wifi.sh level")
+(defpoll wf-n :interval "1m" :initial "0" "$HOME/eww-island/adapters/x11/wifi.sh n")
+(defpoll wf-list :interval "1m" :initial "[]" "$HOME/eww-island/adapters/x11/wifi.sh list")
+
+;; Календарь: текущая дата для виджета calendar.
+(defpoll cal-day :interval "1h" "date +%d")
+(defpoll cal-month :interval "1h" "date +%m")
+(defpoll cal-year :interval "1h" "date +%Y")
+;; Русская локаль даёт "%B" со строчной буквы ("ноября"), в заголовке нужна
+;; заглавная - поднимаем первую букву.
+(defpoll cal-month-name :interval "1h" "date '+%B %Y' | sed 's/^\\(.\\)/\\U\\1/'")
+;; Полная дата для панели календаря: в острове только часы (HH:MM).
+(defpoll cal-full :interval "1h" "date '+%A, %d %B %Y'")
+
+;; Рабочие столы: четыре крупные круглые точки, активная - акцентная.
+;; Точка - свой SVG: глиф "●" в Noto Sans вытягивается по высоте и получается
+;; овал, а box с border-radius 50% растягивается по высоте тем более.
+(defwidget wsdot [n]
+  (button :class {cur_ws == n ? "wsdot active" : "wsdot"}
+          :onclick "wmctrl -s ${n}"
+          (image :class "wsdot-mark"
+            :path {cur_ws == n ? "${EWW_CONFIG_DIR}/assets/wsdot-active.svg" : "${EWW_CONFIG_DIR}/assets/wsdot.svg"}
+            :image-width 16 :image-height 16)))
+
+;; Верхняя полоса с вогнутыми углами: углы 12x12 выходят за края тела на 12 px.
+;; Тело получает отступ 0 12px, поэтому полоса шире тела ровно на два угла.
+;; Углы - картинки assets/corner-*.svg: в GTK CSS радиальный градиент даёт размытую кромку.
+(defwidget island-root []
+  (box :orientation "vertical" :space-evenly false :class "island-shell"
+    (box :orientation "horizontal" :space-evenly false :class "flare-row"
+      (image :class "flare-left" :path "${EWW_CONFIG_DIR}/assets/corner-left.svg" :image-width 12 :image-height 12)
+      (box :class "flare-band" :hexpand true)
+      (image :class "flare-right" :path "${EWW_CONFIG_DIR}/assets/corner-right.svg" :image-width 12 :image-height 12))
+    (box :orientation "horizontal" :space-evenly false :class "island-root"
+      (box :orientation "horizontal" :class "wsgroup"
+        (wsdot :n "0")
+        (wsdot :n "1")
+        (wsdot :n "2")
+        (wsdot :n "3"))
+      (box :orientation "horizontal" :class "titlebox"
+        (label :class "title" :limit-width 18 :truncate true :text title))
+      (box :orientation "horizontal" :space-evenly false :class "right"
+        (button :class "layout" :onclick "$HOME/eww-island/adapters/x11/layout.sh next" layout)
+        ;; Клик по Wi-Fi открывает список сетей. Иконка - свой SVG: веер из дуг,
+        ;; уровень задаётся количеством дуг и цветом.
+        (button :class "wifi" :timeout "3s"
+          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-wifi 300 380"
+          (image :class {"wifi-" + wf-level}
+            :path "${EWW_CONFIG_DIR}/assets/wifi-${wf-level}.svg"
+            :image-width 16 :image-height 16))
+        ;; Клик по погоде открывает панель с прогнозом (та же схема, что календарь).
+        (button :class "weather" :timeout "3s"
+          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-weather 300 250"
+          (label :limit-width 16 :truncate true :text weather))
+        ;; Клик по часам открывает календарь выпадающей панелью под островом.
+        ;; :timeout 3s - окно панели появляется не мгновенно, а команда кнопки
+        ;; по умолчанию убивается через 200 мс.
+        (button :class "clock" :timeout "3s"
+          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-calendar 260 270"
+          (label :text clock))
+        ;; onscroll живёт только на eventbox: у button он удалён в Eww 0.6.
+        (eventbox :onscroll "$HOME/eww-island/adapters/audio/volume.sh {}"
+          (button :class "vol" :onclick "$HOME/eww-island/adapters/audio/volume.sh mute"
+            (label :text volume)))))))
+
+;; X11 игнорирует :anchor; центрирование выполняет scripts/run-island.sh через --pos.
+;; Фактическую ширину задаёт содержимое (GTK), :width здесь справочный.
+;; y=0: остров прижат к верхнему краю; панель XFCE временная и будет отключена.
+(defwindow island
+  :monitor 0
+  :geometry (geometry :x "0px" :y "0px" :width "460px" :height "50px" :anchor "top left")
+  :stacking "fg"
+  :windowtype "dock"
+  :resizable false
+  (island-root))
+
+;; Прототип вогнутых верхних углов (этап 2). Временное окно: проверяем, что
+;; вырез угла реально прозрачный и видно рабочий стол. Углы - отдельные SVG:
+;; GTK3 CSS не умеет вогнутые радиусы, а radial-gradient даёт размытую кромку.
+(defwindow proto-corners
+  :monitor 0
+  :geometry (geometry :x "420px" :y "220px" :width "320px" :height "90px")
+  :stacking "fg"
+  :windowtype "normal"
+  (box :orientation "horizontal" :space-evenly false :class "proto"
+    (image :class "proto-corner-l" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-left.svg" :image-width 16 :image-height 16)
+    (box :class "proto-body" :hexpand true)
+    (image :class "proto-corner-r" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-right.svg" :image-width 16 :image-height 16)))
+
+;; Общая рамка панели: вогнутые верхние углы и скруглённые нижние.
+;; Углы - отдельные SVG (GTK3 CSS не умеет вогнутые радиусы), тело - обычный
+;; бокс. Важно: тело начинается с x=16, под прозрачной частью верхнего угла
+;; должно быть пусто, иначе выреза не получается.
+(defwidget panel-frame [content]
+  (box :orientation "horizontal" :space-evenly false :class "panel-frame"
+    (box :orientation "vertical" :space-evenly false :class "panel-side"
+      (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tl.svg" :image-width 16 :image-height 16)
+      (box :class "panel-strip" :hexpand true)
+      (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-bl.svg" :image-width 16 :image-height 16))
+    (box :class "panel-body" :hexpand true content)
+    (box :orientation "vertical" :space-evenly false :class "panel-side"
+      (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tr.svg" :image-width 16 :image-height 16)
+      (box :class "panel-strip" :hexpand true)
+      (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-br.svg" :image-width 16 :image-height 16))))
+
+;; Выпадающая панель календаря. Открывается по клику на часы (adapters/x11/panel.sh),
+;; закрывается по клику в другое место (unfocus-close).
+;; :windowtype normal - панели нужно получать фокус, иначе unfocus-close не сработает.
+(defwindow panel-calendar
+  :monitor 0
+  :geometry (geometry :x "0px" :y "50px" :width "260px")
+  :stacking "fg"
+  :windowtype "normal"
+  :unfocus-close true
+  (panel-frame
+    (box :orientation "vertical" :space-evenly false :class "cal-panel"
+      (label :class "cal-title" :text cal-month-name)
+      (label :class "cal-full" :text cal-full)
+      (calendar :class "cal"
+        :day cal-day :month cal-month :year cal-year
+        :show-heading false :show-day-names true :show-week-numbers false :show-details false))))
+
+;; Выпадающая панель погоды: текущая погода и прогноз на 4 дня.
+;; Открывается по клику на индикатор погоды в острове (adapters/x11/panel.sh).
+(defwidget wday [n name desc temp]
+  (box :orientation "horizontal" :space-evenly false :class "w-day"
+    (label :class "w-day-name" :text name)
+    (label :class "w-day-desc" :text desc)
+    (label :class "w-day-temp" :text temp)))
+
+(defwindow panel-weather
+  :monitor 0
+  :geometry (geometry :x "0px" :y "50px" :width "300px")
+  :stacking "fg"
+  :windowtype "normal"
+  :unfocus-close true
+  (panel-frame
+    (box :orientation "vertical" :space-evenly false :class "wx-panel"
+      (label :class "wx-city" :halign "center" :text w-city)
+      (box :orientation "horizontal" :space-evenly false :class "wx-now"
+        (label :class "wx-temp" :text "${w-temp}°C")
+        (label :class "wx-desc" :text w-desc))
+      (label :class "wx-detail" :text "ощущается ${w-feels}°C · ветер ${w-wind} км/ч · влажность ${w-hum}%")
+      (box :orientation "horizontal" :space-evenly false :class "wx-sep")
+      (wday :n "0" :name w-d0name :desc w-d0desc :temp "${w-d0temp}°C")
+      (wday :n "1" :name w-d1name :desc w-d1desc :temp "${w-d1temp}°C")
+      (wday :n "2" :name w-d2name :desc w-d2desc :temp "${w-d2temp}°C")
+      (wday :n "3" :name w-d3name :desc w-d3desc :temp "${w-d3temp}°C")
+      (label :class "wx-sun" :text "восход ${w-d0sun} · закат ${w-d0set}"))))
+
+;; Выпадающая панель Wi-Fi: текущая сеть и список доступных.
+;; Список приходит из адаптера как JSON-массив, цикл "for" разворачивает его
+;; в строки. Клик по сети подключается к ней (nmcli умеет подключаться к сетям
+;; с сохранённым профилем; к остальным нужен пароль, его ввести негде).
+(defwindow panel-wifi
+  :monitor 0
+  :geometry (geometry :x "0px" :y "50px" :width "300px")
+  :stacking "fg"
+  :windowtype "normal"
+  :unfocus-close true
+  (panel-frame
+    (box :orientation "vertical" :space-evenly false :class "wf-panel"
+      (box :orientation "horizontal" :space-evenly false :class "wf-head"
+        (image :class "wf-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${wf-level}.svg" :image-width 16 :image-height 16)
+        (label :class "wf-ssid" :text wf-ssid))
+      (label :class "wf-state" :text "${wf-state} · сигнал ${wf-signal}%")
+      (box :orientation "horizontal" :space-evenly false :class "wf-sep")
+      (box :orientation "vertical" :space-evenly false :class "wf-list"
+        (for net in wf-list
+          ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
+          (button :class {net.active ? "wf-net active" : "wf-net"}
+            :onclick "$HOME/eww-island/adapters/x11/wifi.sh connect ${net.ssid}"
+            (box :orientation "horizontal" :space-evenly false
+              (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
+              (label :class "wf-net-name" :text "${net.ssid}")
+              (label :class "wf-net-sig" :text "${net.sig}%"))))))))

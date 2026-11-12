@@ -1,0 +1,312 @@
+// Eww Island - visual system.
+// Material-inspired, but with an own character: dark neutral surfaces,
+// one cyan accent, no shadows and no motion (hover is instant).
+//
+// NOTE: this file must stay ASCII-only. The SCSS compiler emits "@charset"
+// for non-ASCII input and GTK CSS rejects that rule, dropping the whole
+// stylesheet (every window falls back to the GTK theme colors).
+// The same applies to unknown CSS properties: one bad property breaks all.
+
+// --- palette ---
+$surface: #141414;
+$surface-container: #1c1e22;
+$surface-high: #25282e;
+$outline: #2e3138;
+$on-surface: #e6e8ec;
+$on-surface-variant: #9aa0a6;
+$primary: #4fc3f7;
+$primary-dim: #2a6e8f;
+$error: #f2b8b5;
+
+// --- radii ---
+$r-surface: 18px;
+$r-control: 8px;
+
+// --- type scale ---
+$t-title: 15px;
+$t-body: 13px;
+$t-secondary: 12px;
+$t-caption: 11px;
+
+// --- island ---
+window.island {
+  background: transparent;
+}
+
+.island-shell {
+  background: transparent;
+}
+
+// Top band with concave corners: the 12x12 corners stick out 12 px past the
+// body. The body gets a 0 12px margin, so the band is exactly two corners wider.
+.flare-band {
+  min-height: 12px;
+  background-color: $surface;
+}
+
+.island-root {
+  background-color: $surface;
+  border-radius: 0 0 $r-surface $r-surface;
+  margin: 0 12px;
+  padding: 0 14px;
+  color: $on-surface;
+  font-family: "Noto Sans";
+  font-size: $t-body;
+}
+
+button {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+// Workspace dots: four large round dots, the active one in the accent color.
+.wsgroup {
+  margin-right: 10px;
+}
+
+.wsdot {
+  padding: 2px 3px;
+  border-radius: $r-control;
+}
+
+.wsdot:hover {
+  background-color: $surface-high;
+}
+
+// Active window title: secondary, quiet.
+.titlebox {
+  min-width: 140px;
+  margin-right: 10px;
+}
+
+.title {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+// Layout indicator (US/RU): small, muted.
+.layout {
+  min-width: 24px;
+  margin-right: 10px;
+  padding: 2px 7px;
+  border-radius: $r-control;
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+.layout:hover {
+  background-color: $surface-high;
+}
+
+// Wi-Fi: fan of arcs, the color shows the signal level.
+.wifi {
+  margin-right: 10px;
+  padding: 2px 6px;
+  border-radius: $r-control;
+}
+
+.wifi:hover {
+  background-color: $surface-high;
+}
+
+.wifi-excellent {
+  color: $primary;
+}
+
+.wifi-good {
+  color: $primary-dim;
+}
+
+.wifi-ok {
+  color: $primary-dim;
+}
+
+.wifi-weak {
+  color: $on-surface-variant;
+}
+
+.wifi-none {
+  color: $outline;
+}
+
+// Weather: secondary, muted.
+.weather {
+  min-width: 90px;
+  margin-right: 10px;
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+// Clock: the biggest element of the island, medium weight.
+.clock {
+  margin-right: 10px;
+  color: $on-surface;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.clock:hover {
+  background-color: $surface-high;
+}
+
+// Volume: regular body size.
+.vol {
+  min-width: 34px;
+  padding: 2px 7px;
+  border-radius: $r-control;
+  color: $on-surface-variant;
+  font-size: $t-body;
+}
+
+.vol:hover {
+  background-color: $surface-high;
+}
+
+// --- dropdown panels ---
+// One shared surface for every panel: container color, 18 px radius,
+// hairline outline instead of a shadow.
+window.panel-calendar,
+window.panel-weather,
+window.panel-wifi {
+  background-color: $surface-container;
+  border-radius: $r-surface;
+  border: 1px solid $outline;
+  padding: 14px;
+}
+
+.cal-panel,
+.wx-panel,
+.wf-panel {
+  background-color: transparent;
+}
+
+// Panel heading: 15 px bold.
+.cal-title,
+.wx-city,
+.wf-ssid {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: bold;
+}
+
+// Current temperature: large, the biggest thing in the weather panel.
+.wx-temp {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: bold;
+  padding-right: 10px;
+}
+
+.wx-desc,
+.wf-net-name {
+  min-width: 150px;
+  color: $on-surface;
+  font-size: $t-body;
+}
+
+// Secondary line: 12 px muted.
+.wx-detail,
+.wf-state {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+// Caption: 11 px muted.
+.wx-sun,
+.wf-net-sig {
+  min-width: 42px;
+  color: $on-surface-variant;
+  font-size: $t-caption;
+}
+
+// Hairline separators.
+.wx-sep,
+.wf-sep {
+  min-height: 1px;
+  background-color: $outline;
+  margin: 10px 0 6px 0;
+}
+
+// Full date line under the month heading.
+.cal-full {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  padding-bottom: 8px;
+}
+
+// Calendar grid.
+.cal {
+  color: $on-surface;
+  font-size: $t-body;
+}
+
+.cal:hover {
+  background-color: $surface-high;
+}
+
+// One forecast row.
+.w-day {
+  padding: 6px 0;
+}
+
+.w-day-name {
+  min-width: 68px;
+  color: $on-surface;
+  font-size: $t-body;
+  font-weight: bold;
+}
+
+.w-day-desc {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  padding-right: 8px;
+}
+
+.w-day-temp {
+  color: $on-surface;
+  font-size: $t-body;
+}
+
+// Wi-Fi panel header.
+.wf-head {
+  padding-bottom: 2px;
+}
+
+.wf-icon {
+  padding-right: 8px;
+}
+
+// One network row.
+.wf-net {
+  padding: 6px 4px;
+  border-radius: $r-control;
+}
+
+.wf-net:hover {
+  background-color: $surface-high;
+}
+
+// The network we are connected to.
+.wf-net.active {
+  background-color: $surface-high;
+}
+
+.wf-net.active .wf-net-name {
+  color: $on-surface;
+  font-weight: bold;
+}
+
+// --- prototype window for the concave corners (stage 2) ---
+window.proto-corners {
+  background: transparent;
+}
+
+.proto {
+  background: transparent;
+}
+
+.proto-body {
+  background-color: $surface;
+}

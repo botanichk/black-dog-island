@@ -1,0 +1,30 @@
+diff --git a/crates/eww/src/widgets/widget_definitions.rs b/crates/eww/src/widgets/widget_definitions.rs
+index 8284d0f..03540dc 100644
+--- a/crates/eww/src/widgets/widget_definitions.rs
++++ b/crates/eww/src/widgets/widget_definitions.rs
+@@ -835,10 +835,21 @@ fn build_gtk_event_box(bargs: &mut BuilderArgs) -> Result<gtk::EventBox> {
+             gtk_widget.add_events(gdk::EventMask::SCROLL_MASK);
+             gtk_widget.add_events(gdk::EventMask::SMOOTH_SCROLL_MASK);
+             connect_signal_handler!(gtk_widget, gtk_widget.connect_scroll_event(move |_, evt| {
+-                let delta = evt.delta().1;
+-                if delta != 0f64 { // Ignore the first event https://bugzilla.gnome.org/show_bug.cgi?id=675959
+-                    run_command(timeout, &onscroll, &[if delta < 0f64 { "up" } else { "down" }]);
+-                }
++                // GTK3 for a classic wheel sends GDK_SCROLL (discrete), where only
++                // `direction` is set and delta_y stays 0 - so the old delta-based
++                // check never fired. GDK_SCROLL_SMOOTH (touchpad) still uses delta.
++                let up = match evt.direction() {
++                    gdk::ScrollDirection::Up => true,
++                    gdk::ScrollDirection::Down => false,
++                    _ => {
++                        let delta = evt.delta().1;
++                        if delta == 0f64 {
++                            return glib::Propagation::Proceed; // Ignore the first event https://bugzilla.gnome.org/show_bug.cgi?id=675959
++                        }
++                        delta < 0f64
++                    }
++                };
++                run_command(timeout, &onscroll, &[if up { "up" } else { "down" }]);
+                 glib::Propagation::Proceed
+             }));
+         },
