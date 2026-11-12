@@ -145,12 +145,12 @@
   (box :orientation "horizontal" :space-evenly false :class "panel-frame"
     (box :orientation "vertical" :space-evenly false :class "panel-side"
       (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tl.svg" :image-width 16 :image-height 16)
-      (box :class "panel-strip" :hexpand true)
+      (box :class "panel-strip" :hexpand true :vexpand true)
       (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-bl.svg" :image-width 16 :image-height 16))
     (box :class "panel-body" :hexpand true (children))
     (box :orientation "vertical" :space-evenly false :class "panel-side"
       (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tr.svg" :image-width 16 :image-height 16)
-      (box :class "panel-strip" :hexpand true)
+      (box :class "panel-strip" :hexpand true :vexpand true)
       (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-br.svg" :image-width 16 :image-height 16))))
 
 ;; Выпадающая панель календаря. Открывается по клику на часы (adapters/x11/panel.sh),

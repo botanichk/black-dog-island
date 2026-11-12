@@ -310,3 +310,19 @@ window.proto-corners {
 .proto-body {
   background-color: $surface;
 }
+
+// Панели продолжают остров: тот же цвет, без рамок.
+.panel-frame { background: transparent; border: none; }
+.panel-body, .panel-strip { background-color: $surface; border: none; }
+
+// Окно панели прозрачное: форму и цвет задаёт panel-frame (углы + тело).
+window.panel-calendar,
+window.panel-weather,
+window.panel-wifi {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+// Отступ содержимого теперь здесь, а не у окна.
+.cal-panel, .wx-panel, .wf-panel { padding: 4px 6px 14px 6px; }
