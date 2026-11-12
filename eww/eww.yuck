@@ -215,7 +215,8 @@
         (label :class "wf-ssid" :text wf-ssid))
       (label :class "wf-state" :text "${wf-state} · сигнал ${wf-signal}%")
       (box :orientation "horizontal" :space-evenly false :class "wf-sep")
-      (box :orientation "vertical" :space-evenly false :class "wf-list"
+      (scroll :vscroll true :hscroll false :height 200 :class "wf-scroll"
+        (box :orientation "vertical" :space-evenly false :class "wf-list"
         (for net in wf-list
           ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
           (button :class {net.active ? "wf-net active" : "wf-net"}
@@ -223,4 +224,4 @@
             (box :orientation "horizontal" :space-evenly false
               (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
               (label :class "wf-net-name" :text "${net.ssid}")
-              (label :class "wf-net-sig" :text "${net.sig}%"))))))))
+              (label :class "wf-net-sig" :text "${net.sig}%")))))))))
