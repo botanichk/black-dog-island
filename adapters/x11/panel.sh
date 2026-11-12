@@ -25,10 +25,12 @@ if [ -n "$(win_geo "$TITLE")" ]; then
   exit 0
 fi
 
-# Остров: x, ширина, низ.
-set -- $(win_geo "Eww - island")
-[ "$#" -eq 4 ] || { echo "ошибка: окно острова не найдено" >&2; exit 1; }
-IX=$1; IW=$3; Y=$(($2 + $4))
+# Остров: x, ширина, низ. Ищем по PID демона + _NET_WM_WINDOW_TYPE_DOCK.
+geom=$("$ROOT/adapters/x11/island-geom.sh" 2>/dev/null || true)
+[ -n "$geom" ] || { echo "ошибка: остров не найден (island-geom.sh не ответил)" >&2; exit 1; }
+IX=$(echo "$geom" | awk '{print $2}')
+IW=$(echo "$geom" | awk '{print $4}')
+Y=$(echo "$geom" | awk '{print $3 + $5}')
 
 # X панели шириной $1 по центру острова.
 x_for() {
@@ -49,7 +51,7 @@ done
 
 # xfwm4 центрирует обычные окна и может сделать это после нашего открытия.
 # Ставим позицию (размер не трогаем: -1), пока она не продержится 3 проверки подряд.
-ok=0; i=0
+ok=0; i=0; final_x=0; final_y=0
 while [ "$ok" -lt 3 ] && [ "$i" -lt 20 ]; do
   set -- $(win_geo "$TITLE")
   [ "$#" -eq 4 ] || break
@@ -60,7 +62,8 @@ while [ "$ok" -lt 3 ] && [ "$i" -lt 20 ]; do
     ok=0
     wmctrl -r "$TITLE" -e "0,$X,$Y,-1,-1" 2>/dev/null || true
   fi
+  final_x=$1; final_y=$2
   i=$((i + 1))
   sleep 0.1
 done
-[ "$ok" -ge 3 ] || echo "предупреждение: позиция панели $NAME не устоялась" >&2
+[ "$ok" -ge 3 ] || echo "предупреждение: позиция панели $NAME не устоялась (фактически: ${final_x}x${final_y}, ожидалось: ${X}x${Y})" >&2

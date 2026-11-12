@@ -81,7 +81,7 @@
       (image :class "flare-left" :path "${EWW_CONFIG_DIR}/assets/corner-left.svg" :image-width 12 :image-height 12)
       (box :class "flare-band" :hexpand true)
       (image :class "flare-right" :path "${EWW_CONFIG_DIR}/assets/corner-right.svg" :image-width 12 :image-height 12))
-    (box :orientation "horizontal" :space-evenly false :class "island-root"
+    (box :orientation "horizontal" :space-evenly false :class "island-root" :vexpand true
       (box :orientation "horizontal" :class "wsgroup"
         (wsdot :n "0")
         (wsdot :n "1")
