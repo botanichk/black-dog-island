@@ -141,13 +141,13 @@
 ;; Углы - отдельные SVG (GTK3 CSS не умеет вогнутые радиусы), тело - обычный
 ;; бокс. Важно: тело начинается с x=16, под прозрачной частью верхнего угла
 ;; должно быть пусто, иначе выреза не получается.
-(defwidget panel-frame [content]
+(defwidget panel-frame []
   (box :orientation "horizontal" :space-evenly false :class "panel-frame"
     (box :orientation "vertical" :space-evenly false :class "panel-side"
       (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tl.svg" :image-width 16 :image-height 16)
       (box :class "panel-strip" :hexpand true)
       (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-bl.svg" :image-width 16 :image-height 16))
-    (box :class "panel-body" :hexpand true content)
+    (box :class "panel-body" :hexpand true (children))
     (box :orientation "vertical" :space-evenly false :class "panel-side"
       (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tr.svg" :image-width 16 :image-height 16)
       (box :class "panel-strip" :hexpand true)
