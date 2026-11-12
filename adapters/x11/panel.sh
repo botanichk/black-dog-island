@@ -1,55 +1,66 @@
 #!/bin/sh
-# Выпадающая панель под кнопкой острова.
-# Панель открывается ровно под той кнопкой, по которой кликнули: позиция берётся
-# из курсора (он остаётся на кнопке в момент клика), ширина - из аргумента.
-# Повторный клик по той же кнопке закрывает панель (eww open --toggle).
-#
-# usage: panel.sh <имя окна> <ширина панели>
+# Выпадающая панель под островом, по его центру.
+# Повторный запуск для уже открытой панели закрывает её.
+# usage: panel.sh <окно> [примерная ширина]
+# Ширину задаёт eww.yuck, высоту - содержимое; скрипт размер не меняет.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-BIN="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/pointer"
 EWW="$ROOT/build/target/release/eww"
 CONF="$ROOT/eww"
 
-[ "${1:-}" = "" ] && { echo "usage: panel.sh <window> <width>" >&2; exit 2; }
-
+[ -n "${1:-}" ] || { echo "usage: panel.sh <window> [width]" >&2; exit 2; }
 NAME=$1
-WIDTH=${2:-280}
-HEIGHT=${3:-300}
+GUESS=${2:-300}
+TITLE="Eww - $NAME"
 
-if [ ! -x "$BIN" ] || [ "$ROOT/adapters/x11/pointer.c" -nt "$BIN" ]; then
-  mkdir -p "$(dirname -- "$BIN")"
-  gcc -O2 -o "$BIN" "$ROOT/adapters/x11/pointer.c" -lX11
+# Печатает "x y w h" окна с таким заголовком (пусто, если окна нет).
+win_geo() {
+  wmctrl -lG 2>/dev/null | awk -v t="$1" '$0 ~ (t "$") {print $3, $4, $5, $6; exit}'
+}
+
+# Панель уже открыта - закрываем и выходим.
+if [ -n "$(win_geo "$TITLE")" ]; then
+  "$EWW" --config "$CONF" close "$NAME"
+  exit 0
 fi
 
-# Позиция курсора: X - по кнопке, Y - не нужен.
-PX=$("$BIN" | cut -d' ' -f1)
+# Остров: x, ширина, низ.
+set -- $(win_geo "Eww - island")
+[ "$#" -eq 4 ] || { echo "ошибка: окно острова не найдено" >&2; exit 1; }
+IX=$1; IW=$3; Y=$(($2 + $4))
 
-# Низ острова: панель открывается под ним.
-ISLAND=$(wmctrl -lG 2>/dev/null | awk '/Eww - island$/ {print $4 + $6; exit}')
-[ -n "${ISLAND:-}" ] || ISLAND=50
+# X панели шириной $1 по центру острова.
+x_for() {
+  x=$((IX + (IW - $1) / 2))
+  [ "$x" -ge 0 ] || x=0
+  echo "$x"
+}
 
-SCREEN_W=$(xrandr --current | awk '/\*/{print $1; exit}' | cut -d x -f1)
+"$EWW" --config "$CONF" open "$NAME" --pos "$(x_for "$GUESS")x${Y}"
 
-# Панель по центру под кнопкой, но не вылезает за края экрана.
-X=$((PX - WIDTH / 2))
-[ "$X" -lt 0 ] && X=0
-[ $((X + WIDTH)) -gt "$SCREEN_W" ] && X=$((SCREEN_W - WIDTH))
+# Ждём появления окна (до 3 с).
+i=0; geo=
+while [ -z "$geo" ] && [ "$i" -lt 30 ]; do
+  geo=$(win_geo "$TITLE")
+  [ -n "$geo" ] || { sleep 0.1; i=$((i + 1)); }
+done
+[ -n "$geo" ] || { echo "ошибка: панель $NAME не появилась" >&2; exit 1; }
 
-"$EWW" --config "$CONF" open "$NAME" --toggle --pos "${X}x${ISLAND}"
-
-# xfwm4 центрирует обычные окна, игнорируя --pos от Eww. Поэтому ставим
-# геометрию через wmctrl -e - он работает с обычными окнами.
-# Окно появляется не сразу и xfwm4 успевает перецентрировать его уже после
-# первого wmctrl -r, поэтому позицию ставим дважды: сразу и ещё раз с задержкой.
-i=0
-while [ "$i" -lt 20 ]; do
-  wmctrl -lG 2>/dev/null | grep -q "Eww - $NAME\$" && break
+# xfwm4 центрирует обычные окна и может сделать это после нашего открытия.
+# Ставим позицию (размер не трогаем: -1), пока она не продержится 3 проверки подряд.
+ok=0; i=0
+while [ "$ok" -lt 3 ] && [ "$i" -lt 20 ]; do
+  set -- $(win_geo "$TITLE")
+  [ "$#" -eq 4 ] || break
+  X=$(x_for "$3")
+  if [ "$1" -eq "$X" ] && [ "$2" -eq "$Y" ]; then
+    ok=$((ok + 1))
+  else
+    ok=0
+    wmctrl -r "$TITLE" -e "0,$X,$Y,-1,-1" 2>/dev/null || true
+  fi
   i=$((i + 1))
   sleep 0.1
 done
-
-wmctrl -r "Eww - $NAME" -e 0,"$X","$ISLAND","$WIDTH","$HEIGHT" 2>/dev/null || true
-sleep 0.5
-wmctrl -r "Eww - $NAME" -e 0,"$X","$ISLAND","$WIDTH","$HEIGHT" 2>/dev/null || true
+[ "$ok" -ge 3 ] || echo "предупреждение: позиция панели $NAME не устоялась" >&2
