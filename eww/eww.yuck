@@ -157,7 +157,7 @@
   :windowtype "normal"
   :unfocus-close true
   (panel-frame
-    (box :orientation "vertical" :space-evenly false :class "cal-panel" :halign "center"
+    (box :orientation "vertical" :space-evenly false :class "cal-panel" :halign "fill"
       (label :class "cal-title" :text cal-month-name)
       (label :class "cal-full" :text cal-full)
       (calendar :class "cal"
@@ -167,10 +167,10 @@
 ;; Выпадающая панель погоды: текущая погода и прогноз на 4 дня.
 ;; Открывается по клику на индикатор погоды в острове (adapters/x11/panel.sh).
 (defwidget wday [n name desc temp]
-  (box :orientation "horizontal" :space-evenly false :class "w-day"
-    (label :class "w-day-name" :text name)
-    (label :class "w-day-desc" :text desc)
-    (label :class "w-day-temp" :text temp)))
+  (box :orientation "horizontal" :space-evenly false :class "w-day" :halign "fill"
+    (label :class "w-day-name" :xalign 0 :text name)
+    (label :class "w-day-desc" :xalign 0 :hexpand true :text desc)
+    (label :class "w-day-temp" :xalign 1 :text temp)))
 
 (defwindow panel-weather
   :monitor 0
@@ -179,12 +179,12 @@
   :windowtype "normal"
   :unfocus-close true
   (panel-frame
-    (box :orientation "vertical" :space-evenly false :class "wx-panel" :halign "center"
+    (box :orientation "vertical" :space-evenly false :class "wx-panel" :halign "fill"
       (label :class "wx-city" :halign "center" :text w-city)
-      (box :orientation "horizontal" :space-evenly false :class "wx-now"
-        (label :class "wx-temp" :text "${w-temp}°C")
-        (label :class "wx-desc" :text w-desc))
-      (label :class "wx-detail" :text "ощущается ${w-feels}°C · ветер ${w-wind} км/ч · влажность ${w-hum}%")
+      (box :orientation "horizontal" :space-evenly false :class "wx-now" :halign "fill"
+        (label :class "wx-temp" :xalign 0 :text "${w-temp}°C")
+        (label :class "wx-desc" :xalign 0 :hexpand true :text w-desc))
+      (label :class "wx-detail" :xalign 0 :text "ощущается ${w-feels}°C · ветер ${w-wind} км/ч · влажность ${w-hum}%")
       (box :orientation "horizontal" :space-evenly false :class "wx-sep")
       (wday :n "0" :name w-d0name :desc w-d0desc :temp "${w-d0temp}°C")
       (wday :n "1" :name w-d1name :desc w-d1desc :temp "${w-d1temp}°C")
@@ -204,10 +204,10 @@
   :unfocus-close true
   (panel-frame
     (box :orientation "vertical" :space-evenly false :class "wf-panel"
-      (box :orientation "horizontal" :space-evenly false :class "wf-head"
+      (box :orientation "horizontal" :space-evenly false :class "wf-head" :halign "fill"
         (image :class "wf-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${wf-level}.svg" :image-width 16 :image-height 16)
-        (label :class "wf-ssid" :text wf-ssid))
-      (label :class "wf-state" :text "${wf-state} · сигнал ${wf-signal}%")
+        (label :class "wf-ssid" :xalign 0 :hexpand true :text wf-ssid))
+      (label :class "wf-state" :xalign 0 :text "${wf-state} · сигнал ${wf-signal}%")
       (box :orientation "horizontal" :space-evenly false :class "wf-sep")
       (scroll :vscroll true :hscroll false :height 200 :class "wf-scroll"
         (box :orientation "vertical" :space-evenly false :class "wf-list"
@@ -215,7 +215,7 @@
           ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
           (button :class {net.active ? "wf-net active" : "wf-net"}
             :onclick "$HOME/eww-island/adapters/x11/wifi.sh connect ${net.ssid}"
-            (box :orientation "horizontal" :space-evenly false
+            (box :orientation "horizontal" :space-evenly false :hexpand true
               (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
-              (label :class "wf-net-name" :text "${net.ssid}")
-              (label :class "wf-net-sig" :text "${net.sig}%")))))))))
+              (label :class "wf-net-name" :xalign 0 :hexpand true :text "${net.ssid}")
+              (label :class "wf-net-sig" :xalign 1 :text "${net.sig}%")))))))))
