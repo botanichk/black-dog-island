@@ -328,3 +328,9 @@ window.panel-wifi {
 .cal-panel, .wx-panel, .wf-panel { padding: 4px 6px 14px 6px; }
 
 .cal-panel, .wx-panel { min-width: 200px; }
+
+// Панель продолжает тело острова: те же 12 px по бокам, прямой верх, скруглён только низ.
+.panel-frame { background: transparent; padding: 0 12px; }
+.panel-body { background-color: $surface; border-radius: 0 0 $r-surface $r-surface; }
+// Пока панель открыта, низ острова прямой.
+.island-root.open { border-radius: 0; }

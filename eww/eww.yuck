@@ -12,6 +12,8 @@
 ;; shortcut: громкость опрашивается раз в 2 с; при заметной нагрузке перейти на `pactl subscribe`.
 (defpoll volume :interval "2s" "pactl get-sink-mute @DEFAULT_SINK@ | grep -q yes && echo MUTE || pactl get-sink-volume @DEFAULT_SINK@ | grep -o '[0-9]*%' | head -1")
 ;; Раскладка событийно: адаптер слушает XkbStateNotify через собственный X11-хелпер.
+(deflisten panel_open :initial "false" "$HOME/eww-island/adapters/x11/panel-open.sh")
+
 (deflisten layout :initial "" "$HOME/eww-island/adapters/x11/layout.sh")
 ;; shortcut: погода опрашивается раз в 15 минут, без кеша; при проблемах с сетью будет "—".
 (defpoll weather :interval "15m" "$HOME/eww-island/adapters/weather/current.sh")
@@ -81,7 +83,7 @@
       (image :class "flare-left" :path "${EWW_CONFIG_DIR}/assets/corner-left.svg" :image-width 12 :image-height 12)
       (box :class "flare-band" :hexpand true)
       (image :class "flare-right" :path "${EWW_CONFIG_DIR}/assets/corner-right.svg" :image-width 12 :image-height 12))
-    (box :orientation "horizontal" :space-evenly false :class "island-root" :vexpand true
+    (box :orientation "horizontal" :space-evenly false :class {panel_open == "true" ? "island-root open" : "island-root"} :vexpand true
       (box :orientation "horizontal" :class "wsgroup"
         (wsdot :n "0")
         (wsdot :n "1")
@@ -142,16 +144,8 @@
 ;; бокс. Важно: тело начинается с x=16, под прозрачной частью верхнего угла
 ;; должно быть пусто, иначе выреза не получается.
 (defwidget panel-frame []
-  (box :orientation "horizontal" :space-evenly false :class "panel-frame"
-    (box :orientation "vertical" :space-evenly false :class "panel-side"
-      (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tl.svg" :image-width 12 :image-height 12)
-      (box :class "panel-strip" :hexpand true :vexpand true)
-      (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-bl.svg" :image-width 12 :image-height 12))
-    (box :class "panel-body" :hexpand true (children))
-    (box :orientation "vertical" :space-evenly false :class "panel-side"
-      (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tr.svg" :image-width 12 :image-height 12)
-      (box :class "panel-strip" :hexpand true :vexpand true)
-      (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-br.svg" :image-width 12 :image-height 12))))
+  (box :class "panel-frame" :orientation "vertical" :space-evenly false
+    (box :class "panel-body" :orientation "vertical" :space-evenly false (children))))
 
 ;; Выпадающая панель календаря. Открывается по клику на часы (adapters/x11/panel.sh),
 ;; закрывается по клику в другое место (unfocus-close).
