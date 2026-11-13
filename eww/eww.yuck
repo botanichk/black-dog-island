@@ -144,14 +144,14 @@
 (defwidget panel-frame []
   (box :orientation "horizontal" :space-evenly false :class "panel-frame"
     (box :orientation "vertical" :space-evenly false :class "panel-side"
-      (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tl.svg" :image-width 16 :image-height 16)
+      (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tl.svg" :image-width 12 :image-height 12)
       (box :class "panel-strip" :hexpand true :vexpand true)
-      (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-bl.svg" :image-width 16 :image-height 16))
+      (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-bl.svg" :image-width 12 :image-height 12))
     (box :class "panel-body" :hexpand true (children))
     (box :orientation "vertical" :space-evenly false :class "panel-side"
-      (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tr.svg" :image-width 16 :image-height 16)
+      (image :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-tr.svg" :image-width 12 :image-height 12)
       (box :class "panel-strip" :hexpand true :vexpand true)
-      (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-br.svg" :image-width 16 :image-height 16))))
+      (image :valign "end" :path "${EWW_CONFIG_DIR}/assets/panel-corner-br.svg" :image-width 12 :image-height 12))))
 
 ;; Выпадающая панель календаря. Открывается по клику на часы (adapters/x11/panel.sh),
 ;; закрывается по клику в другое место (unfocus-close).
@@ -163,7 +163,7 @@
   :windowtype "normal"
   :unfocus-close true
   (panel-frame
-    (box :orientation "vertical" :space-evenly false :class "cal-panel"
+    (box :orientation "vertical" :space-evenly false :class "cal-panel" :halign "center"
       (label :class "cal-title" :text cal-month-name)
       (label :class "cal-full" :text cal-full)
       (calendar :class "cal"
@@ -185,7 +185,7 @@
   :windowtype "normal"
   :unfocus-close true
   (panel-frame
-    (box :orientation "vertical" :space-evenly false :class "wx-panel"
+    (box :orientation "vertical" :space-evenly false :class "wx-panel" :halign "center"
       (label :class "wx-city" :halign "center" :text w-city)
       (box :orientation "horizontal" :space-evenly false :class "wx-now"
         (label :class "wx-temp" :text "${w-temp}°C")

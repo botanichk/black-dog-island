@@ -326,3 +326,5 @@ window.panel-wifi {
 }
 // Отступ содержимого теперь здесь, а не у окна.
 .cal-panel, .wx-panel, .wf-panel { padding: 4px 6px 14px 6px; }
+
+.cal-panel, .wx-panel { min-width: 200px; }

@@ -34,7 +34,7 @@ Y=$(echo "$geom" | awk '{print $3 + $5}')
 
 # X панели шириной $1 по центру острова.
 x_for() {
-  x=$((IX + (IW - $1) / 2))
+  x=$IX
   [ "$x" -ge 0 ] || x=0
   echo "$x"
 }
@@ -56,11 +56,11 @@ while [ "$ok" -lt 3 ] && [ "$i" -lt 20 ]; do
   set -- $(win_geo "$TITLE")
   [ "$#" -eq 4 ] || break
   X=$(x_for "$3")
-  if [ "$1" -eq "$X" ] && [ "$2" -eq "$Y" ]; then
+  if [ "$1" -eq "$X" ] && [ "$2" -eq "$Y" ] && [ "$3" -eq "$IW" ]; then
     ok=$((ok + 1))
   else
     ok=0
-    wmctrl -r "$TITLE" -e "0,$X,$Y,-1,-1" 2>/dev/null || true
+    wmctrl -r "$TITLE" -e "0,$X,$Y,$IW,-1" 2>/dev/null || true
   fi
   final_x=$1; final_y=$2
   i=$((i + 1))
