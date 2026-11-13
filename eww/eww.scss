@@ -1,16 +1,19 @@
-// Eww Island - visual system.
-// Material-inspired, but with an own character: dark neutral surfaces,
-// one cyan accent, no shadows and no motion (hover is instant).
+// Eww Island - Material 3 (dark) visual system.
+// Dark neutral surfaces, one cyan accent, tonal elevation instead of shadows,
+// state layers instead of motion. GTK3 limits: no animations, no blur, no
+// flex/grid, no concave radii (those are separate SVG corners).
 //
-// NOTE: this file must stay ASCII-only. The SCSS compiler emits "@charset"
-// for non-ASCII input and GTK CSS rejects that rule, dropping the whole
-// stylesheet (every window falls back to the GTK theme colors).
+// NOTE: this file must stay ASCII-only in the *output*. The SCSS compiler emits
+// "@charset" for non-ASCII input and GTK CSS rejects that rule, dropping the
+// whole stylesheet (every window falls back to the GTK theme colors).
 // The same applies to unknown CSS properties: one bad property breaks all.
+// Comments are stripped by the compiler, so the source may keep them.
 
-// --- palette ---
-$surface: #141414;
-$surface-container: #1c1e22;
-$surface-high: #25282e;
+// --- palette: Material 3 dark, neutral + accent ---
+$surface: #141414;              // island body, panel body
+$surface-container: #1c1e22;    // cards and chips inside surfaces
+$surface-container-high: #25282e; // hovered / selected container
+$surface-highest: #2b2f36;
 $outline: #2e3138;
 $on-surface: #e6e8ec;
 $on-surface-variant: #9aa0a6;
@@ -18,15 +21,24 @@ $primary: #4fc3f7;
 $primary-dim: #2a6e8f;
 $error: #f2b8b5;
 
-// --- radii ---
-$r-surface: 18px;
-$r-control: 8px;
+// --- state layers: Material overlay opacities, no transitions ---
+$state-hover: rgba(255, 255, 255, 0.08);
+$state-press: rgba(255, 255, 255, 0.12);
+$state-selected: rgba(79, 195, 247, 0.14);
+$divider: rgba(255, 255, 255, 0.08);
 
-// --- type scale ---
-$t-title: 15px;
-$t-body: 13px;
-$t-secondary: 12px;
+// --- shape scale: 8 / 12 / 16 / 18 (px) ---
+$r-control: 8px;
+$r-row: 12px;
+$r-card: 16px;
+$r-surface: 18px;
+
+// --- type scale: 11 / 12 / 13 / 15 / 20 (px) ---
 $t-caption: 11px;
+$t-secondary: 12px;
+$t-body: 13px;
+$t-title: 15px;
+$t-display: 20px;
 
 // --- island ---
 window.island {
@@ -61,21 +73,21 @@ button {
   padding: 0;
 }
 
-// Workspace dots: four large round dots, the active one in the accent color.
+// Workspace dots: four round state-layer pills, the active one in accent.
 .wsgroup {
   margin-right: 10px;
 }
 
 .wsdot {
-  padding: 2px 3px;
-  border-radius: $r-control;
+  padding: 3px;
+  border-radius: 999px;
 }
 
 .wsdot:hover {
-  background-color: $surface-high;
+  background-color: $state-hover;
 }
 
-// Active window title: secondary, quiet.
+// Active window title: caption, quiet.
 .titlebox {
   min-width: 140px;
   margin-right: 10px;
@@ -86,29 +98,30 @@ button {
   font-size: $t-secondary;
 }
 
-// Layout indicator (US/RU): small, muted.
+// Layout indicator (US/RU): assist chip, tonal container, 8 px radius.
 .layout {
   min-width: 24px;
-  margin-right: 10px;
-  padding: 2px 7px;
+  margin-right: 8px;
+  padding: 3px 8px;
   border-radius: $r-control;
+  background-color: $surface-container;
   color: $on-surface-variant;
   font-size: $t-secondary;
 }
 
 .layout:hover {
-  background-color: $surface-high;
+  background-color: $surface-container-high;
 }
 
 // Wi-Fi: fan of arcs, the color shows the signal level.
 .wifi {
-  margin-right: 10px;
-  padding: 2px 6px;
+  margin-right: 8px;
+  padding: 4px 7px;
   border-radius: $r-control;
 }
 
 .wifi:hover {
-  background-color: $surface-high;
+  background-color: $state-hover;
 }
 
 .wifi-excellent {
@@ -131,131 +144,187 @@ button {
   color: $outline;
 }
 
-// Weather: secondary, muted.
+// Weather: secondary, muted, clickable chip with a state layer.
 .weather {
   min-width: 90px;
-  margin-right: 10px;
+  margin-right: 8px;
+  padding: 3px 8px;
+  border-radius: $r-control;
   color: $on-surface-variant;
   font-size: $t-secondary;
 }
 
-// Clock: the biggest element of the island, medium weight.
+.weather:hover {
+  background-color: $state-hover;
+}
+
+// Clock: display size, medium weight.
 .clock {
-  margin-right: 10px;
+  margin-right: 4px;
+  padding: 2px 8px;
+  border-radius: $r-control;
   color: $on-surface;
-  font-size: 20px;
+  font-size: $t-display;
   font-weight: 500;
 }
 
 .clock:hover {
-  background-color: $surface-high;
+  background-color: $state-hover;
 }
 
-// Volume: regular body size.
+// Volume: tonal chip.
 .vol {
   min-width: 34px;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: $r-control;
+  background-color: $surface-container;
   color: $on-surface-variant;
   font-size: $t-body;
 }
 
 .vol:hover {
-  background-color: $surface-high;
+  background-color: $surface-container-high;
 }
 
 // --- dropdown panels ---
-// One shared surface for every panel: container color, 18 px radius,
-// hairline outline instead of a shadow.
+// The panel continues the island body: same surface, same 12 px side inset,
+// straight top, rounded bottom only.
+.panel-frame {
+  background: transparent;
+  border: none;
+  padding: 0 12px;
+}
+
+.panel-body,
+.panel-strip {
+  background-color: $surface;
+  border: none;
+  border-radius: 0 0 $r-surface $r-surface;
+}
+
+// Panel window itself is transparent: panel-frame draws shape and color.
 window.panel-calendar,
 window.panel-weather,
 window.panel-wifi {
-  background-color: $surface-container;
-  border-radius: $r-surface;
-  border: 1px solid $outline;
-  padding: 14px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+// While a panel is open the island bottom is straight, so the seam disappears.
+.island-root.open {
+  border-radius: 0;
 }
 
 .cal-panel,
 .wx-panel,
 .wf-panel {
   background-color: transparent;
+  padding: 10px 8px 16px 8px;
 }
 
-// Panel heading: 15 px bold.
+.cal-panel,
+.wx-panel {
+  min-width: 200px;
+}
+
+// Panel headings: Material title medium (15 px / 500).
 .cal-title,
 .wx-city,
 .wf-ssid {
   color: $on-surface;
   font-size: $t-title;
-  font-weight: bold;
+  font-weight: 500;
 }
 
-// Current temperature: large, the biggest thing in the weather panel.
-.wx-temp {
-  color: $on-surface;
-  font-size: $t-title;
-  font-weight: bold;
-  padding-right: 10px;
+.cal-title {
+  padding: 2px 4px;
 }
 
-.wx-desc,
-.wf-net-name {
-  min-width: 150px;
-  color: $on-surface;
-  font-size: $t-body;
-}
-
-// Secondary line: 12 px muted.
-.wx-detail,
-.wf-state {
-  color: $on-surface-variant;
-  font-size: $t-secondary;
-}
-
-// Caption: 11 px muted.
-.wx-sun,
-.wf-net-sig {
-  min-width: 42px;
-  color: $on-surface-variant;
-  font-size: $t-caption;
-}
-
-// Hairline separators.
-.wx-sep,
-.wf-sep {
-  min-height: 1px;
-  background-color: $outline;
-  margin: 10px 0 6px 0;
-}
-
-// Full date line under the month heading.
+// Full date line under the month heading (caption tone, 12 px).
 .cal-full {
   color: $on-surface-variant;
   font-size: $t-secondary;
-  padding-bottom: 8px;
+  padding: 0 4px 10px 4px;
 }
 
-// Calendar grid.
+// Calendar grid: GTK widget raised to a tonal card, selected day in accent.
 .cal {
+  background-color: $surface-container;
+  border-radius: $r-card;
   color: $on-surface;
+  font-size: $t-body;
+  padding: 10px 8px;
+}
+
+.cal:selected {
+  background-color: $primary-dim;
+  color: #ffffff;
+  border-radius: $r-control;
+}
+
+// Days outside the current month: disabled tone, not invisible.
+.cal:indeterminate {
+  color: rgba(230, 232, 236, 0.32);
+}
+
+// --- weather panel ---
+// Current conditions as a tonal card: surface-container on the panel surface.
+.wx-now {
+  background-color: $surface-container;
+  border-radius: $r-card;
+  padding: 12px 14px;
+}
+
+.wx-temp {
+  color: $on-surface;
+  font-size: $t-display;
+  font-weight: 500;
+  padding-right: 12px;
+}
+
+.wx-desc {
+  color: $on-surface-variant;
   font-size: $t-body;
 }
 
-.cal:hover {
-  background-color: $surface-high;
+.wx-detail {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  padding: 10px 4px 0 4px;
 }
 
-// One forecast row.
+// Caption: 11 px muted.
+.wx-sun {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  padding: 8px 4px 0 4px;
+}
+
+// Hairline separators: low-emphasis divider, not a border.
+.wx-sep,
+.wf-sep {
+  min-height: 1px;
+  background-color: $divider;
+  margin: 10px 4px 4px 4px;
+}
+
+// One forecast row: list item with a divider between rows.
 .w-day {
-  padding: 6px 0;
+  padding: 10px 6px;
+  border-bottom: 1px solid $divider;
+}
+
+.w-day:last-child {
+  border-bottom: none;
 }
 
 .w-day-name {
   min-width: 68px;
   color: $on-surface;
   font-size: $t-body;
-  font-weight: bold;
+  font-weight: 500;
 }
 
 .w-day-desc {
@@ -267,38 +336,65 @@ window.panel-wifi {
 .w-day-temp {
   color: $on-surface;
   font-size: $t-body;
+  font-weight: 500;
 }
 
-// Wi-Fi panel header.
+// --- wifi panel ---
 .wf-head {
-  padding-bottom: 2px;
+  padding: 2px 6px 8px 6px;
 }
 
 .wf-icon {
-  padding-right: 8px;
+  padding-right: 10px;
 }
 
-// One network row.
+.wf-state {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  padding: 0 6px;
+}
+
+.wf-list {
+  background: transparent;
+}
+
+// One network row: 12 px radius, hover state layer, selected uses the accent.
 .wf-net {
-  padding: 6px 4px;
-  border-radius: $r-control;
+  padding: 10px 8px;
+  border-radius: $r-row;
 }
 
 .wf-net:hover {
-  background-color: $surface-high;
+  background-color: $state-hover;
 }
 
-// The network we are connected to.
 .wf-net.active {
-  background-color: $surface-high;
+  background-color: $state-selected;
 }
 
 .wf-net.active .wf-net-name {
-  color: $on-surface;
-  font-weight: bold;
+  color: $primary;
+  font-weight: 500;
 }
 
-// --- prototype window for the concave corners (stage 2) ---
+.wf-net-icon {
+  padding-right: 10px;
+}
+
+.wf-net-name {
+  min-width: 0;
+  color: $on-surface;
+  font-size: $t-body;
+}
+
+// Signal percentage: caption at the right edge.
+.wf-net-sig {
+  min-width: 42px;
+  color: $on-surface-variant;
+  font-size: $t-caption;
+}
+
+// --- prototype window for the concave corners (stage 2, unused) ---
 window.proto-corners {
   background: transparent;
 }
@@ -310,27 +406,3 @@ window.proto-corners {
 .proto-body {
   background-color: $surface;
 }
-
-// Панели продолжают остров: тот же цвет, без рамок.
-.panel-frame { background: transparent; border: none; }
-.panel-body, .panel-strip { background-color: $surface; border: none; }
-
-// Окно панели прозрачное: форму и цвет задаёт panel-frame (углы + тело).
-window.panel-calendar,
-window.panel-weather,
-window.panel-wifi {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-}
-// Отступ содержимого теперь здесь, а не у окна.
-.cal-panel, .wx-panel, .wf-panel { padding: 4px 6px 14px 6px; }
-
-.cal-panel, .wx-panel { min-width: 200px; }
-
-// Панель продолжает тело острова: те же 12 px по бокам, прямой верх, скруглён только низ.
-.panel-frame { background: transparent; padding: 0 12px; }
-.panel-body { background-color: $surface; border-radius: 0 0 $r-surface $r-surface; }
-// Пока панель открыта, низ острова прямой.
-.island-root.open { border-radius: 0; }

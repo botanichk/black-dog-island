@@ -58,9 +58,9 @@
 (defpoll cal-day :interval "1h" "date +%d")
 (defpoll cal-month :interval "1h" "date +%m")
 (defpoll cal-year :interval "1h" "date +%Y")
-;; Русская локаль даёт "%B" со строчной буквы ("ноября"), в заголовке нужна
-;; заглавная - поднимаем первую букву.
-(defpoll cal-month-name :interval "1h" "date '+%B %Y' | sed 's/^\\(.\\)/\\U\\1/'")
+;; Русская локаль даёт "%B" в родительном падеже ("ноября"), а в заголовке нужен
+;; именительный. "%OB" - standalone-форма месяца: "Ноябрь".
+(defpoll cal-month-name :interval "1h" "date '+%OB %Y'")
 ;; Полная дата для панели календаря: в острове только часы (HH:MM).
 (defpoll cal-full :interval "1h" "date '+%A, %d %B %Y'")
 
@@ -190,7 +190,7 @@
       (wday :n "1" :name w-d1name :desc w-d1desc :temp "${w-d1temp}°C")
       (wday :n "2" :name w-d2name :desc w-d2desc :temp "${w-d2temp}°C")
       (wday :n "3" :name w-d3name :desc w-d3desc :temp "${w-d3temp}°C")
-      (label :class "wx-sun" :text "восход ${w-d0sun} · закат ${w-d0set}"))))
+      (label :class "wx-sun" :xalign 0 :text "восход ${w-d0sun} · закат ${w-d0set}"))))
 
 ;; Выпадающая панель Wi-Fi: текущая сеть и список доступных.
 ;; Список приходит из адаптера как JSON-массив, цикл "for" разворачивает его
