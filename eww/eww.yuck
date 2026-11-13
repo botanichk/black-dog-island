@@ -139,22 +139,21 @@
     (box :class "proto-body" :hexpand true)
     (image :class "proto-corner-r" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-right.svg" :image-width 16 :image-height 16)))
 
-;; Общая рамка панели: вогнутые верхние углы и скруглённые нижние.
-;; Углы - отдельные SVG (GTK3 CSS не умеет вогнутые радиусы), тело - обычный
-;; бокс. Важно: тело начинается с x=16, под прозрачной частью верхнего угла
-;; должно быть пусто, иначе выреза не получается.
+;; Общая рамка панели: верх прямой (панель продолжает остров), низ скруглён.
 (defwidget panel-frame []
   (box :class "panel-frame" :orientation "vertical" :space-evenly false
     (box :class "panel-body" :orientation "vertical" :space-evenly false (children))))
 
 ;; Выпадающая панель календаря. Открывается по клику на часы (adapters/x11/panel.sh),
 ;; закрывается по клику в другое место (unfocus-close).
-;; :windowtype normal - панели нужно получать фокус, иначе unfocus-close не сработает.
-(defwindow panel-calendar
+;; :windowtype utility - xfwm4 не центрирует такие окна, а ставит их сразу по --pos:
+;; панель появляется уже под островом, без прыжка из центра экрана. Фокус utility
+;; получает, поэтому unfocus-close работает.
+(defwindow panel-calendar [w]
   :monitor 0
-  :geometry (geometry :x "0px" :y "50px" :width "260px")
+  :geometry (geometry :x "0px" :y "50px" :width w)
   :stacking "fg"
-  :windowtype "normal"
+  :windowtype "utility"
   :unfocus-close true
   (panel-frame
     (box :orientation "vertical" :space-evenly false :class "cal-panel" :halign "fill"
@@ -172,11 +171,11 @@
     (label :class "w-day-desc" :xalign 0 :hexpand true :text desc)
     (label :class "w-day-temp" :xalign 1 :text temp)))
 
-(defwindow panel-weather
+(defwindow panel-weather [w]
   :monitor 0
-  :geometry (geometry :x "0px" :y "50px" :width "300px")
+  :geometry (geometry :x "0px" :y "50px" :width w)
   :stacking "fg"
-  :windowtype "normal"
+  :windowtype "utility"
   :unfocus-close true
   (panel-frame
     (box :orientation "vertical" :space-evenly false :class "wx-panel" :halign "fill"
@@ -196,11 +195,11 @@
 ;; Список приходит из адаптера как JSON-массив, цикл "for" разворачивает его
 ;; в строки. Клик по сети подключается к ней (nmcli умеет подключаться к сетям
 ;; с сохранённым профилем; к остальным нужен пароль, его ввести негде).
-(defwindow panel-wifi
+(defwindow panel-wifi [w]
   :monitor 0
-  :geometry (geometry :x "0px" :y "50px" :width "300px")
+  :geometry (geometry :x "0px" :y "50px" :width w)
   :stacking "fg"
-  :windowtype "normal"
+  :windowtype "utility"
   :unfocus-close true
   (panel-frame
     (box :orientation "vertical" :space-evenly false :class "wf-panel"
