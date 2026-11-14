@@ -25,6 +25,7 @@
 (defpoll w-feels :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh feels")
 (defpoll w-desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh desc")
 (defpoll w-icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh icon")
+(defpoll w-bg :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh bg")
 (defpoll w-wind :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh wind")
 (defpoll w-hum :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh hum")
 (defpoll w-d0name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0name")
@@ -196,6 +197,7 @@
       (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :width 330
         (label :class "wx-city" :xalign 0 :text w-city)
         (box :orientation "horizontal" :space-evenly false :class "wx-cur" :halign "fill"
+          :style "background-image: url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.svg');"
           (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 44 :image-height 44)
           (box :orientation "vertical" :space-evenly false :halign "fill" :hexpand true
             (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")

@@ -287,6 +287,9 @@ window.panel-wifi {
 // Current conditions: tonal card with a large icon and the temperature hero.
 .wx-cur {
   background-color: $surface-container;
+  // Condition backdrop (svg from assets/wx-bg-<name>.svg) is set inline in yuck.
+  background-repeat: no-repeat;
+  background-size: 330px 100px;
   border-radius: $r-card;
   padding: 10px 12px;
 }

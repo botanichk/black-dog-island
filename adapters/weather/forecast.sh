@@ -5,7 +5,7 @@
 #
 # usage: forecast.sh <ключ>
 #   city | temp | feels | desc | wind | hum
-#   icon | d<N>name | d<N>desc | d<N>temp | d<N>icon   (N = 0..3, прогноз по дням)
+#   icon | bg | d<N>name | d<N>desc | d<N>temp | d<N>icon   (N = 0..3, прогноз по дням)
 #   d<N>sun | d<N>set
 set -eu
 
@@ -33,7 +33,7 @@ need=0
 if [ "$need" -eq 1 ]; then
   tmp="$SNAP.tmp.$$"
   if curl -s --max-time 10 \
-    "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto&forecast_days=4" \
+    "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto&forecast_days=4" \
     -o "$tmp" && [ -s "$tmp" ] && jq -e '.current.temperature_2m' "$tmp" >/dev/null 2>&1; then
     mv "$tmp" "$SNAP"
   else
@@ -83,8 +83,25 @@ describe() {
 # Набор намеренно короткий: 8 монохромных SVG вместо 28 файлов на каждый код.
 icon_for() {
   case "$1" in
-    0)              printf 'sun' ;;
-    1|2)            printf 'partly' ;;
+    0)   if [ "${2:-1}" = 0 ]; then printf 'moon'; else printf 'sun'; fi ;;
+    1|2) if [ "${2:-1}" = 0 ]; then printf 'moon-cloud'; else printf 'partly'; fi ;;
+    3)              printf 'cloud' ;;
+    45|48)          printf 'fog' ;;
+    51|53|55|56|57) printf 'drizzle' ;;
+    61|63|65|66|67|80|81|82) printf 'rain' ;;
+    71|73|75|77|85|86) printf 'snow' ;;
+    95|96|99)       printf 'storm' ;;
+    *)              printf 'cloud' ;;
+  esac
+}
+
+# --- Фон карточки: имя файла assets/wx-bg-<name>.svg ---
+# Соответствует описанию погоды: ясно - солнце (днём) или звёзды (ночью),
+# облачно - облака, морось/дождь - капли, снег - снежинки, гроза - молния.
+bg_for() {
+  case "$1" in
+    0)   if [ "${2:-1}" = 0 ]; then printf 'stars'; else printf 'sun'; fi ;;
+    1|2) if [ "${2:-1}" = 0 ]; then printf 'partly-night'; else printf 'partly'; fi ;;
     3)              printf 'cloud' ;;
     45|48)          printf 'fog' ;;
     51|53|55|56|57) printf 'drizzle' ;;
@@ -120,7 +137,9 @@ case "$key" in
   feels) jq -r '.current.apparent_temperature' "$SNAP" | awk '{printf "%.0f", $1}' ;;
   desc)  describe "$(jq -r '.current.weather_code' "$SNAP")" ;;
   code)  jq -r '.current.weather_code' "$SNAP" ;;
-  icon)  icon_for "$(jq -r '.current.weather_code' "$SNAP")" ;;
+  isday) jq -r '.current.is_day // 1' "$SNAP" ;;
+  icon)  icon_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")" ;;
+  bg)    bg_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")" ;;
   wind)  jq -r '.current.wind_speed_10m' "$SNAP" ;;
   hum)   jq -r '.current.relative_humidity_2m' "$SNAP" ;;
   d[0-3]name)
@@ -134,7 +153,7 @@ case "$key" in
     ;;
   d[0-3]icon)
     i=${key#d}; i=${i%icon}
-    icon_for "$(jq -r ".daily.weather_code[$i]" "$SNAP")"
+    icon_for "$(jq -r ".daily.weather_code[$i]" "$SNAP")" 1
     ;;
   d[0-3]temp)
     i=${key#d}; i=${i%temp}
