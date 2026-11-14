@@ -45,7 +45,12 @@ else
   [ "$i" -lt $((PING_TIMEOUT * 10)) ] || err "демон Eww не ответил на ping за ${PING_TIMEOUT} с (возможно, сокет занят другим процессом)"
 fi
 
-# --- 2. Окно острова: открываем, если его нет ---
+# --- 2. Окно острова: если прошлый запуск оставил его скрытым, вернуть ---
+AUTOHIDE="$ROOT/adapters/x11/island-autohide.py"
+if [ -x "$AUTOHIDE" ]; then
+  "$AUTOHIDE" restore >/dev/null 2>&1 || true
+fi
+
 if ! "$GEOM" xid >/dev/null 2>&1; then
   echo "окна острова нет, открываю"
   timeout 10 "$EWW" --config "$CONF" open island --pos "0x0" >/dev/null 2>&1 || true
@@ -102,3 +107,12 @@ if [ "$ix" -ne "$want_x" ] || [ "$iy" -ne 0 ]; then
 fi
 
 echo "остров готов: x=${ix} y=${iy} w=${iw} h=${ih} (монитор ${SCREEN_W} px)"
+
+# --- 5. Автоскрытие: прячет остров, когда активное окно его перекрывает ---
+if [ -x "$AUTOHIDE" ]; then
+  if "$AUTOHIDE" start >/dev/null 2>&1; then
+    echo "автоскрытие: включено (island-autohide.py)"
+  else
+    echo "предупреждение: автоскрытие не запустилось" >&2
+  fi
+fi
