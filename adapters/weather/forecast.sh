@@ -5,7 +5,7 @@
 #
 # usage: forecast.sh <ключ>
 #   city | temp | feels | desc | wind | hum
-#   d<N>name | d<N>desc | d<N>temp   (N = 0..3, прогноз по дням)
+#   icon | d<N>name | d<N>desc | d<N>temp | d<N>icon   (N = 0..3, прогноз по дням)
 #   d<N>sun | d<N>set
 set -eu
 
@@ -79,6 +79,22 @@ describe() {
   esac
 }
 
+# --- Иконка по коду WMO: имя файла assets/cond-<name>.svg ---
+# Набор намеренно короткий: 8 монохромных SVG вместо 28 файлов на каждый код.
+icon_for() {
+  case "$1" in
+    0)              printf 'sun' ;;
+    1|2)            printf 'partly' ;;
+    3)              printf 'cloud' ;;
+    45|48)          printf 'fog' ;;
+    51|53|55|56|57) printf 'drizzle' ;;
+    61|63|65|66|67|80|81|82) printf 'rain' ;;
+    71|73|75|77|85|86) printf 'snow' ;;
+    95|96|99)       printf 'storm' ;;
+    *)              printf 'cloud' ;;
+  esac
+}
+
 # --- Дата по-русски: локали в системе называются по-разному ---
 ru_wd() {
   case "$(LC_ALL=ru_RU.utf8 date -d "$1" '+%a' 2>/dev/null)" in
@@ -99,9 +115,12 @@ ru_mo() {
 
 case "$key" in
   city)  jq -r '.name // empty' "$CITYF" 2>/dev/null || cat "$CITYF" 2>/dev/null || printf '—' ;;
-  temp)  jq -r '.current.temperature_2m' "$SNAP" ;;
-  feels) jq -r '.current.apparent_temperature' "$SNAP" ;;
+  # Температура - целые градусы, как в Noctalia (округление, не отбрасывание).
+  temp)  jq -r '.current.temperature_2m' "$SNAP" | awk '{printf "%.0f", $1}' ;;
+  feels) jq -r '.current.apparent_temperature' "$SNAP" | awk '{printf "%.0f", $1}' ;;
   desc)  describe "$(jq -r '.current.weather_code' "$SNAP")" ;;
+  code)  jq -r '.current.weather_code' "$SNAP" ;;
+  icon)  icon_for "$(jq -r '.current.weather_code' "$SNAP")" ;;
   wind)  jq -r '.current.wind_speed_10m' "$SNAP" ;;
   hum)   jq -r '.current.relative_humidity_2m' "$SNAP" ;;
   d[0-3]name)
@@ -113,9 +132,15 @@ case "$key" in
     i=${key#d}; i=${i%desc}
     describe "$(jq -r ".daily.weather_code[$i]" "$SNAP")"
     ;;
+  d[0-3]icon)
+    i=${key#d}; i=${i%icon}
+    icon_for "$(jq -r ".daily.weather_code[$i]" "$SNAP")"
+    ;;
   d[0-3]temp)
     i=${key#d}; i=${i%temp}
-    printf '%s…%s' "$(jq -r ".daily.temperature_2m_min[$i]" "$SNAP")" "$(jq -r ".daily.temperature_2m_max[$i]" "$SNAP")"
+    lo=$(jq -r ".daily.temperature_2m_min[$i]" "$SNAP" | awk '{printf "%.0f", $1}')
+    hi=$(jq -r ".daily.temperature_2m_max[$i]" "$SNAP" | awk '{printf "%.0f", $1}')
+    printf '%s…%s' "$lo" "$hi"
     ;;
   d[0-3]sun)
     i=${key#d}; i=${i%sun}

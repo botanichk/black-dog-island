@@ -24,21 +24,26 @@
 (defpoll w-temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh temp")
 (defpoll w-feels :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh feels")
 (defpoll w-desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh desc")
+(defpoll w-icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh icon")
 (defpoll w-wind :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh wind")
 (defpoll w-hum :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh hum")
 (defpoll w-d0name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0name")
 (defpoll w-d0desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0desc")
+(defpoll w-d0icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0icon")
 (defpoll w-d0temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0temp")
 (defpoll w-d0sun :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0sun")
 (defpoll w-d0set :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0set")
 (defpoll w-d1name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1name")
 (defpoll w-d1desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1desc")
+(defpoll w-d1icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1icon")
 (defpoll w-d1temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1temp")
 (defpoll w-d2name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2name")
 (defpoll w-d2desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2desc")
+(defpoll w-d2icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2icon")
 (defpoll w-d2temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2temp")
 (defpoll w-d3name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3name")
 (defpoll w-d3desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3desc")
+(defpoll w-d3icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3icon")
 (defpoll w-d3temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3temp")
 
 ;; Wi-Fi: список сетей через NetworkManager. Опрос раз в минуту, список меняется
@@ -165,12 +170,20 @@
 
 ;; Выпадающая панель погоды: текущая погода и прогноз на 4 дня.
 ;; Открывается по клику на индикатор погоды в острове (adapters/x11/panel.sh).
-(defwidget wday [n name desc temp]
-  (box :orientation "horizontal" :space-evenly false :class "w-day" :halign "fill"
-    (label :class "w-day-name" :xalign 0 :text name)
-    (label :class "w-day-desc" :xalign 0 :hexpand true :text desc)
-    (label :class "w-day-temp" :xalign 1 :text temp)))
+(defwidget wday [icon name desc temp]
+  ;; Один день прогноза: иконка + день слева, температура справа (space-between
+  ;; через hexpand на левой части), под ними - описание мелким кеглем.
+  (box :orientation "vertical" :space-evenly false :class "wfc-row" :halign "fill"
+    (box :orientation "horizontal" :space-evenly false :halign "fill"
+      (box :orientation "horizontal" :space-evenly false :halign "start" :hexpand true
+        (image :class "wfc-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${icon}.svg" :image-width 16 :image-height 16)
+        (label :class "wfc-name" :xalign 0 :text name))
+      (label :class "wfc-temp" :halign "end" :text temp))
+    (label :class "wfc-desc" :xalign 0 :text desc)))
 
+;; Панель погоды в духе Noctalia: две колонки, слева текущие условия и детали,
+;; справа прогноз на 4 дня. Ширины: левая колонка фиксированная (GTK3 CSS не
+;; умеет ни flex, ни проценты), правая добирает остаток через hexpand.
 (defwindow panel-weather [w]
   :monitor 0
   :geometry (geometry :x "0px" :y "50px" :width w)
@@ -178,18 +191,37 @@
   :windowtype "utility"
   :unfocus-close true
   (panel-frame
-    (box :orientation "vertical" :space-evenly false :class "wx-panel" :halign "fill"
-      (label :class "wx-city" :halign "center" :text w-city)
-      (box :orientation "horizontal" :space-evenly false :class "wx-now" :halign "fill"
-        (label :class "wx-temp" :xalign 0 :text "${w-temp}°C")
-        (label :class "wx-desc" :xalign 0 :hexpand true :text w-desc))
-      (label :class "wx-detail" :xalign 0 :text "ощущается ${w-feels}°C · ветер ${w-wind} км/ч · влажность ${w-hum}%")
-      (box :orientation "horizontal" :space-evenly false :class "wx-sep")
-      (wday :n "0" :name w-d0name :desc w-d0desc :temp "${w-d0temp}°C")
-      (wday :n "1" :name w-d1name :desc w-d1desc :temp "${w-d1temp}°C")
-      (wday :n "2" :name w-d2name :desc w-d2desc :temp "${w-d2temp}°C")
-      (wday :n "3" :name w-d3name :desc w-d3desc :temp "${w-d3temp}°C")
-      (label :class "wx-sun" :xalign 0 :text "восход ${w-d0sun} · закат ${w-d0set}"))))
+    (box :orientation "horizontal" :space-evenly false :class "wx-panel" :halign "fill"
+      ;; --- левая колонка: сейчас + детали ---
+      (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :width 330
+        (label :class "wx-city" :xalign 0 :text w-city)
+        (box :orientation "horizontal" :space-evenly false :class "wx-cur" :halign "fill"
+          (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 44 :image-height 44)
+          (box :orientation "vertical" :space-evenly false :halign "fill" :hexpand true
+            (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
+            (label :class "wx-cur-desc" :xalign 0 :text w-desc))
+          (label :class "wx-cur-range" :halign "end" :valign "end" :text "${w-d0temp}°"))
+        (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill"
+          (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
+            (label :class "wx-dk" :xalign 0 :hexpand true :text "Ощущается")
+            (label :class "wx-dv" :halign "end" :text "${w-feels}°"))
+          (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
+            (label :class "wx-dk" :xalign 0 :hexpand true :text "Ветер")
+            (label :class "wx-dv" :halign "end" :text "${w-wind} км/ч"))
+          (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
+            (label :class "wx-dk" :xalign 0 :hexpand true :text "Влажность")
+            (label :class "wx-dv" :halign "end" :text "${w-hum}%"))
+          (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
+            (label :class "wx-dk" :xalign 0 :hexpand true :text "Восход / закат")
+            (label :class "wx-dv" :halign "end" :text "${w-d0sun} / ${w-d0set}"))))
+
+      ;; --- правая колонка: прогноз ---
+      (box :orientation "vertical" :space-evenly false :class "wx-right" :halign "fill" :hexpand true
+        (label :class "wx-fc-label" :xalign 0 :text "ПРОГНОЗ")
+        (wday :icon w-d0icon :name w-d0name :desc w-d0desc :temp "${w-d0temp}°")
+        (wday :icon w-d1icon :name w-d1name :desc w-d1desc :temp "${w-d1temp}°")
+        (wday :icon w-d2icon :name w-d2name :desc w-d2desc :temp "${w-d2temp}°")
+        (wday :icon w-d3icon :name w-d3name :desc w-d3desc :temp "${w-d3temp}°")))))
 
 ;; Выпадающая панель Wi-Fi: текущая сеть и список доступных.
 ;; Список приходит из адаптера как JSON-массив, цикл "for" разворачивает его

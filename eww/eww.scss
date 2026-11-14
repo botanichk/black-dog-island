@@ -229,9 +229,13 @@ window.panel-wifi {
   min-width: 200px;
 }
 
+// Weather panel has its own inner spacing: two columns need a tighter frame.
+.wx-panel {
+  padding: 10px 10px 14px 10px;
+}
+
 // Panel headings: Material title medium (15 px / 500).
 .cal-title,
-.wx-city,
 .wf-ssid {
   color: $on-surface;
   font-size: $t-title;
@@ -269,74 +273,122 @@ window.panel-wifi {
   color: rgba(230, 232, 236, 0.32);
 }
 
-// --- weather panel ---
-// Current conditions as a tonal card: surface-container on the panel surface.
-.wx-now {
-  background-color: $surface-container;
-  border-radius: $r-card;
-  padding: 12px 14px;
-}
+// --- weather panel: Noctalia-style two columns ---
+// Left column is 330 px wide (set in yuck; GTK3 CSS has no width/flex),
+// right column takes the rest through hexpand.
 
-.wx-temp {
-  color: $on-surface;
-  font-size: $t-display;
-  font-weight: 500;
-  padding-right: 12px;
-}
-
-.wx-desc {
-  color: $on-surface-variant;
-  font-size: $t-body;
-}
-
-.wx-detail {
+// City caption above the current-conditions card.
+.wx-city {
   color: $on-surface-variant;
   font-size: $t-secondary;
-  padding: 10px 4px 0 4px;
+  padding: 0 4px 8px 4px;
 }
 
-// Caption: 11 px muted.
-.wx-sun {
+// Current conditions: tonal card with a large icon and the temperature hero.
+.wx-cur {
+  background-color: $surface-container;
+  border-radius: $r-card;
+  padding: 10px 12px;
+}
+
+.wx-cur-icon {
+  margin-right: 10px;
+}
+
+.wx-cur-temp {
+  color: $on-surface;
+  font-size: 34px;
+  font-weight: 500;
+}
+
+.wx-cur-desc {
+  color: $on-surface-variant;
+  font-size: $t-body;
+  padding-top: 2px;
+}
+
+// Today's min / max range, muted, bottom-right corner of the card.
+.wx-cur-range {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  padding: 0 2px 1px 8px;
+}
+
+// Details card: key/value rows, no gap between them (like the dashboard card).
+.wx-details {
+  background-color: $surface-container;
+  border-radius: $r-card;
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+
+.wx-detail-row {
+  padding: 3px 0;
+}
+
+.wx-dk {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+.wx-dv {
+  color: $on-surface;
+  font-size: $t-secondary;
+  font-weight: 500;
+}
+
+// Right column: forecast list.
+.wx-right {
+  padding-left: 4px;
+}
+
+.wx-fc-label {
   color: $on-surface-variant;
   font-size: $t-caption;
-  padding: 8px 4px 0 4px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 0 4px 5px 4px;
+  border-bottom: 1px solid $divider;
 }
 
-// Hairline separators: low-emphasis divider, not a border.
-.wx-sep,
+// One forecast row: icon + day + temperature, description underneath.
+.wfc-row {
+  padding: 7px 4px;
+  border-bottom: 1px solid $divider;
+}
+
+.wfc-row:last-child {
+  border-bottom: none;
+}
+
+.wfc-icon {
+  margin-right: 6px;
+}
+
+.wfc-name {
+  color: $on-surface;
+  font-size: $t-body;
+  font-weight: 500;
+}
+
+.wfc-temp {
+  color: $on-surface;
+  font-size: $t-body;
+  font-weight: 500;
+}
+
+// Description sits under the day name, indented by icon width + gap.
+.wfc-desc {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  padding-left: 22px;
+}
+
+// Hairline separator used by the wifi panel.
 .wf-sep {
   min-height: 1px;
   background-color: $divider;
   margin: 10px 4px 4px 4px;
-}
-
-// One forecast row: list item with a divider between rows.
-.w-day {
-  padding: 10px 6px;
-  border-bottom: 1px solid $divider;
-}
-
-.w-day:last-child {
-  border-bottom: none;
-}
-
-.w-day-name {
-  min-width: 68px;
-  color: $on-surface;
-  font-size: $t-body;
-  font-weight: 500;
-}
-
-.w-day-desc {
-  color: $on-surface-variant;
-  font-size: $t-secondary;
-  padding-right: 8px;
-}
-
-.w-day-temp {
-  color: $on-surface;
-  font-size: $t-body;
-  font-weight: 500;
 }
 
 // --- wifi panel ---
