@@ -89,11 +89,14 @@
       (box :class "flare-band" :hexpand true)
       (image :class "flare-right" :path "${EWW_CONFIG_DIR}/assets/corner-right.svg" :image-width 12 :image-height 12))
     (box :orientation "horizontal" :space-evenly false :class {panel_open == "true" ? "island-root open" : "island-root"} :vexpand true
-      (box :orientation "horizontal" :class "wsgroup"
-        (wsdot :n "0")
-        (wsdot :n "1")
-        (wsdot :n "2")
-        (wsdot :n "3"))
+      ;; Колесо над точками листает столы. onscroll живёт только на eventbox,
+      ;; аргумент приходит из патча eww-0001 ("up"/"down").
+      (eventbox :onscroll "$HOME/eww-island/adapters/x11/ws-scroll.sh {}"
+        (box :orientation "horizontal" :class "wsgroup"
+          (wsdot :n "0")
+          (wsdot :n "1")
+          (wsdot :n "2")
+          (wsdot :n "3")))
       (systray :class "tray" :orientation "h" :spacing 6 :icon-size 16
                :space-evenly false :prepend-new false)
       (box :orientation "horizontal" :space-evenly false :class "right"
