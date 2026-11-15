@@ -7,7 +7,6 @@
 (deflisten cur_ws :initial "0" "xprop -spy -root _NET_CURRENT_DESKTOP | sed -u -n 's/.*= //p'")
 ;; Путь раскрывает shell при выполнении: ${...}-интерполяция в конфиге здесь недоступна.
 ;; shortcut: путь привязан к ~/eww-island, при переносе конфига в ~/.config/eww его нужно обновить.
-(deflisten title :initial "" "$HOME/eww-island/adapters/x11/active-title.sh")
 
 ;; shortcut: громкость опрашивается раз в 2 с; при заметной нагрузке перейти на `pactl subscribe`.
 (defpoll volume :interval "2s" "pactl get-sink-mute @DEFAULT_SINK@ | grep -q yes && echo MUTE || pactl get-sink-volume @DEFAULT_SINK@ | grep -o '[0-9]*%' | head -1")
@@ -95,8 +94,8 @@
         (wsdot :n "1")
         (wsdot :n "2")
         (wsdot :n "3"))
-      (box :orientation "horizontal" :class "titlebox"
-        (label :class "title" :limit-width 18 :truncate true :text title))
+      (systray :class "tray" :orientation "h" :spacing 6 :icon-size 16
+               :space-evenly false :prepend-new false)
       (box :orientation "horizontal" :space-evenly false :class "right"
         (button :class "layout" :onclick "$HOME/eww-island/adapters/x11/layout.sh next" layout)
         ;; Клик по Wi-Fi открывает список сетей. Иконка - свой SVG: веер из дуг,

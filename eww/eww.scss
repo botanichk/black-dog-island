@@ -87,15 +87,22 @@ button {
   background-color: $state-hover;
 }
 
-// Active window title: caption, quiet.
-.titlebox {
+// System tray: 16 px icons after the workspace dots. The min-width reserves
+// the space freed by the removed window title, so the island keeps its width
+// and the drop-down panels still line up without a step.
+.tray {
   min-width: 140px;
   margin-right: 10px;
+  background: transparent;
 }
 
-.title {
-  color: $on-surface-variant;
-  font-size: $t-secondary;
+.tray button {
+  padding: 2px;
+  border-radius: $r-control;
+}
+
+.tray button:hover {
+  background-color: $state-hover;
 }
 
 // Layout indicator (US/RU): assist chip, tonal container, 8 px radius.
