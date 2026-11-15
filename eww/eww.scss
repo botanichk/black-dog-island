@@ -96,12 +96,14 @@ button {
   background: transparent;
 }
 
-.tray button {
-  padding: 2px;
+// Eww builds each tray icon as a GtkEventBox (CSS node "widget") and supports
+// :hover via PRELIGHT. The box is packed with expand, so it shares the reserved
+// tray width; the hover state layer is rounded like the other controls.
+.tray widget {
   border-radius: $r-control;
 }
 
-.tray button:hover {
+.tray widget:hover {
   background-color: $state-hover;
 }
 
