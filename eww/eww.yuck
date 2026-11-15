@@ -14,8 +14,6 @@
 (deflisten panel_open :initial "false" "$HOME/eww-island/adapters/x11/panel-open.sh")
 
 (deflisten layout :initial "" "$HOME/eww-island/adapters/x11/layout.sh")
-;; shortcut: погода опрашивается раз в 15 минут, без кеша; при проблемах с сетью будет "—".
-(defpoll weather :interval "15m" "$HOME/eww-island/adapters/weather/current.sh")
 
 ;; Погода для выпадающей панели: Open-Meteo + координаты из Noctalia.
 ;; Данные кешируются адаптером на 10 минут, поэтому опрос чаще не нужен.
@@ -103,20 +101,11 @@
         (button :class "layout" :onclick "$HOME/eww-island/adapters/x11/layout.sh next" layout)
         ;; Клик по Wi-Fi открывает список сетей. Иконка - свой SVG: веер из дуг,
         ;; уровень задаётся количеством дуг и цветом.
-        (button :class "wifi" :timeout "3s"
-          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-wifi 300 380"
-          (image :class {"wifi-" + wf-level}
-            :path "${EWW_CONFIG_DIR}/assets/wifi-${wf-level}.svg"
-            :image-width 16 :image-height 16))
-        ;; Клик по погоде открывает панель с прогнозом (та же схема, что календарь).
-        (button :class "weather" :timeout "3s"
-          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-weather 300 250"
-          (label :limit-width 16 :truncate true :text weather))
-        ;; Клик по часам открывает календарь выпадающей панелью под островом.
+        ;; Клик по часам открывает хаб на вкладке календаря.
         ;; :timeout 3s - окно панели появляется не мгновенно, а команда кнопки
         ;; по умолчанию убивается через 200 мс.
         (button :class "clock" :timeout "3s"
-          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-calendar 260 270"
+          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-hub calendar"
           (label :text clock))
         ;; onscroll живёт только на eventbox: у button он удалён в Eww 0.6.
         (eventbox :onscroll "$HOME/eww-island/adapters/audio/volume.sh {}"
@@ -148,6 +137,26 @@
     (box :class "proto-body" :hexpand true)
     (image :class "proto-corner-r" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-right.svg" :image-width 16 :image-height 16)))
 
+;; Хаб: одна панель с вкладками (календарь, погода, Wi-Fi), как в Noctalia.
+;; hub_tab - индекс вкладки стека (stack :selected принимает число):
+;; 0 = календарь, 1 = погода, 2 = Wi-Fi. Имена (calendar/weather/wifi)
+;; использует panel.sh, в индекс они переводятся там же.
+(defvar hub_tab 0)
+
+;; Кнопка вкладки в левой колонке хаба: обновляет hub_tab напрямую.
+(defwidget hub-tab-btn [idx glyph]
+  (button :class {hub_tab == idx ? "hub-tab active" : "hub-tab"}
+          :timeout "3s"
+          :onclick "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update hub_tab=${idx}"
+          (label :class "hub-ic" :text glyph)))
+
+;; Левая колонка вкладок хаба (~56 px).
+(defwidget hub-rail []
+  (box :orientation "vertical" :space-evenly false :class "hub-rail"
+    (hub-tab-btn :idx 0 :glyph "")
+    (hub-tab-btn :idx 1 :glyph "")
+    (hub-tab-btn :idx 2 :glyph "")))
+
 ;; Общая рамка панели: верх прямой (панель продолжает остров), низ скруглён.
 (defwidget panel-frame []
   (box :class "panel-frame" :orientation "vertical" :space-evenly false
@@ -158,6 +167,15 @@
 ;; :windowtype utility - xfwm4 не центрирует такие окна, а ставит их сразу по --pos:
 ;; панель появляется уже под островом, без прыжка из центра экрана. Фокус utility
 ;; получает, поэтому unfocus-close работает.
+;; Содержимое календаря: общее для вкладки хаба и старой панели.
+(defwidget cal-content []
+  (box :orientation "vertical" :space-evenly false :class "cal-panel" :halign "fill"
+    (label :class "cal-title" :text cal-month-name)
+    (label :class "cal-full" :text cal-full)
+    (calendar :class "cal"
+      :day cal-day :month cal-month :year cal-year
+      :show-heading false :show-day-names true :show-week-numbers false :show-details false)))
+
 (defwindow panel-calendar [w]
   :monitor 0
   :geometry (geometry :x "0px" :y "50px" :width w)
@@ -165,12 +183,7 @@
   :windowtype "utility"
   :unfocus-close true
   (panel-frame
-    (box :orientation "vertical" :space-evenly false :class "cal-panel" :halign "fill"
-      (label :class "cal-title" :text cal-month-name)
-      (label :class "cal-full" :text cal-full)
-      (calendar :class "cal"
-        :day cal-day :month cal-month :year cal-year
-        :show-heading false :show-day-names true :show-week-numbers false :show-details false))))
+    (cal-content)))
 
 ;; Выпадающая панель погоды: текущая погода и прогноз на 4 дня.
 ;; Открывается по клику на индикатор погоды в острове (adapters/x11/panel.sh).
@@ -188,6 +201,41 @@
 ;; Панель погоды в духе Noctalia: две колонки, слева текущие условия и детали,
 ;; справа прогноз на 4 дня. Ширины: левая колонка фиксированная (GTK3 CSS не
 ;; умеет ни flex, ни проценты), правая добирает остаток через hexpand.
+;; Содержимое погоды: общее для вкладки хаба и старой панели.
+(defwidget wx-content []
+  (box :orientation "horizontal" :space-evenly false :class "wx-panel" :halign "fill"
+    ;; --- левая колонка: сейчас + детали ---
+    (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :width 330
+      (label :class "wx-city" :xalign 0 :text w-city)
+      (box :orientation "horizontal" :space-evenly false :class "wx-cur" :halign "fill"
+        :style "background-image: url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.svg');"
+        (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 44 :image-height 44)
+        (box :orientation "vertical" :space-evenly false :halign "fill" :hexpand true
+          (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
+          (label :class "wx-cur-desc" :xalign 0 :text w-desc))
+        (label :class "wx-cur-range" :halign "end" :valign "end" :text "${w-d0temp}°"))
+      (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill"
+        (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
+          (label :class "wx-dk" :xalign 0 :hexpand true :text "Ощущается")
+          (label :class "wx-dv" :halign "end" :text "${w-feels}°"))
+        (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
+          (label :class "wx-dk" :xalign 0 :hexpand true :text "Ветер")
+          (label :class "wx-dv" :halign "end" :text "${w-wind} км/ч"))
+        (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
+          (label :class "wx-dk" :xalign 0 :hexpand true :text "Влажность")
+          (label :class "wx-dv" :halign "end" :text "${w-hum}%"))
+        (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
+          (label :class "wx-dk" :xalign 0 :hexpand true :text "Восход / закат")
+          (label :class "wx-dv" :halign "end" :text "${w-d0sun} / ${w-d0set}"))))
+
+    ;; --- правая колонка: прогноз ---
+    (box :orientation "vertical" :space-evenly false :class "wx-right" :halign "fill" :hexpand true
+      (label :class "wx-fc-label" :xalign 0 :text "ПРОГНОЗ")
+      (wday :icon w-d0icon :name w-d0name :desc w-d0desc :temp "${w-d0temp}°")
+      (wday :icon w-d1icon :name w-d1name :desc w-d1desc :temp "${w-d1temp}°")
+      (wday :icon w-d2icon :name w-d2name :desc w-d2desc :temp "${w-d2temp}°")
+      (wday :icon w-d3icon :name w-d3name :desc w-d3desc :temp "${w-d3temp}°"))))
+
 (defwindow panel-weather [w]
   :monitor 0
   :geometry (geometry :x "0px" :y "50px" :width w)
@@ -195,43 +243,31 @@
   :windowtype "utility"
   :unfocus-close true
   (panel-frame
-    (box :orientation "horizontal" :space-evenly false :class "wx-panel" :halign "fill"
-      ;; --- левая колонка: сейчас + детали ---
-      (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :width 330
-        (label :class "wx-city" :xalign 0 :text w-city)
-        (box :orientation "horizontal" :space-evenly false :class "wx-cur" :halign "fill"
-          :style "background-image: url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.svg');"
-          (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 44 :image-height 44)
-          (box :orientation "vertical" :space-evenly false :halign "fill" :hexpand true
-            (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
-            (label :class "wx-cur-desc" :xalign 0 :text w-desc))
-          (label :class "wx-cur-range" :halign "end" :valign "end" :text "${w-d0temp}°"))
-        (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill"
-          (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
-            (label :class "wx-dk" :xalign 0 :hexpand true :text "Ощущается")
-            (label :class "wx-dv" :halign "end" :text "${w-feels}°"))
-          (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
-            (label :class "wx-dk" :xalign 0 :hexpand true :text "Ветер")
-            (label :class "wx-dv" :halign "end" :text "${w-wind} км/ч"))
-          (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
-            (label :class "wx-dk" :xalign 0 :hexpand true :text "Влажность")
-            (label :class "wx-dv" :halign "end" :text "${w-hum}%"))
-          (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
-            (label :class "wx-dk" :xalign 0 :hexpand true :text "Восход / закат")
-            (label :class "wx-dv" :halign "end" :text "${w-d0sun} / ${w-d0set}"))))
-
-      ;; --- правая колонка: прогноз ---
-      (box :orientation "vertical" :space-evenly false :class "wx-right" :halign "fill" :hexpand true
-        (label :class "wx-fc-label" :xalign 0 :text "ПРОГНОЗ")
-        (wday :icon w-d0icon :name w-d0name :desc w-d0desc :temp "${w-d0temp}°")
-        (wday :icon w-d1icon :name w-d1name :desc w-d1desc :temp "${w-d1temp}°")
-        (wday :icon w-d2icon :name w-d2name :desc w-d2desc :temp "${w-d2temp}°")
-        (wday :icon w-d3icon :name w-d3name :desc w-d3desc :temp "${w-d3temp}°")))))
+    (wx-content)))
 
 ;; Выпадающая панель Wi-Fi: текущая сеть и список доступных.
 ;; Список приходит из адаптера как JSON-массив, цикл "for" разворачивает его
 ;; в строки. Клик по сети подключается к ней (nmcli умеет подключаться к сетям
 ;; с сохранённым профилем; к остальным нужен пароль, его ввести негде).
+;; Содержимое Wi-Fi: общее для вкладки хаба и старой панели.
+(defwidget wf-content []
+  (box :orientation "vertical" :space-evenly false :class "wf-panel"
+    (box :orientation "horizontal" :space-evenly false :class "wf-head" :halign "fill"
+      (image :class "wf-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${wf-level}.svg" :image-width 16 :image-height 16)
+      (label :class "wf-ssid" :xalign 0 :hexpand true :text wf-ssid))
+    (label :class "wf-state" :xalign 0 :text "${wf-state} · сигнал ${wf-signal}%")
+    (box :orientation "horizontal" :space-evenly false :class "wf-sep")
+    (scroll :vscroll true :hscroll false :height 200 :class "wf-scroll"
+      (box :orientation "vertical" :space-evenly false :class "wf-list"
+      (for net in wf-list
+        ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
+        (button :class {net.active ? "wf-net active" : "wf-net"}
+          :onclick "$HOME/eww-island/adapters/x11/wifi.sh connect ${net.ssid}"
+          (box :orientation "horizontal" :space-evenly false :hexpand true
+            (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
+            (label :class "wf-net-name" :xalign 0 :hexpand true :text "${net.ssid}")
+            (label :class "wf-net-sig" :xalign 1 :text "${net.sig}%"))))))))
+
 (defwindow panel-wifi [w]
   :monitor 0
   :geometry (geometry :x "0px" :y "50px" :width w)
@@ -239,19 +275,21 @@
   :windowtype "utility"
   :unfocus-close true
   (panel-frame
-    (box :orientation "vertical" :space-evenly false :class "wf-panel"
-      (box :orientation "horizontal" :space-evenly false :class "wf-head" :halign "fill"
-        (image :class "wf-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${wf-level}.svg" :image-width 16 :image-height 16)
-        (label :class "wf-ssid" :xalign 0 :hexpand true :text wf-ssid))
-      (label :class "wf-state" :xalign 0 :text "${wf-state} · сигнал ${wf-signal}%")
-      (box :orientation "horizontal" :space-evenly false :class "wf-sep")
-      (scroll :vscroll true :hscroll false :height 200 :class "wf-scroll"
-        (box :orientation "vertical" :space-evenly false :class "wf-list"
-        (for net in wf-list
-          ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
-          (button :class {net.active ? "wf-net active" : "wf-net"}
-            :onclick "$HOME/eww-island/adapters/x11/wifi.sh connect ${net.ssid}"
-            (box :orientation "horizontal" :space-evenly false :hexpand true
-              (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
-              (label :class "wf-net-name" :xalign 0 :hexpand true :text "${net.ssid}")
-              (label :class "wf-net-sig" :xalign 1 :text "${net.sig}%")))))))))
+    (wf-content)))
+
+;; Хаб: вкладки calendar / weather / wifi в одном окне. Содержимое - общие
+;; виджеты cal-content / wx-content / wf-content, каждый в scroll одной высоты,
+;; чтобы окно не меняло размер при переключении вкладок.
+(defwindow panel-hub [w]
+  :monitor 0
+  :geometry (geometry :x "0px" :y "50px" :width w)
+  :stacking "fg"
+  :windowtype "normal"
+  :unfocus-close true
+  (panel-frame
+    (box :orientation "horizontal" :space-evenly false :class "hub-panel"
+      (hub-rail)
+      (stack :selected hub_tab :transition "crossfade" :same-size true
+        (scroll :height 330 :vscroll true :hscroll false :class "hub-tab-body" (cal-content))
+        (scroll :height 330 :vscroll true :hscroll false :class "hub-tab-body" (wx-content))
+        (scroll :height 330 :vscroll true :hscroll false :class "hub-tab-body" (wf-content))))))

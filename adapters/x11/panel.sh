@@ -2,6 +2,7 @@
 # Выпадающая панель под островом, по его центру.
 # Повторный запуск для уже открытой панели закрывает её.
 # usage: panel.sh <окно> [примерная ширина]
+#        panel.sh panel-hub <calendar|weather|wifi>
 # Ширину задаёт panel.sh (по острову), высоту - содержимое.
 set -eu
 
@@ -9,8 +10,10 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 EWW="$ROOT/build/target/release/eww"
 CONF="$ROOT/eww"
 
-[ -n "${1:-}" ] || { echo "usage: panel.sh <window> [width]" >&2; exit 2; }
+[ -n "${1:-}" ] || { echo "usage: panel.sh <window> [width] | panel.sh panel-hub <calendar|weather|wifi>" >&2; exit 2; }
 NAME=$1
+# Для хаба второй аргумент - вкладка, ширина не нужна (берётся с острова).
+HUB_TAB=${2:-}
 GUESS=${2:-300}
 TITLE="Eww - $NAME"
 
@@ -19,10 +22,40 @@ win_geo() {
   wmctrl -lG 2>/dev/null | awk -v t="$1" '$0 ~ (t "$") {print $3, $4, $5, $6; exit}'
 }
 
-# Панель уже открыта - закрываем и выходим.
+# Имя вкладки хаба -> индекс стека hub_tab (0/1/2).
+tab_index() {
+  case "$1" in
+    calendar) echo 0 ;;
+    weather)  echo 1 ;;
+    wifi)     echo 2 ;;
+    *)        echo "" ;;
+  esac
+}
+
+IDX=
+if [ "$NAME" = "panel-hub" ]; then
+  IDX=$(tab_index "${HUB_TAB:-}")
+  [ -n "$IDX" ] || { echo "ошибка: неизвестная вкладка хаба '${HUB_TAB:-}'" >&2; exit 2; }
+fi
+
+# Панель уже открыта:
+#  - хаб на другой вкладке - только переключить вкладку, окно не пересоздавать;
+#  - на той же вкладке (или не хаб) - закрыть, повторный клик закрывает.
 if [ -n "$(win_geo "$TITLE")" ]; then
+  if [ "$NAME" = "panel-hub" ]; then
+    CUR=$("$EWW" --config "$CONF" state --all | awk -F': ' '$1 == "hub_tab" {print $2; exit}')
+    if [ "$CUR" != "$IDX" ]; then
+      "$EWW" --config "$CONF" update hub_tab="$IDX"
+      exit 0
+    fi
+  fi
   "$EWW" --config "$CONF" close "$NAME"
   exit 0
+fi
+
+# Хаб открываем на запрошенной вкладке.
+if [ -n "$IDX" ]; then
+  "$EWW" --config "$CONF" update hub_tab="$IDX"
 fi
 
 # Остров: x, ширина, низ. Ищем по PID демона + _NET_WM_WINDOW_TYPE_DOCK.
@@ -52,16 +85,17 @@ done
 [ -n "$geo" ] || { echo "ошибка: панель $NAME не появилась" >&2; exit 1; }
 
 # xfwm4 может переставить окно после открытия: держим позицию, пока она не
-# продержится 3 проверки подряд (размер не трогаем: -1).
+# продержится 3 проверки подряд. Размер не трогаем: ширину окно получило при
+# открытии (аргумент [w]), а минимум контента GTK всё равно сильнее wmctrl.
 ok=0; i=0; final_x=0; final_y=0
 while [ "$ok" -lt 3 ] && [ "$i" -lt 20 ]; do
   set -- $(win_geo "$TITLE")
   [ "$#" -eq 4 ] || break
-  if [ "$1" -eq "$X" ] && [ "$2" -eq "$Y" ] && [ "$3" -eq "$IW" ]; then
+  if [ "$1" -eq "$X" ] && [ "$2" -eq "$Y" ]; then
     ok=$((ok + 1))
   else
     ok=0
-    wmctrl -r "$TITLE" -e "0,$X,$Y,$IW,-1" 2>/dev/null || true
+    wmctrl -r "$TITLE" -e "0,$X,$Y,-1,-1" 2>/dev/null || true
   fi
   final_x=$1; final_y=$2
   i=$((i + 1))

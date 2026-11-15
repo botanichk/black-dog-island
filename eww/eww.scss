@@ -245,7 +245,8 @@ menu separator {
 // Panel window itself is transparent: panel-frame draws shape and color.
 window.panel-calendar,
 window.panel-weather,
-window.panel-wifi {
+window.panel-wifi,
+window.panel-hub {
   background: transparent;
   border: none;
   border-radius: 0;
@@ -487,6 +488,50 @@ window.panel-wifi {
   min-width: 42px;
   color: $on-surface-variant;
   font-size: $t-caption;
+}
+
+// --- hub: one panel with tabs (calendar / weather / wifi) ---
+.hub-panel {
+  padding: 10px 8px 16px 8px;
+}
+
+// Left tab rail (~56 px): icons stacked from the top.
+.hub-rail {
+  margin-right: 6px;
+}
+
+.hub-tab {
+  min-width: 40px;
+  min-height: 40px;
+  margin: 2px 0;
+  border-radius: $r-control;
+}
+
+.hub-tab:hover {
+  background-color: $state-hover;
+}
+
+// Step 1: neutral active plate; step 2 will move it to $primary.
+.hub-tab.active {
+  background-color: $surface-container-high;
+}
+
+// Tab icons are Nerd Font glyphs inside labels (no SVG for tab icons).
+.hub-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 16px;
+  color: $on-surface-variant;
+}
+
+.hub-tab.active .hub-ic {
+  color: $primary;
+}
+
+// One scroll per tab, same min height: the window must not resize when
+// switching tabs. The :height prop in yuck is the hard floor (size request),
+// this min-height is the same value declared in CSS.
+.hub-tab-body {
+  min-height: 330px;
 }
 
 // --- prototype window for the concave corners (stage 2, unused) ---
