@@ -53,7 +53,9 @@ fi
 
 if ! "$GEOM" xid >/dev/null 2>&1; then
   echo "окна острова нет, открываю"
-  timeout 10 "$EWW" --config "$CONF" open island --pos "0x0" >/dev/null 2>&1 || true
+  # --no-daemonize: демон только что запущен выше; если клиент не достучался -
+  # ошибка и повтор, а не второй демон со своим окном-клоном.
+  timeout 10 "$EWW" --config "$CONF" --no-daemonize open island --pos "0x0" >/dev/null 2>&1 || true
   i=0
   until "$GEOM" xid >/dev/null 2>&1; do
     i=$((i + 1))
@@ -98,7 +100,7 @@ want_x=$(( (SCREEN_W - iw) / 2 ))
 # поэтому позицию задаём при открытии. Проверяем, что он действительно по центру.
 if [ "$ix" -ne "$want_x" ] || [ "$iy" -ne 0 ]; then
   echo "остров смещён (сейчас ${ix},${iy}, нужно ${want_x},0) - центрирую"
-  timeout 10 "$EWW" --config "$CONF" open island --pos "${want_x}x0" >/dev/null 2>&1 || true
+  timeout 10 "$EWW" --config "$CONF" --no-daemonize open island --pos "${want_x}x0" >/dev/null 2>&1 || true
   sleep 0.3
   geom=$("$GEOM" 2>/dev/null || true)
   ix=$(echo "$geom" | awk '{print $2}')

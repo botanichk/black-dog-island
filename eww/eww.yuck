@@ -97,6 +97,9 @@
           (wsdot :n "3")))
       (systray :class "tray" :orientation "h" :spacing 6 :icon-size 16
                :space-evenly false :prepend-new false)
+      ;; Свободное место забирает растяжка: правая группа прижата к краю,
+      ;; ширина окна держится константой ($island-w).
+      (box :hexpand true)
       (box :orientation "horizontal" :space-evenly false :class "right"
         (button :class "layout" :onclick "$HOME/eww-island/adapters/x11/layout.sh next" layout)
         ;; Клик по Wi-Fi открывает список сетей. Иконка - свой SVG: веер из дуг,
@@ -290,6 +293,6 @@
     (box :orientation "horizontal" :space-evenly false :class "hub-panel"
       (hub-rail)
       (stack :selected hub_tab :transition "crossfade" :same-size true
-        (scroll :height 330 :vscroll true :hscroll false :class "hub-tab-body" (cal-content))
-        (scroll :height 330 :vscroll true :hscroll false :class "hub-tab-body" (wx-content))
-        (scroll :height 330 :vscroll true :hscroll false :class "hub-tab-body" (wf-content))))))
+        (scroll :height 330 :vexpand true :vscroll true :hscroll false :class "hub-tab-body" (cal-content))
+        (scroll :height 330 :vexpand true :vscroll true :hscroll false :class "hub-tab-body" (wx-content))
+        (scroll :height 330 :vexpand true :vscroll true :hscroll false :class "hub-tab-body" (wf-content))))))

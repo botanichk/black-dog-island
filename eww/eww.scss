@@ -41,6 +41,12 @@ $t-title: 15px;
 $t-display: 20px;
 
 // --- island ---
+// Window width is pinned to a constant: Eww sizes the window by content, so
+// after removing chips the width would float. The island-root box is inset by
+// two 12 px margins and its padding (2x14) is outside CSS min-width, hence
+// the subtraction (tuned by measuring the real window).
+$island-w: 619px;
+
 window.island {
   background: transparent;
 }
@@ -57,6 +63,7 @@ window.island {
 }
 
 .island-root {
+  min-width: $island-w - 52px;
   background-color: $surface;
   border-radius: 0 0 $r-surface $r-surface;
   margin: 0 12px;
