@@ -107,6 +107,37 @@ button {
   background-color: $state-hover;
 }
 
+// Tray context menu: dbusmenu-gtk3 builds a GtkMenu popup, styled via the
+// menu / menuitem / separator CSS nodes. The menu is its own window, so the
+// selectors are global - the island has no other menus.
+// GTK3 ignores min-width on GtkMenu, so the target 220-240 px width comes from
+// the horizontal padding (8 px on the menu + 26 px on each row): the popup
+// measures 231 px wide for the PortProtonQt menu, 222 px tall, same dark
+// surface as the island.
+menu {
+  padding: 6px 8px;
+  border: 1px solid $outline;
+  border-radius: $r-row;
+  background-color: $surface-container;
+  color: $on-surface;
+  font-family: "Noto Sans";
+  font-size: $t-body;
+}
+
+menu menuitem {
+  padding: 6px 26px;
+  border-radius: $r-control;
+}
+
+menu menuitem:hover {
+  background-color: $state-hover;
+}
+
+menu separator {
+  margin: 4px 8px;
+  background-color: $outline;
+}
+
 // Layout indicator (US/RU): assist chip, tonal container, 8 px radius.
 .layout {
   min-width: 24px;
