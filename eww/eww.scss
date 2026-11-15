@@ -301,6 +301,44 @@ window.panel-hub {
   padding: 0 4px 10px 4px;
 }
 
+// --- "Today" card next to the calendar (hub tab) ---
+.cal-today {
+  background-color: $surface-container;
+  border-radius: $r-control;
+  padding: 16px 18px;
+  margin-left: 8px;
+  min-width: 150px;
+}
+
+// Day number, large.
+.cal-today-num {
+  color: $primary;
+  font-size: 42px;
+  font-weight: 600;
+}
+
+// Full date line (contains the weekday).
+.cal-today-dow {
+  color: $on-surface;
+  font-size: $t-secondary;
+  padding-top: 6px;
+}
+
+// Month and year.
+.cal-today-my {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  padding-top: 2px;
+}
+
+// Inside the hub the tab wrapper (.hub-tab) owns the padding; the old panels
+// keep their own spacing. Without this the tab content would be padded twice.
+.hub-tab .cal-panel,
+.hub-tab .wx-panel,
+.hub-tab .wf-panel {
+  padding: 0;
+}
+
 // Calendar grid: GTK widget raised to a tonal card, selected day in accent.
 .cal {
   background-color: $surface-container;
@@ -498,28 +536,31 @@ window.panel-hub {
 }
 
 // --- hub: one panel with tabs (calendar / weather / wifi) ---
+// Tab content is padded by .hub-tab (14 px on all sides); the rail owns
+// its own spacing here, so nothing is padded twice.
 .hub-panel {
-  padding: 10px 8px 16px 8px;
+  padding: 0;
 }
 
 // Left tab rail (~56 px): icons stacked from the top.
 .hub-rail {
   margin-right: 6px;
+  padding: 10px 4px 16px 8px;
 }
 
-.hub-tab {
+.hub-tab-btn {
   min-width: 40px;
   min-height: 40px;
   margin: 2px 0;
   border-radius: $r-control;
 }
 
-.hub-tab:hover {
+.hub-tab-btn:hover {
   background-color: $state-hover;
 }
 
 // Step 1: neutral active plate; step 2 will move it to $primary.
-.hub-tab.active {
+.hub-tab-btn.active {
   background-color: $surface-container-high;
 }
 
@@ -530,15 +571,23 @@ window.panel-hub {
   color: $on-surface-variant;
 }
 
-.hub-tab.active .hub-ic {
+.hub-tab-btn.active .hub-ic {
   color: $primary;
 }
 
+// Root box of every hub tab (calendar/weather/wifi): one class, equal padding
+// on all sides, so tabs look uniform. The box itself fills the tab area
+// (hexpand/vexpand are set in yuck).
+.hub-tab {
+  padding: 14px;
+}
+
 // One scroll per tab, same min height: the window must not resize when
-// switching tabs. The :height prop in yuck is the hard floor (size request),
-// this min-height is the same value declared in CSS.
+// switching tabs. 330 comes from the :height prop in yuck plus the 2x14 px
+// .hub-tab padding (GTK does not add child padding to the scroll's request),
+// so the bottom padding stays visible instead of being clipped.
 .hub-tab-body {
-  min-height: 330px;
+  min-height: 358px;
 }
 
 // --- prototype window for the concave corners (stage 2, unused) ---

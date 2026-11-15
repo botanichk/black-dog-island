@@ -148,7 +148,7 @@
 
 ;; Кнопка вкладки в левой колонке хаба: обновляет hub_tab напрямую.
 (defwidget hub-tab-btn [idx glyph]
-  (button :class {hub_tab == idx ? "hub-tab active" : "hub-tab"}
+  (button :class {hub_tab == idx ? "hub-tab-btn active" : "hub-tab-btn"}
           :timeout "3s"
           :onclick "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update hub_tab=${idx}"
           (label :class "hub-ic" :text glyph)))
@@ -161,9 +161,12 @@
     (hub-tab-btn :idx 2 :glyph "")))
 
 ;; Общая рамка панели: верх прямой (панель продолжает остров), низ скруглён.
+;; Растяжка на обоих уровнях: содержимое панели занимает всё окно по высоте.
 (defwidget panel-frame []
   (box :class "panel-frame" :orientation "vertical" :space-evenly false
-    (box :class "panel-body" :orientation "vertical" :space-evenly false (children))))
+       :hexpand true :vexpand true
+    (box :class "panel-body" :orientation "vertical" :space-evenly false
+         :hexpand true :vexpand true (children))))
 
 ;; Выпадающая панель календаря. Открывается по клику на часы (adapters/x11/panel.sh),
 ;; закрывается по клику в другое место (unfocus-close).
@@ -171,13 +174,19 @@
 ;; панель появляется уже под островом, без прыжка из центра экрана. Фокус utility
 ;; получает, поэтому unfocus-close работает.
 ;; Содержимое календаря: общее для вкладки хаба и старой панели.
+;; Слева сам календарь (растягивается), справа карточка "Сегодня":
+;; число крупно, под ним строка даты (из неё день недели) и месяц с годом.
+;; Все данные - существующие переменные, новых скриптов нет.
 (defwidget cal-content []
-  (box :orientation "vertical" :space-evenly false :class "cal-panel" :halign "fill"
-    (label :class "cal-title" :text cal-month-name)
-    (label :class "cal-full" :text cal-full)
+  (box :orientation "horizontal" :space-evenly false :class "cal-panel" :halign "fill"
     (calendar :class "cal"
+      :hexpand true :vexpand true
       :day cal-day :month cal-month :year cal-year
-      :show-heading false :show-day-names true :show-week-numbers false :show-details false)))
+      :show-heading false :show-day-names true :show-week-numbers false :show-details false)
+    (box :orientation "vertical" :space-evenly false :class "cal-today" :valign "center"
+      (label :class "cal-today-num" :text cal-day)
+      (label :class "cal-today-dow" :text cal-full)
+      (label :class "cal-today-my" :text cal-month-name))))
 
 (defwindow panel-calendar [w]
   :monitor 0
@@ -193,7 +202,7 @@
 (defwidget wday [icon name desc temp]
   ;; Один день прогноза: иконка + день слева, температура справа (space-between
   ;; через hexpand на левой части), под ними - описание мелким кеглем.
-  (box :orientation "vertical" :space-evenly false :class "wfc-row" :halign "fill"
+  (box :orientation "vertical" :space-evenly false :class "wfc-row" :halign "fill" :vexpand true
     (box :orientation "horizontal" :space-evenly false :halign "fill"
       (box :orientation "horizontal" :space-evenly false :halign "start" :hexpand true
         (image :class "wfc-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${icon}.svg" :image-width 16 :image-height 16)
@@ -207,17 +216,17 @@
 ;; Содержимое погоды: общее для вкладки хаба и старой панели.
 (defwidget wx-content []
   (box :orientation "horizontal" :space-evenly false :class "wx-panel" :halign "fill"
-    ;; --- левая колонка: сейчас + детали ---
+    ;; --- левая колонка: сейчас + детали; обе карточки vexpand - делят высоту ---
     (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :width 330
       (label :class "wx-city" :xalign 0 :text w-city)
-      (box :orientation "horizontal" :space-evenly false :class "wx-cur" :halign "fill"
+      (box :orientation "horizontal" :space-evenly false :class "wx-cur" :halign "fill" :vexpand true
         :style "background-image: url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.svg');"
         (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 44 :image-height 44)
         (box :orientation "vertical" :space-evenly false :halign "fill" :hexpand true
           (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
           (label :class "wx-cur-desc" :xalign 0 :text w-desc))
         (label :class "wx-cur-range" :halign "end" :valign "end" :text "${w-d0temp}°"))
-      (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill"
+      (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill" :vexpand true
         (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
           (label :class "wx-dk" :xalign 0 :hexpand true :text "Ощущается")
           (label :class "wx-dv" :halign "end" :text "${w-feels}°"))
@@ -231,8 +240,8 @@
           (label :class "wx-dk" :xalign 0 :hexpand true :text "Восход / закат")
           (label :class "wx-dv" :halign "end" :text "${w-d0sun} / ${w-d0set}"))))
 
-    ;; --- правая колонка: прогноз ---
-    (box :orientation "vertical" :space-evenly false :class "wx-right" :halign "fill" :hexpand true
+    ;; --- правая колонка: прогноз; дни распределяются по высоте ---
+    (box :orientation "vertical" :space-evenly true :class "wx-right" :halign "fill" :hexpand true :vexpand true
       (label :class "wx-fc-label" :xalign 0 :text "ПРОГНОЗ")
       (wday :icon w-d0icon :name w-d0name :desc w-d0desc :temp "${w-d0temp}°")
       (wday :icon w-d1icon :name w-d1name :desc w-d1desc :temp "${w-d1temp}°")
@@ -260,16 +269,17 @@
       (label :class "wf-ssid" :xalign 0 :hexpand true :text wf-ssid))
     (label :class "wf-state" :xalign 0 :text "${wf-state} · сигнал ${wf-signal}%")
     (box :orientation "horizontal" :space-evenly false :class "wf-sep")
-    (scroll :vscroll true :hscroll false :height 200 :class "wf-scroll"
+    (scroll :vscroll true :hscroll false :height 200 :vexpand true :class "wf-scroll"
       (box :orientation "vertical" :space-evenly false :class "wf-list"
       (for net in wf-list
         ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
+        ;; Высота строки - минимальная (CSS), сама не растягивается.
         (button :class {net.active ? "wf-net active" : "wf-net"}
           :onclick "$HOME/eww-island/adapters/x11/wifi.sh connect ${net.ssid}"
           (box :orientation "horizontal" :space-evenly false :hexpand true
             (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
-            (label :class "wf-net-name" :xalign 0 :hexpand true :text "${net.ssid}")
-            (label :class "wf-net-sig" :xalign 1 :text "${net.sig}%"))))))))
+            (label :class "wf-net-name" :xalign 0 :halign "start" :hexpand true :text "${net.ssid}")
+            (label :class "wf-net-sig" :xalign 1 :halign "end" :text "${net.sig}%"))))))))
 
 (defwindow panel-wifi [w]
   :monitor 0
@@ -281,8 +291,10 @@
     (wf-content)))
 
 ;; Хаб: вкладки calendar / weather / wifi в одном окне. Содержимое - общие
-;; виджеты cal-content / wx-content / wf-content, каждый в scroll одной высоты,
-;; чтобы окно не меняло размер при переключении вкладок.
+;; виджеты cal-content / wx-content / wf-content. Растяжка по всей цепочке
+;; (окно -> panel-frame -> hub-panel -> stack -> вкладка): вкладка занимает
+;; всё окно, размер окна от вкладки не зависит (scroll :height задаёт минимум).
+;; Обёртка .hub-tab - один класс с одинаковыми отступами для всех вкладок.
 (defwindow panel-hub [w]
   :monitor 0
   :geometry (geometry :x "0px" :y "50px" :width w)
@@ -291,8 +303,19 @@
   :unfocus-close true
   (panel-frame
     (box :orientation "horizontal" :space-evenly false :class "hub-panel"
+         :hexpand true :vexpand true
       (hub-rail)
       (stack :selected hub_tab :transition "crossfade" :same-size true
-        (scroll :height 330 :vexpand true :vscroll true :hscroll false :class "hub-tab-body" (cal-content))
-        (scroll :height 330 :vexpand true :vscroll true :hscroll false :class "hub-tab-body" (wx-content))
-        (scroll :height 330 :vexpand true :vscroll true :hscroll false :class "hub-tab-body" (wf-content))))))
+             :hexpand true :vexpand true
+        (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
+                :class "hub-tab-body"
+          (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
+            (cal-content)))
+        (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
+                :class "hub-tab-body"
+          (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
+            (wx-content)))
+        (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
+                :class "hub-tab-body"
+          (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
+            (wf-content)))))))
