@@ -255,6 +255,26 @@ menu separator {
   background-color: $surface-container-high;
 }
 
+// Wallpaper button (island, step 4): Nerd Font glyph in a label, styled like
+// the layout chip next to it - tonal container, 8 px radius, hover layer.
+.wall {
+  min-width: 24px;
+  margin-right: 8px;
+  padding: 3px 8px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+}
+
+.wall:hover {
+  background-color: $surface-container-high;
+}
+
+.wall-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 16px;
+  color: $on-surface-variant;
+}
+
 // --- dropdown panels ---
 // The panel continues the island body: same surface, same 12 px side inset,
 // straight top, rounded bottom only.
