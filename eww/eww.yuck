@@ -541,12 +541,16 @@
                   :onclick "$HOME/eww-island/adapters/media/mpris.sh next-player >/dev/null"
             (label :class "media-player-name" :text "${media.player}")))
         (box :orientation "horizontal" :space-evenly false :class "media-body" :halign "fill" :vexpand true
-          ;; Обложка 200x200, скруглена; нет обложки - плита с нотой.
-          (for z in {media.art != "" ? "[1]" : "[]"}
-            (image :class "media-art" :path {media.art} :image-width 200 :image-height 200))
-          (for z in {media.art == "" ? "[1]" : "[]"}
-            (box :orientation "vertical" :class "media-art-fallback" :halign "start" :valign "start"
-              (label :class "media-art-fallback-ic" :text "")))
+          ;; Слот обложки: статичная обёртка. Дети "for" в этой сборке Eww
+          ;; добавляются в конец родителя при пересборке, поэтому без обёртки
+          ;; обложка уехала бы направо, после media-info.
+          (box :orientation "horizontal" :space-evenly false :class "media-art-slot"
+            ;; Обложка 200x200, скруглена; нет обложки - плита с нотой.
+            (for z in {media.art != "" ? "[1]" : "[]"}
+              (image :class "media-art" :path {media.art} :image-width 200 :image-height 200))
+            (for z in {media.art == "" ? "[1]" : "[]"}
+              (box :orientation "vertical" :class "media-art-fallback" :halign "start" :valign "start"
+                (label :class "media-art-fallback-ic" :text ""))))
           (box :orientation "vertical" :space-evenly false :class "media-info" :hexpand true :valign "start"
             (label :class "media-title" :xalign 0 :limit-width 40 :text "${media.title}")
             (label :class "media-artist" :xalign 0 :limit-width 44 :text "${media.artist}")
