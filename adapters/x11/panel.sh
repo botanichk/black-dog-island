@@ -2,7 +2,7 @@
 # Выпадающая панель под островом, по его центру.
 # Повторный запуск для уже открытой панели закрывает её.
 # usage: panel.sh <окно> [примерная ширина]
-#        panel.sh panel-hub <home|calendar|weather|wifi|shot>
+#        panel.sh panel-hub <home|calendar|weather|wifi|shot|media>
 # Ширину задаёт panel.sh (по острову), высоту - содержимое.
 set -eu
 
@@ -22,7 +22,8 @@ win_geo() {
   wmctrl -lG 2>/dev/null | awk -v t="$1" '$0 ~ (t "$") {print $3, $4, $5, $6; exit}'
 }
 
-# Имя вкладки хаба -> индекс стека hub_tab (0..4).
+# Имя вкладки хаба -> индекс стека hub_tab (0..5). Медиа - 5, чтобы не
+# сдвигать остальные вкладки (индексы хранятся цифрами в адаптерах).
 tab_index() {
   case "$1" in
     home)     echo 0 ;;
@@ -30,6 +31,7 @@ tab_index() {
     weather)  echo 2 ;;
     wifi)     echo 3 ;;
     shot)     echo 4 ;;
+    media)    echo 5 ;;
     *)        echo "" ;;
   esac
 }

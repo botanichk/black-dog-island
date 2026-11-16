@@ -1062,6 +1062,200 @@ window.panel-hub {
   padding-top: 12px;
 }
 
+// --- hub: media tab (MPRIS) ---
+// Art left (200 px, rounded), track info right, seek row and controls below.
+// Everything must fit the 330 px tab body so the hub window keeps its height.
+.media-panel {
+  background-color: transparent;
+  padding: 0;
+}
+
+.media-head {
+  padding: 0 2px 8px 2px;
+}
+
+.media-cap {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+// Player switcher chip at the right edge of the head row.
+.media-player-chip {
+  min-height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background-color: $surface-container;
+}
+
+.media-player-chip:hover {
+  background-color: $surface-container-high;
+}
+
+.media-player-name {
+  color: $on-surface;
+  font-size: $t-secondary;
+}
+
+.media-art {
+  border-radius: $r-card;
+}
+
+// No artwork: tonal plate with a note glyph, same footprint as the art.
+.media-art-fallback {
+  min-width: 200px;
+  min-height: 200px;
+  border-radius: $r-card;
+  background-color: $surface-container;
+  margin-right: 14px;
+}
+
+.media-art-fallback-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 56px;
+  color: $on-surface-variant;
+}
+
+.media-info {
+  padding-left: 14px;
+}
+
+.media-title {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: 500;
+}
+
+.media-artist {
+  color: $on-surface-variant;
+  font-size: $t-body;
+  padding-top: 2px;
+}
+
+.media-album {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  padding-top: 2px;
+}
+
+// Seek row: scale (or plain progress) with "1:23 / 4:56" at the right.
+.media-seekrow {
+  padding: 14px 0 0 0;
+}
+
+.media-time {
+  min-width: 84px;
+  color: $on-surface-variant;
+  font-size: $t-caption;
+}
+
+// GtkScale: same look as the home sliders.
+.media-scale trough {
+  min-height: 4px;
+  border-radius: 999px;
+  background-color: $surface-highest;
+}
+
+.media-scale highlight {
+  border-radius: 999px;
+  background-color: $primary;
+}
+
+.media-scale slider {
+  min-width: 12px;
+  min-height: 12px;
+  margin: -5px 0;
+  border-radius: 999px;
+  background-color: $on-surface;
+  border: none;
+  box-shadow: none;
+}
+
+// Read-only progress used when the player cannot seek.
+.media-bar trough {
+  min-height: 4px;
+  border-radius: 999px;
+  background-color: $surface-highest;
+}
+
+.media-bar progress {
+  min-height: 4px;
+  border-radius: 999px;
+  background-color: $primary;
+}
+
+// Transport controls: round chips, play/pause is the accent plate.
+.media-controls {
+  padding-top: 12px;
+}
+
+.media-btn {
+  min-width: 46px;
+  min-height: 40px;
+  margin: 0 4px;
+  border-radius: 999px;
+  background-color: $surface-container;
+}
+
+.media-btn:hover {
+  background-color: $surface-container-high;
+}
+
+.media-btn.play {
+  min-width: 56px;
+  min-height: 56px;
+  background-color: $primary;
+}
+
+.media-btn.play:hover {
+  background-color: $primary;
+}
+
+.media-btn-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 16px;
+  color: $on-surface;
+}
+
+.media-btn.play .media-btn-ic {
+  font-size: 20px;
+  color: $surface;
+}
+
+// Capability the player lacks: quiet, no plate, dimmed glyph.
+.media-btn.off {
+  background-color: transparent;
+}
+
+.media-btn.off:hover {
+  background-color: transparent;
+}
+
+.media-btn.off .media-btn-ic {
+  color: $outline;
+}
+
+// Empty state: centred note, title, hint.
+.media-off-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 34px;
+  color: $on-surface-variant;
+  padding-bottom: 10px;
+}
+
+.media-off-title {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: 500;
+  padding-bottom: 4px;
+}
+
+.media-off-text {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
 // --- prototype window for the concave corners (stage 2, unused) ---
 window.proto-corners {
   background: transparent;

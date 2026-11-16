@@ -74,6 +74,14 @@
 ;; defpoll: значение живёт только в интерфейсе.
 (defvar wf_confirm 0)
 
+;; Медиа: всё состояние вкладки одной строкой JSON (adapters/media/mpris.sh).
+;; Опрос раз в 1 с - максимум из спеки (~90 мс на тик, как у home-опроса).
+;; Переменную читает только вкладка медиа, поэтому при закрытом хабе defpoll
+;; не работает и нагрузки нет.
+(defpoll media :interval "1s"
+  :initial "{\"player\":\"\",\"status\":\"none\",\"title\":\"\",\"artist\":\"\",\"album\":\"\",\"art\":\"\",\"pos\":0,\"len\":0,\"posfmt\":\"0:00\",\"lenfmt\":\"0:00\",\"canseek\":false,\"canprev\":false,\"cannext\":false,\"canpause\":false,\"players\":[]}"
+  "$HOME/eww-island/adapters/media/mpris.sh json")
+
 ;; Календарь: текущая дата для виджета calendar.
 (defpoll cal-day :interval "1h" "date +%d")
 (defpoll cal-month :interval "1h" "date +%m")
@@ -174,11 +182,14 @@
     (box :class "proto-body" :hexpand true)
     (image :class "proto-corner-r" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-right.svg" :image-width 16 :image-height 16)))
 
-;; Хаб: одна панель с вкладками (главная, календарь, погода, Wi-Fi, снимок), как в Noctalia.
+;; Хаб: одна панель с вкладками (главная, календарь, погода, Wi-Fi, снимок, медиа), как в Noctalia.
 ;; hub_tab - индекс вкладки стека (stack :selected принимает число):
-;; 0 = главная, 1 = календарь, 2 = погода, 3 = Wi-Fi, 4 = снимок. Имена
-;; (home/calendar/weather/wifi/shot) использует panel.sh, в индекс они
-;; переводятся там же.
+;; 0 = главная, 1 = календарь, 2 = погода, 3 = Wi-Fi, 4 = снимок, 5 = медиа.
+;; Имена (home/calendar/weather/wifi/shot/media) использует panel.sh, в индекс
+;; они переводятся там же.
+;; Индекс медиа - 5, а не 1: это не сдвигает остальные вкладки (панель адаптеров
+;; хранит индексы цифрами, например плитка Wi-Fi пишет hub_tab=3). В колонке
+;; кнопка медиа стоит сразу после «Главной», порядок кнопок и стека независимы.
 (defvar hub_tab 0)
 
 ;; --- вкладка «Главная» ---
@@ -273,10 +284,12 @@
           :onclick "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update hub_tab=${idx}"
           (label :class "hub-ic" :text glyph)))
 
-;; Левая колонка вкладок хаба (~56 px).
+;; Левая колонка вкладок хаба (~56 px). Кнопка медиа - сразу после
+;; «Главной» (по спеке вкладки), её индекс в стеке 5.
 (defwidget hub-rail []
   (box :orientation "vertical" :space-evenly false :class "hub-rail"
     (hub-tab-btn :idx 0 :glyph "")
+    (hub-tab-btn :idx 5 :glyph "")
     (hub-tab-btn :idx 1 :glyph "")
     (hub-tab-btn :idx 2 :glyph "")
     (hub-tab-btn :idx 3 :glyph "")
@@ -497,8 +510,69 @@
               :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh folder >/dev/null 2>&1"
         (label :text "Папка")))))
 
-;; Хаб: вкладки calendar / weather / wifi / shot в одном окне. Содержимое - общие
-;; виджеты cal-content / wx-content / wf-content / shot-content. Растяжка по всей цепочке
+;; --- вкладка «Медиа» (MPRIS) ---
+;; Всё состояние - переменная media (JSON адаптера). Название и исполнитель
+;; попадают только в :text - в командах кнопок их нет, кнопки знают лишь имя
+;; действия (prev/playpause/next) и цифры от ползунка.
+;; Кнопка-иконка: глиф, класс off у неспособных плееров (CanGo*/CanPause).
+(defwidget media-btn [glyph action cls disabled]
+  (button :class {disabled ? cls + " off" : cls}
+          :timeout "3s"
+          :onclick "setsid -f $HOME/eww-island/adapters/media/mpris.sh ${action} >/dev/null 2>&1"
+    (label :class "media-btn-ic" :text glyph)))
+
+;; Два состояния, переключаются через "for" (не ":visible" - он в этой сборке
+;; применяется один раз при первом показе): пустое и обычное.
+(defwidget media-content []
+  (box :orientation "vertical" :space-evenly false :class "media-panel" :hexpand true :vexpand true
+    ;; Пустое состояние: плееров нет (или плеер закрылся посреди работы).
+    (for z in {media.status == "none" ? "[1]" : "[]"}
+      (box :orientation "vertical" :space-evenly false :class "media-off" :halign "center" :valign "center" :hexpand true :vexpand true
+        (label :class "media-off-ic" :text "")
+        (label :class "media-off-title" :text "Ничего не играет")
+        (label :class "media-off-text" :text "Запустите плеер - он появится здесь")))
+    ;; Обычный режим.
+    (for z in {media.status != "none" ? "[1]" : "[]"}
+      (box :orientation "vertical" :space-evenly false :hexpand true :vexpand true
+        ;; Переключатель плеера: клик - следующий по кругу, выбор помнит адаптер.
+        (box :orientation "horizontal" :space-evenly false :class "media-head" :halign "fill"
+          (label :class "media-cap" :text "ПЛЕЕР")
+          (button :class "media-player-chip" :timeout "3s" :halign "end" :hexpand true
+                  :onclick "$HOME/eww-island/adapters/media/mpris.sh next-player >/dev/null"
+            (label :class "media-player-name" :text "${media.player}")))
+        (box :orientation "horizontal" :space-evenly false :class "media-body" :halign "fill" :vexpand true
+          ;; Обложка 200x200, скруглена; нет обложки - плита с нотой.
+          (for z in {media.art != "" ? "[1]" : "[]"}
+            (image :class "media-art" :path {media.art} :image-width 200 :image-height 200))
+          (for z in {media.art == "" ? "[1]" : "[]"}
+            (box :orientation "vertical" :class "media-art-fallback" :halign "start" :valign "start"
+              (label :class "media-art-fallback-ic" :text "")))
+          (box :orientation "vertical" :space-evenly false :class "media-info" :hexpand true :valign "start"
+            (label :class "media-title" :xalign 0 :limit-width 40 :text "${media.title}")
+            (label :class "media-artist" :xalign 0 :limit-width 44 :text "${media.artist}")
+            (label :class "media-album" :xalign 0 :limit-width 44 :text "${media.album}")
+            ;; Ползунок позиции: с CanSeek - scale с перемоткой, без - полоска
+            ;; "только показывает". Держим в правой колонке, чтобы высота вкладки
+            ;; не росла (окно хаба должно остаться 358 px).
+            (for z in {media.canseek ? "[1]" : "[]"}
+              (box :orientation "horizontal" :space-evenly false :class "media-seekrow" :halign "fill"
+                (scale :class "media-scale" :hexpand true :valign "center"
+                       :value {media.pos} :min 0 :max {media.len > 0 ? media.len : 1} :round-digits 0
+                       :timeout "2s" :onchange "$HOME/eww-island/adapters/media/mpris.sh seek {}")
+                (label :class "media-time" :text "${media.posfmt} / ${media.lenfmt}")))
+            (for z in {media.canseek ? "[]" : "[1]"}
+              (box :orientation "horizontal" :space-evenly false :class "media-seekrow" :halign "fill"
+                (progress :class "media-bar" :hexpand true :valign "center"
+                          :value {media.len > 0 ? round(media.pos * 100 / media.len, 0) : 0})
+                (label :class "media-time" :text "${media.posfmt} / ${media.lenfmt}")))))
+        ;; Ряд кнопок под обложкой: предыдущий, пауза/играть, следующий.
+        (box :orientation "horizontal" :space-evenly false :class "media-controls" :halign "center"
+          (media-btn :glyph "" :action "prev" :cls "media-btn" :disabled {!media.canprev})
+          (media-btn :glyph {media.status == "playing" ? "" : ""} :action "playpause" :cls "media-btn play" :disabled {!media.canpause})
+          (media-btn :glyph "" :action "next" :cls "media-btn" :disabled {!media.cannext}))))))
+
+;; Хаб: вкладки calendar / weather / wifi / shot / media в одном окне. Содержимое - общие
+;; виджеты cal-content / wx-content / wf-content / shot-content / media-content. Растяжка по всей цепочке
 ;; (окно -> panel-frame -> hub-panel -> stack -> вкладка): вкладка занимает
 ;; всё окно, размер окна от вкладки не зависит (scroll :height задаёт минимум).
 ;; Обёртка .hub-tab - один класс с одинаковыми отступами для всех вкладок.
@@ -533,4 +607,8 @@
         (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
                 :class "hub-tab-body"
           (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
-            (shot-content)))))))
+            (shot-content)))
+        (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
+                :class "hub-tab-body"
+          (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
+            (media-content)))))))
