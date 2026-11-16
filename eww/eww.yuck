@@ -223,10 +223,13 @@
       ;; весь рисунок. Затемнение - верхний слой, оно перекрывает и картинку.
       (box :orientation "horizontal" :space-evenly false :class "wx-cur ${wx-kind}" :halign "fill" :vexpand true
         :style "background-image: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.svg'); background-size: 100% 100%, cover; background-position: right top;"
-        (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 44 :image-height 44)
-        (box :orientation "vertical" :space-evenly false :halign "fill" :hexpand true
-          (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
-          (label :class "wx-cur-desc" :xalign 0 :text w-desc))
+        ;; Иконка, температура и описание - один блок по центру высоты карточки;
+        ;; диапазон дня остаётся отдельно справа внизу.
+        (box :orientation "horizontal" :space-evenly false :class "wx-cur-main" :halign "start" :valign "center" :hexpand true
+          (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 64 :image-height 64)
+          (box :orientation "vertical" :space-evenly false :halign "start" :valign "center"
+            (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
+            (label :class "wx-cur-desc" :xalign 0 :text w-desc)))
         (label :class "wx-cur-range" :halign "end" :valign "end" :text "${w-d0temp}°"))
       (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill" :vexpand false :valign "end"
         (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
@@ -242,8 +245,8 @@
           (label :class "wx-dk" :xalign 0 :hexpand true :text "Восход / закат")
           (label :class "wx-dv" :halign "end" :text "${w-d0sun} / ${w-d0set}"))))
 
-    ;; --- правая колонка: прогноз; дни распределяются по высоте ---
-    (box :orientation "vertical" :space-evenly true :class "wx-right" :halign "fill" :hexpand true :vexpand true
+    ;; --- правая колонка: прогноз; заголовок прижат к верху, дни делят высоту ---
+    (box :orientation "vertical" :space-evenly false :class "wx-right" :halign "fill" :hexpand true :vexpand true
       (label :class "wx-fc-label" :xalign 0 :text "ПРОГНОЗ")
       (wday :icon w-d0icon :name w-d0name :desc w-d0desc :temp "${w-d0temp}°")
       (wday :icon w-d1icon :name w-d1name :desc w-d1desc :temp "${w-d1temp}°")

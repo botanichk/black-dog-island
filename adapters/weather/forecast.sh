@@ -144,6 +144,13 @@ kind_for() {
   esac
 }
 
+# --- Округление температуры до целых без "-0" ---
+# printf "%.0f" для -0.3 даёт "-0"; нормализуем здесь, чтобы все температуры
+# (текущая, ощущается, диапазоны дня и прогноза) шли через одно место.
+round0() {
+  awk '{ s = sprintf("%.0f", $1); if (s == "-0") s = "0"; print s }'
+}
+
 # --- Дата по-русски: локали в системе называются по-разному ---
 ru_wd() {
   case "$(LC_ALL=ru_RU.utf8 date -d "$1" '+%a' 2>/dev/null)" in
@@ -165,8 +172,8 @@ ru_mo() {
 case "$key" in
   city)  jq -r '.name // empty' "$CITYF" 2>/dev/null || cat "$CITYF" 2>/dev/null || printf '—' ;;
   # Температура - целые градусы, как в Noctalia (округление, не отбрасывание).
-  temp)  jq -r '.current.temperature_2m' "$SNAP" | awk '{printf "%.0f", $1}' ;;
-  feels) jq -r '.current.apparent_temperature' "$SNAP" | awk '{printf "%.0f", $1}' ;;
+  temp)  jq -r '.current.temperature_2m' "$SNAP" | round0 ;;
+  feels) jq -r '.current.apparent_temperature' "$SNAP" | round0 ;;
   desc)  describe "$(jq -r '.current.weather_code' "$SNAP")" ;;
   code)  jq -r '.current.weather_code' "$SNAP" ;;
   isday) jq -r '.current.is_day // 1' "$SNAP" ;;
@@ -190,8 +197,8 @@ case "$key" in
     ;;
   d[0-3]temp)
     i=${key#d}; i=${i%temp}
-    lo=$(jq -r ".daily.temperature_2m_min[$i]" "$SNAP" | awk '{printf "%.0f", $1}')
-    hi=$(jq -r ".daily.temperature_2m_max[$i]" "$SNAP" | awk '{printf "%.0f", $1}')
+    lo=$(jq -r ".daily.temperature_2m_min[$i]" "$SNAP" | round0)
+    hi=$(jq -r ".daily.temperature_2m_max[$i]" "$SNAP" | round0)
     printf '%s…%s' "$lo" "$hi"
     ;;
   d[0-3]sun)
