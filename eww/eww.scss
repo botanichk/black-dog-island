@@ -21,6 +21,28 @@ $primary: #4fc3f7;
 $primary-dim: #2a6e8f;
 $error: #f2b8b5;
 
+// --- weather card backdrops (hub step 2б) ---
+// Eight kinds, two gradient stops each, muted so they stay in the island
+// palette. Every card stacks a uniform 0.35 black layer on top for contrast
+// (GTK3 has no background-blend-mode, so it is a second gradient layer).
+$wx-clear-day-a: #1a4d66;       // day sky, cyan accent direction
+$wx-clear-day-b: #17262e;
+$wx-clear-night-a: #223052;     // deep navy night
+$wx-clear-night-b: #151a26;
+$wx-cloudy-day-a: #3d4853;
+$wx-cloudy-day-b: #23272c;
+$wx-cloudy-night-a: #2a313a;
+$wx-cloudy-night-b: #171a1e;
+$wx-rain-a: #263d4c;
+$wx-rain-b: #191f25;
+$wx-snow-a: #414e5a;
+$wx-snow-b: #262b31;
+$wx-fog-a: #394046;
+$wx-fog-b: #22262a;
+$wx-storm-a: #332d4e;
+$wx-storm-b: #1a1726;
+$wx-shade: rgba(0, 0, 0, 0.35);
+
 // --- state layers: Material overlay opacities, no transitions ---
 $state-hover: rgba(255, 255, 255, 0.08);
 $state-press: rgba(255, 255, 255, 0.12);
@@ -340,13 +362,55 @@ window.panel-hub {
 }
 
 // Current conditions: tonal card with a large icon and the temperature hero.
+// The backdrop depends on the weather: wx-kind adds a class (clear-day,
+// clear-night, cloudy-day, cloudy-night, rain, snow, fog, storm). Gradient
+// layers are listed topmost first: the darkening layer goes above the sky.
 .wx-cur {
   background-color: $surface-container;
-  // Condition backdrop (svg from assets/wx-bg-<name>.svg) is set inline in yuck.
-  background-repeat: no-repeat;
-  background-size: 330px 100px;
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-clear-day-a, $wx-clear-day-b);
   border-radius: $r-card;
   padding: 10px 12px;
+}
+
+.wx-cur.clear-day {
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-clear-day-a, $wx-clear-day-b);
+}
+
+.wx-cur.clear-night {
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-clear-night-a, $wx-clear-night-b);
+}
+
+.wx-cur.cloudy-day {
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-cloudy-day-a, $wx-cloudy-day-b);
+}
+
+.wx-cur.cloudy-night {
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-cloudy-night-a, $wx-cloudy-night-b);
+}
+
+.wx-cur.rain {
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-rain-a, $wx-rain-b);
+}
+
+.wx-cur.snow {
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-snow-a, $wx-snow-b);
+}
+
+.wx-cur.fog {
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-fog-a, $wx-fog-b);
+}
+
+.wx-cur.storm {
+  background-image: linear-gradient($wx-shade, $wx-shade),
+                    linear-gradient(160deg, $wx-storm-a, $wx-storm-b);
 }
 
 .wx-cur-icon {

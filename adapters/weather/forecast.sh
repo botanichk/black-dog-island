@@ -5,7 +5,7 @@
 #
 # usage: forecast.sh <ключ>
 #   city | temp | feels | desc | wind | hum
-#   icon | bg | d<N>name | d<N>desc | d<N>temp | d<N>icon   (N = 0..3, прогноз по дням)
+#   icon | bg | kind | d<N>name | d<N>desc | d<N>temp | d<N>icon   (N = 0..3, прогноз по дням)
 #   d<N>sun | d<N>set
 set -eu
 
@@ -112,6 +112,22 @@ bg_for() {
   esac
 }
 
+# --- Вид фона верхней карточки: класс в eww.scss (шаг 2б) ---
+# Восемь видов: ясно день/ночь, облачно день/ночь, дождь, снег, туман, гроза.
+# Коды 0/1 - ясно, 2/3 - облачно; морось и ливни считаем дождём.
+kind_for() {
+  case "$1" in
+    0|1) if [ "${2:-1}" = 0 ]; then printf 'clear-night'; else printf 'clear-day'; fi ;;
+    2|3) if [ "${2:-1}" = 0 ]; then printf 'cloudy-night'; else printf 'cloudy-day'; fi ;;
+    45|48)          printf 'fog' ;;
+    51|53|55|56|57) printf 'rain' ;;
+    61|63|65|66|67|80|81|82) printf 'rain' ;;
+    71|73|75|77|85|86) printf 'snow' ;;
+    95|96|99)       printf 'storm' ;;
+    *)              printf 'cloudy-day' ;;
+  esac
+}
+
 # --- Дата по-русски: локали в системе называются по-разному ---
 ru_wd() {
   case "$(LC_ALL=ru_RU.utf8 date -d "$1" '+%a' 2>/dev/null)" in
@@ -140,6 +156,7 @@ case "$key" in
   isday) jq -r '.current.is_day // 1' "$SNAP" ;;
   icon)  icon_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")" ;;
   bg)    bg_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")" ;;
+  kind)  kind_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")" ;;
   wind)  jq -r '.current.wind_speed_10m' "$SNAP" ;;
   hum)   jq -r '.current.relative_humidity_2m' "$SNAP" ;;
   d[0-3]name)

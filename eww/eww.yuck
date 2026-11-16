@@ -22,7 +22,9 @@
 (defpoll w-feels :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh feels")
 (defpoll w-desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh desc")
 (defpoll w-icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh icon")
-(defpoll w-bg :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh bg")
+;; Вид фона верхней карточки (ясно/облачно/дождь/снег/туман/гроза + день/ночь).
+;; :initial - чтобы до первого опроса у карточки уже был класс, а не пустой фон.
+(defpoll wx-kind :interval "30m" :initial "clear-day" "$HOME/eww-island/adapters/weather/forecast.sh kind")
 (defpoll w-wind :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh wind")
 (defpoll w-hum :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh hum")
 (defpoll w-d0name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0name")
@@ -206,18 +208,19 @@
 ;; умеет ни flex, ни проценты), правая добирает остаток через hexpand.
 ;; Содержимое погоды: используется вкладкой хаба.
 (defwidget wx-content []
-  (box :orientation "horizontal" :space-evenly false :class "wx-panel" :halign "fill"
-    ;; --- левая колонка: сейчас + детали; обе карточки vexpand - делят высоту ---
-    (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :width 330
+  (box :orientation "horizontal" :space-evenly false :class "wx-panel" :halign "fill" :vexpand true
+    ;; --- левая колонка: сейчас + детали ---
+    ;; Верхняя карточка забирает остаток высоты, нижняя прижата вниз и растёт
+    ;; только по содержимому (:vexpand false + valign end).
+    (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :vexpand true :width 330
       (label :class "wx-city" :xalign 0 :text w-city)
-      (box :orientation "horizontal" :space-evenly false :class "wx-cur" :halign "fill" :vexpand true
-        :style "background-image: url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.svg');"
+      (box :orientation "horizontal" :space-evenly false :class "wx-cur ${wx-kind}" :halign "fill" :vexpand true
         (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 44 :image-height 44)
         (box :orientation "vertical" :space-evenly false :halign "fill" :hexpand true
           (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
           (label :class "wx-cur-desc" :xalign 0 :text w-desc))
         (label :class "wx-cur-range" :halign "end" :valign "end" :text "${w-d0temp}°"))
-      (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill" :vexpand true
+      (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill" :vexpand false :valign "end"
         (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
           (label :class "wx-dk" :xalign 0 :hexpand true :text "Ощущается")
           (label :class "wx-dv" :halign "end" :text "${w-feels}°"))
