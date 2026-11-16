@@ -22,8 +22,12 @@
 (defpoll w-feels :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh feels")
 (defpoll w-desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh desc")
 (defpoll w-icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh icon")
+;; SVG-фон верхней карточки (имя файла assets/wx-bg-<bg>.svg).
+;; :initial - чтобы до первого опроса не было пустого URL wx-bg-.svg.
+(defpoll w-bg :interval "30m" :initial "cloud" "$HOME/eww-island/adapters/weather/forecast.sh bg")
 ;; Вид фона верхней карточки (ясно/облачно/дождь/снег/туман/гроза + день/ночь).
-;; :initial - чтобы до первого опроса у карточки уже был класс, а не пустой фон.
+;; Это запасной вариант: inline-стиль ниже перекрывает background-image класса.
+;; Если inline-стиль убрать, градиент снова станет фоном карточки.
 (defpoll wx-kind :interval "30m" :initial "clear-day" "$HOME/eww-island/adapters/weather/forecast.sh kind")
 (defpoll w-wind :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh wind")
 (defpoll w-hum :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh hum")
@@ -214,7 +218,11 @@
     ;; только по содержимому (:vexpand false + valign end).
     (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :vexpand true :width 330
       (label :class "wx-city" :xalign 0 :text w-city)
+      ;; SVG-фон прижат вправо: узоры нарисованы в правой части canvas 330x100,
+      ;; а cover масштабирует по высоте карточки - без этого левый край срезал бы
+      ;; весь рисунок. Затемнение - верхний слой, оно перекрывает и картинку.
       (box :orientation "horizontal" :space-evenly false :class "wx-cur ${wx-kind}" :halign "fill" :vexpand true
+        :style "background-image: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.svg'); background-size: 100% 100%, cover; background-position: right top;"
         (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 44 :image-height 44)
         (box :orientation "vertical" :space-evenly false :halign "fill" :hexpand true
           (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")

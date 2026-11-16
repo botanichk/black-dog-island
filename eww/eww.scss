@@ -362,9 +362,15 @@ window.panel-hub {
 }
 
 // Current conditions: tonal card with a large icon and the temperature hero.
-// The backdrop depends on the weather: wx-kind adds a class (clear-day,
-// clear-night, cloudy-day, cloudy-night, rain, snow, fog, storm). Gradient
-// layers are listed topmost first: the darkening layer goes above the sky.
+// Backdrop has two sets, as required by step 2б:
+//   * yuck sets an inline background-image: a 0.35 darkening layer above the
+//     SVG from assets/wx-bg-<bg>.svg. An inline style overrides every
+//     background-image from a class, so this always wins while it is present.
+//   * the rules below are the gradient fallback: wx-kind adds a class
+//     (clear-day, clear-night, cloudy-day, cloudy-night, rain, snow, fog,
+//     storm). They show only when the inline style is removed (switching back
+//     to gradients); an inline style overrides them as a whole.
+// Gradient layers are listed topmost first: darkening above the sky.
 .wx-cur {
   background-color: $surface-container;
   background-image: linear-gradient($wx-shade, $wx-shade),

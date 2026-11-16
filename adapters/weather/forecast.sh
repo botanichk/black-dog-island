@@ -95,6 +95,22 @@ icon_for() {
   esac
 }
 
+# --- Сводная таблица: SVG-фон (bg_for) <-> градиентный запас (kind_for) ---
+#   файл wx-bg-*   когда bg_for (WMO, день/ночь)     kind_for
+#   sun            0, день                           clear-day
+#   stars          0, ночь                            clear-night
+#   partly         1|2, день                          clear-day (1) / cloudy-day (2)
+#   partly-night   1|2, ночь                          clear-night (1) / cloudy-night (2)
+#   cloud          3, день и ночь                     cloudy-day / cloudy-night
+#   fog            45|48                              fog
+#   drizzle        51|53|55|56|57 (морось)            rain
+#   rain           61..67, 80|81|82                   rain
+#   snow           71..77, 85|86                      snow
+#   storm          95|96|99                           storm
+# Наборы не совпадают один-в-один: у SVG 10 имён (1 и 2 делят partly, 3 - cloud),
+# у градиентов 8 видов. Оба набора рабочие: SVG рисует inline-стиль карточки,
+# класс wx-kind остаётся запасным градиентом (виден, только если inline-стиль
+# убрать: :style перекрывает background-image класса целиком).
 # --- Фон карточки: имя файла assets/wx-bg-<name>.svg ---
 # Соответствует описанию погоды: ясно - солнце (днём) или звёзды (ночью),
 # облачно - облака, морось/дождь - капли, снег - снежинки, гроза - молния.
