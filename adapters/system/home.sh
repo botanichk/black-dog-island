@@ -19,6 +19,8 @@ set -eu
 PA_CMD="pactl"
 MIN_BRIGHT=5
 
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+
 # --- чтение ---
 
 wifi_state() {
@@ -77,14 +79,6 @@ temp_state() {
 
 # --- запись ---
 
-# Текущее состояние -> новое: для "toggle" и для плиток.
-toggle_of() { # toggle_of on|off|yes|no
-  case "${1:-}" in
-    on|yes) echo off ;;
-    *)      echo on ;;
-  esac
-}
-
 clamp() { # clamp <значение> <мин> <макс>
   v=$(printf '%.0f' "$1" 2>/dev/null || echo 0)
   [ "$v" -lt "$2" ] && v=$2
@@ -109,11 +103,16 @@ case "${1:-}" in
     val=${3:-}
     case "$key" in
       wifi)
+        # Выключение радио рвёт активное соединение, поэтому без подтверждения
+        # его не делаем. Действие уходит в adapters/x11/wifi.sh: там кнопка
+        # Wi-Fi во вкладке показывает то же подтверждение, что и плитка, - одна
+        # логика на два места. Плитка включает сразу, выключает через вопрос.
+        WIFI="$ROOT/adapters/x11/wifi.sh"
         case "$val" in
-          on)  nmcli radio wifi on ;;
-          off) nmcli radio wifi off ;;
-          toggle) nmcli radio wifi "$(toggle_of "$(wifi_state)")" ;;
-          *)   echo "home.sh: wifi on|off|toggle" >&2; exit 2 ;;
+          on)     "$WIFI" radio on ;;
+          off)    "$WIFI" radio off ;;
+          toggle) "$WIFI" radio-toggle ;;
+          *)      echo "home.sh: wifi on|off|toggle" >&2; exit 2 ;;
         esac
         ;;
       bt)

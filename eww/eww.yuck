@@ -62,6 +62,17 @@
 (defpoll wf-level :interval "1m" :initial "none" "$HOME/eww-island/adapters/x11/wifi.sh level")
 (defpoll wf-n :interval "1m" :initial "0" "$HOME/eww-island/adapters/x11/wifi.sh n")
 (defpoll wf-list :interval "1m" :initial "[]" "$HOME/eww-island/adapters/x11/wifi.sh list")
+;; Радио Wi-Fi опрашиваем чаще остальных: выключатель должен отзываться на
+;; переключение извне (nm-applet, hotkey) за секунды, а не за минуту.
+;; Один вызов nmcli radio, стоимость ~20 мс.
+(defpoll wf-radio :interval "3s" :initial "on" "$HOME/eww-island/adapters/x11/wifi.sh radio")
+;; 1, если есть активное подключение. От этого зависит, спрашивать ли
+;; подтверждение перед выключением радио.
+(defpoll wf-active :interval "1m" :initial "0" "$HOME/eww-island/adapters/x11/wifi.sh active")
+;; 1 - показываем в шапке подтверждение "выключить Wi-Fi?". Ставит адаптер
+;; (radio-toggle), снимает - кнопка "Отмена" или само выключение. defvar, а не
+;; defpoll: значение живёт только в интерфейсе.
+(defvar wf_confirm 0)
 
 ;; Календарь: текущая дата для виджета calendar.
 (defpoll cal-day :interval "1h" "date +%d")
@@ -363,24 +374,71 @@
 ;; в строки. Клик по сети подключается к ней (nmcli умеет подключаться к сетям
 ;; с сохранённым профилем; к остальным нужен пароль, его ввести негде).
 ;; Содержимое Wi-Fi: используется вкладкой хаба.
+;;
+;; Три состояния шапки, переключаются через "for" (не ":visible" - в этой
+;; сборке Eww он применяется один раз при первом показе и не обновляется):
+;;   1) подтверждение выключения (wf_confirm = 1) - "Выключить"/"Отмена";
+;;   2) радио выключено - "Wi-Fi выключен" и кнопка "Включить";
+;;   3) обычный режим - переключатель, активная сеть и список.
 (defwidget wf-content []
   (box :orientation "vertical" :space-evenly false :class "wf-panel"
-    (box :orientation "horizontal" :space-evenly false :class "wf-head" :halign "fill"
-      (image :class "wf-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${wf-level}.svg" :image-width 16 :image-height 16)
-      (label :class "wf-ssid" :xalign 0 :hexpand true :text wf-ssid))
-    (label :class "wf-state" :xalign 0 :text "${wf-state} · сигнал ${wf-signal}%")
-    (box :orientation "horizontal" :space-evenly false :class "wf-sep")
-    (scroll :vscroll true :hscroll false :height 200 :vexpand true :class "wf-scroll"
-      (box :orientation "vertical" :space-evenly false :class "wf-list"
-      (for net in wf-list
-        ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
-        ;; Высота строки - минимальная (CSS), сама не растягивается.
-        (button :class {net.active ? "wf-net active" : "wf-net"}
-          :onclick "$HOME/eww-island/adapters/x11/wifi.sh connect ${net.ssid}"
-          (box :orientation "horizontal" :space-evenly false :hexpand true
-            (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
-            (label :class "wf-net-name" :xalign 0 :halign "start" :hexpand true :text "${net.ssid}")
-            (label :class "wf-net-sig" :xalign 1 :halign "end" :text "${net.sig}%"))))))))
+    ;; --- 1. Подтверждение выключения, пока есть активное подключение ---
+    (for z in {wf_confirm == 1 ? "[1]" : "[]"}
+      (box :orientation "vertical" :space-evenly false :class "wf-ask"
+        (label :class "wf-ask-title" :xalign 0 :text "Выключить Wi-Fi?")
+        (label :class "wf-ask-text" :xalign 0 :wrap true
+               :text "Активное подключение «${wf-ssid}» оборвётся. Профиль сети сохранится.")))
+    (for z in {wf_confirm == 1 ? "[1]" : "[]"}
+      (box :orientation "horizontal" :space-evenly false :class "wf-ask-row" :halign "fill"
+        (button :class "wf-btn danger" :hexpand true :timeout "5s"
+          :onclick "$HOME/eww-island/adapters/x11/wifi.sh radio off"
+          (label :text "Выключить"))
+        (button :class "wf-btn ghost" :hexpand true :timeout "5s"
+          :onclick "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update wf_confirm=0"
+          (label :text "Отмена"))))
+    ;; --- 2. Радио выключено: списка нет, вместо него пустое состояние ---
+    (for z in {wf-radio != "on" && wf_confirm == 0 ? "[1]" : "[]"}
+      (box :orientation "vertical" :space-evenly false :class "wf-off" :vexpand true :valign "center"
+        (label :class "wf-off-ic" :text "")
+        (label :class "wf-off-title" :text "Wi-Fi выключен")
+        (label :class "wf-off-text" :text "Список сетей скрыт, пока радио выключено")
+        (button :class "wf-btn accent" :timeout "5s"
+          :onclick "$HOME/eww-island/adapters/x11/wifi.sh radio on"
+          (label :text "Включить"))))
+    ;; --- 3. Обычный режим: переключатель, активная сеть, список ---
+    (for z in {wf-radio == "on" && wf_confirm == 0 ? "[1]" : "[]"}
+      (box :orientation "vertical" :space-evenly false :class "wf-main"
+        (box :orientation "horizontal" :space-evenly false :class "wf-head" :halign "fill"
+          (image :class "wf-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${wf-level}.svg" :image-width 16 :image-height 16)
+          (box :orientation "vertical" :space-evenly false :hexpand true
+            (label :class "wf-ssid" :xalign 0 :text wf-ssid)
+            (label :class "wf-state" :xalign 0 :text "${wf-state} · сигнал ${wf-signal}%"))
+          ;; Переключатель радио: клик уходит в адаптер, он сам решает -
+          ;; выключить сразу или спросить подтверждение (есть активная сеть).
+          (button :class "wf-radio on" :timeout "5s"
+            :onclick "$HOME/eww-island/adapters/x11/wifi.sh radio-toggle"
+            (label :class "wf-radio-ic" :text "")))
+        (box :orientation "horizontal" :space-evenly false :class "wf-actions" :halign "fill"
+          ;; Отключение активной сети, профиль сохраняется.
+          (button :class "wf-btn ghost" :hexpand true :timeout "8s"
+            :onclick "$HOME/eww-island/adapters/x11/wifi.sh disconnect"
+            (label :text "Отключиться"))
+          ;; Перечитать список без смены радио: принудительный опрос defpoll.
+          (button :class "wf-btn ghost" :hexpand true :timeout "5s"
+            :onclick "$HOME/eww-island/adapters/x11/wifi.sh rescan"
+            (label :text "Обновить")))
+        (box :orientation "horizontal" :space-evenly false :class "wf-sep")
+        (scroll :vscroll true :hscroll false :height 200 :vexpand true :class "wf-scroll"
+          (box :orientation "vertical" :space-evenly false :class "wf-list"
+          (for net in {wf-radio == "on" && wf_confirm == 0 ? wf-list : "[]"}
+            ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
+            ;; Высота строки - минимальная (CSS), сама не растягивается.
+            (button :class {net.active ? "wf-net active" : "wf-net"}
+              :onclick "$HOME/eww-island/adapters/x11/wifi.sh connect ${net.idx}"
+              (box :orientation "horizontal" :space-evenly false :hexpand true
+                (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
+                (label :class "wf-net-name" :xalign 0 :halign "start" :hexpand true :text "${net.ssid}")
+                (label :class "wf-net-sig" :xalign 1 :halign "end" :text "${net.sig}%"))))))))))
 
 ;; --- вкладка «Снимок» ---
 ;; Кнопки запускают скрипт отвязанно (setsid -f): у кнопки Eww команда

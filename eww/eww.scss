@@ -592,7 +592,6 @@ window.panel-hub {
   padding: 10px 8px;
   border-radius: $r-row;
 }
-
 .wf-net:hover {
   background-color: $state-hover;
 }
@@ -621,6 +620,129 @@ window.panel-hub {
   min-width: 42px;
   color: $on-surface-variant;
   font-size: $t-caption;
+}
+
+// --- wifi control (step 1: radio switch, disconnect, confirmation) ---
+// Header radio switch: round chip at the right edge of the head row. "on"
+// state is the accent plate, so the eye reads it as "Wi-Fi is on".
+.wf-radio {
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 17px;
+  background-color: $surface-container;
+}
+
+.wf-radio:hover {
+  background-color: $surface-container-high;
+}
+
+.wf-radio.on {
+  background-color: $primary;
+}
+
+.wf-radio-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 15px;
+  color: $on-surface-variant;
+}
+
+.wf-radio.on .wf-radio-ic {
+  color: $surface;
+}
+
+// Two action rows under the header: quiet, equal width buttons.
+.wf-actions {
+  padding: 8px 0 0 0;
+}
+
+.wf-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  margin-right: 8px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+  color: $on-surface;
+  font-size: $t-secondary;
+}
+
+.wf-btn:last-child {
+  margin-right: 0;
+}
+
+.wf-btn:hover {
+  background-color: $surface-container-high;
+}
+
+// Quieter variant: transparent until hovered (Отключиться / Обновить).
+.wf-btn.ghost {
+  background-color: transparent;
+  color: $on-surface-variant;
+}
+
+.wf-btn.ghost:hover {
+  background-color: $state-hover;
+}
+
+// "Включить" in the empty state: the accent is the single call to action.
+.wf-btn.accent {
+  background-color: $primary;
+  color: $surface;
+}
+
+.wf-btn.accent:hover {
+  background-color: $primary;
+}
+
+// Destructive confirmation button (turn Wi-Fi off).
+.wf-btn.danger {
+  background-color: $error;
+  color: $surface;
+}
+
+// Empty state when the radio is off: centred glyph, title, hint, button.
+.wf-off {
+  padding: 40px 0 0 0;
+}
+
+.wf-off-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 34px;
+  color: $on-surface-variant;
+  padding-bottom: 10px;
+}
+
+.wf-off-title {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: 500;
+  padding-bottom: 4px;
+}
+
+.wf-off-text {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  padding-bottom: 16px;
+}
+
+// Confirmation block: title, wrapped explanation, two buttons.
+.wf-ask {
+  padding: 6px 2px 0 2px;
+}
+
+.wf-ask-title {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: 500;
+  padding-bottom: 6px;
+}
+
+.wf-ask-text {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+.wf-ask-row {
+  padding: 14px 0 0 0;
 }
 
 // --- hub: one panel with tabs (calendar / weather / wifi) ---
