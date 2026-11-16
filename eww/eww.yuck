@@ -146,11 +146,25 @@
     (box :class "proto-body" :hexpand true)
     (image :class "proto-corner-r" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-right.svg" :image-width 16 :image-height 16)))
 
-;; Хаб: одна панель с вкладками (календарь, погода, Wi-Fi), как в Noctalia.
+;; Хаб: одна панель с вкладками (календарь, погода, Wi-Fi, снимок), как в Noctalia.
 ;; hub_tab - индекс вкладки стека (stack :selected принимает число):
-;; 0 = календарь, 1 = погода, 2 = Wi-Fi. Имена (calendar/weather/wifi)
-;; использует panel.sh, в индекс они переводятся там же.
+;; 0 = календарь, 1 = погода, 2 = Wi-Fi, 3 = снимок. Имена (calendar/weather/
+;; wifi/shot) использует panel.sh, в индекс они переводятся там же.
 (defvar hub_tab 0)
+
+;; --- вкладка «Снимок» ---
+;; Задержка в секундах: 0, 3 или 5. Кнопки пишут сюда же.
+(defvar shot_delay 0)
+;; Миниатюра последнего снимка и его метка (YYYY-MM-DD_HH-MM-SS).
+;; Это defpoll, а не defvar: команда выполняется на старте, поэтому после
+;; `eww reload` миниатюра и метка восстанавливаются из кеша сами. После нового
+;; снимка adapters/x11/screenshot.sh обновляет обе через `eww update`, и вкладка
+;; перерисовывается без перезапуска. Путь уникален для каждого снимка: Eww
+;; кеширует картинку по пути и с постоянным именем показал бы старую.
+(defpoll shot_thumb :interval "1h" :initial ""
+  "ls -1t $HOME/.cache/eww-island/thumbs/last-*.png 2>/dev/null | head -1")
+(defpoll shot_stamp :interval "1h" :initial ""
+  "ls -1t $HOME/.cache/eww-island/thumbs/last-*.png 2>/dev/null | head -1 | sed 's#.*/last-##; s#\\.png$##'")
 
 ;; Кнопка вкладки в левой колонке хаба: обновляет hub_tab напрямую.
 (defwidget hub-tab-btn [idx glyph]
@@ -164,7 +178,8 @@
   (box :orientation "vertical" :space-evenly false :class "hub-rail"
     (hub-tab-btn :idx 0 :glyph "")
     (hub-tab-btn :idx 1 :glyph "")
-    (hub-tab-btn :idx 2 :glyph "")))
+    (hub-tab-btn :idx 2 :glyph "")
+    (hub-tab-btn :idx 3 :glyph "")))
 
 ;; Общая рамка панели: верх прямой (панель продолжает остров), низ скруглён.
 ;; Растяжка на обоих уровнях: содержимое панели занимает всё окно по высоте.
@@ -277,8 +292,60 @@
             (label :class "wf-net-name" :xalign 0 :halign "start" :hexpand true :text "${net.ssid}")
             (label :class "wf-net-sig" :xalign 1 :halign "end" :text "${net.sig}%"))))))))
 
-;; Хаб: вкладки calendar / weather / wifi в одном окне. Содержимое - общие
-;; виджеты cal-content / wx-content / wf-content. Растяжка по всей цепочке
+;; --- вкладка «Снимок» ---
+;; Кнопки запускают скрипт отвязанно (setsid -f): у кнопки Eww команда
+;; убивается по таймауту (по умолчанию 200 мс), а выбор области мышью и
+;; задержка длятся секунды. Скрипт сам закрывает хаб перед кадром, чтобы
+;; панель не попала на снимок.
+(defwidget shot-delay-btn [sec]
+  (button :class {shot_delay == sec ? "shot-seg active" : "shot-seg"}
+          :timeout "3s"
+          :onclick "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update shot_delay=${sec}"
+          (label :text "${sec} с")))
+
+(defwidget shot-content []
+  (box :orientation "vertical" :space-evenly false :class "shot-panel" :hexpand true :vexpand true
+    (label :class "shot-title" :xalign 0 :text "Снимок экрана")
+    (label :class "shot-hint" :xalign 0
+           :text "Область или Окно - выделить мышью, Esc отменяет")
+    ;; Три режима: область и окно - один и тот же import без -window,
+    ;; разные только подпись и подсказка.
+    (box :orientation "horizontal" :space-evenly false :class "shot-modes" :halign "fill"
+      (button :class "shot-btn" :hexpand true :timeout "10s"
+              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh area ${shot_delay} >/dev/null 2>&1"
+        (label :text "Область"))
+      (button :class "shot-btn" :hexpand true :timeout "10s"
+              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh window ${shot_delay} >/dev/null 2>&1"
+        (label :text "Окно"))
+      (button :class "shot-btn" :hexpand true :timeout "10s"
+              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh screen ${shot_delay} >/dev/null 2>&1"
+        (label :text "Весь экран")))
+    ;; Задержка 0/3/5 с, выбранная подсвечена акцентом.
+    (box :orientation "horizontal" :space-evenly false :class "shot-delay" :halign "fill"
+      (label :class "shot-delay-cap" :xalign 0 :hexpand true :text "Задержка")
+      (shot-delay-btn :sec 0)
+      (shot-delay-btn :sec 3)
+      (shot-delay-btn :sec 5))
+    ;; Миниатюра последнего снимка: 160 px по ширине, пропорции сохраняются.
+    (box :orientation "vertical" :space-evenly false :class "shot-thumb"
+         :halign "fill" :vexpand true :visible {shot_thumb != ""}
+      (label :class "shot-cap" :xalign 0 :text "Последний снимок")
+      (label :class "shot-stamp" :xalign 0 :text shot_stamp)
+      (box :orientation "vertical" :class "shot-img-box" :halign "center" :valign "center" :vexpand true
+        (image :class "shot-img" :path shot_thumb :image-width 160)))
+    ;; Пока снимков не было - вместо миниатюры пояснение.
+    (label :class "shot-empty" :vexpand true :valign "center"
+           :text "Снимков ещё нет" :visible {shot_thumb == ""})
+    (box :orientation "horizontal" :space-evenly false :class "shot-foot" :halign "fill"
+      (button :class "shot-btn ghost" :hexpand true :timeout "5s"
+              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh open >/dev/null 2>&1"
+        (label :text "Открыть"))
+      (button :class "shot-btn ghost" :hexpand true :timeout "5s"
+              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh folder >/dev/null 2>&1"
+        (label :text "Папка")))))
+
+;; Хаб: вкладки calendar / weather / wifi / shot в одном окне. Содержимое - общие
+;; виджеты cal-content / wx-content / wf-content / shot-content. Растяжка по всей цепочке
 ;; (окно -> panel-frame -> hub-panel -> stack -> вкладка): вкладка занимает
 ;; всё окно, размер окна от вкладки не зависит (scroll :height задаёт минимум).
 ;; Обёртка .hub-tab - один класс с одинаковыми отступами для всех вкладок.
@@ -305,4 +372,8 @@
         (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
                 :class "hub-tab-body"
           (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
-            (wf-content)))))))
+            (wf-content)))
+        (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
+                :class "hub-tab-body"
+          (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
+            (shot-content)))))))

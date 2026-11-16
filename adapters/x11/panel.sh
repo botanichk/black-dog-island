@@ -2,7 +2,7 @@
 # Выпадающая панель под островом, по его центру.
 # Повторный запуск для уже открытой панели закрывает её.
 # usage: panel.sh <окно> [примерная ширина]
-#        panel.sh panel-hub <calendar|weather|wifi>
+#        panel.sh panel-hub <calendar|weather|wifi|shot>
 # Ширину задаёт panel.sh (по острову), высоту - содержимое.
 set -eu
 
@@ -10,7 +10,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 EWW="$ROOT/build/target/release/eww"
 CONF="$ROOT/eww"
 
-[ -n "${1:-}" ] || { echo "usage: panel.sh <window> [width] | panel.sh panel-hub <calendar|weather|wifi>" >&2; exit 2; }
+[ -n "${1:-}" ] || { echo "usage: panel.sh <window> [width] | panel.sh panel-hub <calendar|weather|wifi|shot>" >&2; exit 2; }
 NAME=$1
 # Для хаба второй аргумент - вкладка, ширина не нужна (берётся с острова).
 HUB_TAB=${2:-}
@@ -22,12 +22,13 @@ win_geo() {
   wmctrl -lG 2>/dev/null | awk -v t="$1" '$0 ~ (t "$") {print $3, $4, $5, $6; exit}'
 }
 
-# Имя вкладки хаба -> индекс стека hub_tab (0/1/2).
+# Имя вкладки хаба -> индекс стека hub_tab (0..3).
 tab_index() {
   case "$1" in
     calendar) echo 0 ;;
     weather)  echo 1 ;;
     wifi)     echo 2 ;;
+    shot)     echo 3 ;;
     *)        echo "" ;;
   esac
 }

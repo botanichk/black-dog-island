@@ -630,6 +630,120 @@ window.panel-hub {
   min-height: 358px;
 }
 
+// --- hub: screenshot tab (step 3) ---
+// Three mode buttons, a delay switch, the latest thumbnail and two footer
+// actions. Everything is plain CssBox/button: no flex, so equal widths come
+// from hexpand in yuck. Labels in Russian are set in yuck, CSS stays ASCII.
+.shot-panel {
+  background-color: transparent;
+  padding: 0;
+}
+
+.shot-title {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: 500;
+}
+
+.shot-hint {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  padding: 4px 0 12px 0;
+}
+
+// Mode buttons: tonal containers, one state layer on hover.
+.shot-btn {
+  min-height: 34px;
+  padding: 0 14px;
+  margin-right: 8px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+  color: $on-surface;
+  font-size: $t-secondary;
+}
+
+.shot-btn:hover {
+  background-color: $surface-container-high;
+}
+
+// Footer actions: quieter than the primary modes.
+.shot-btn.ghost {
+  background-color: transparent;
+  color: $on-surface-variant;
+}
+
+.shot-btn.ghost:hover {
+  background-color: $state-hover;
+}
+
+// Delay switch: caption at the left, three small segmented buttons at the right.
+.shot-delay {
+  padding: 12px 0 0 0;
+}
+
+.shot-delay-cap {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+.shot-seg {
+  min-width: 40px;
+  min-height: 26px;
+  padding: 0 8px;
+  margin-left: 6px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+.shot-seg:hover {
+  background-color: $surface-container-high;
+}
+
+.shot-seg.active {
+  background-color: $primary;
+  color: $surface;
+}
+
+// Latest thumbnail: tonal card, image centred and scaled by width only.
+.shot-thumb {
+  background-color: $surface-container;
+  border-radius: $r-card;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+
+.shot-cap {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  font-weight: 500;
+}
+
+.shot-stamp {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  padding-bottom: 6px;
+}
+
+.shot-img-box {
+  padding-top: 2px;
+}
+
+// Empty state before the first shot: same card, muted caption.
+.shot-empty {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+  background-color: $surface-container;
+  border-radius: $r-card;
+  padding: 20px;
+  margin-top: 12px;
+}
+
+.shot-foot {
+  padding-top: 12px;
+}
+
 // --- prototype window for the concave corners (stage 2, unused) ---
 window.proto-corners {
   background: transparent;
