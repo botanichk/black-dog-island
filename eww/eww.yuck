@@ -340,6 +340,11 @@
       (button :class "shot-btn ghost" :hexpand true :timeout "5s"
               :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh open >/dev/null 2>&1"
         (label :text "Открыть"))
+      ;; xclip остаётся в памяти и держит selection, поэтому кнопка отвязана:
+      ;; иначе Eww убьёт команду по таймауту и буфер опустеет.
+      (button :class "shot-btn ghost" :hexpand true :timeout "5s"
+              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh copy >/dev/null 2>&1"
+        (label :text "Копировать"))
       (button :class "shot-btn ghost" :hexpand true :timeout "5s"
               :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh folder >/dev/null 2>&1"
         (label :text "Папка")))))

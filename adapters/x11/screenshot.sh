@@ -1,7 +1,7 @@
 #!/bin/sh
 # Снимок экрана для вкладки «Снимок» хаба (этап 6, шаг 3).
 # usage: screenshot.sh area|window|screen [задержка 0|3|5]
-#        screenshot.sh open|folder
+#        screenshot.sh open|folder|copy
 #
 # area и window - один и тот же вызов import без -window: рамка мышью,
 # клик по окну снимает окно. Разные только подписи в интерфейсе.
@@ -34,9 +34,22 @@ case "$mode" in
     exec xdg-open "$SHOTS" ;;
   folder)
     exec xdg-open "$SHOTS" ;;
+  copy)
+    # «Копировать»: последний снимок в буфер обмена как изображение.
+    # xclip после чтения файла остаётся в памяти и отдаёт selection другим
+    # приложениям, поэтому кнопка запускает скрипт через setsid -f: иначе Eww
+    # убьёт команду по таймауту и буфер опустеет.
+    last=
+    [ -s "$LASTPATH" ] && last=$(cat "$LASTPATH")
+    # Снимков ещё нет - ничего не делаем и не падаем.
+    if [ -z "$last" ] || [ ! -s "$last" ]; then
+      exit 0
+    fi
+    command -v xclip >/dev/null 2>&1 || { echo "xclip не установлен" >&2; exit 1; }
+    exec xclip -selection clipboard -t image/png -i "$last" ;;
   area|window|screen) ;;
   *)
-    echo "usage: screenshot.sh area|window|screen [0|3|5] | open | folder" >&2
+    echo "usage: screenshot.sh area|window|screen [0|3|5] | open | folder | copy" >&2
     exit 2 ;;
 esac
 
