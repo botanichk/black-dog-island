@@ -559,9 +559,9 @@ window.panel-hub {
   background-color: $state-hover;
 }
 
-// Step 1: neutral active plate; step 2 will move it to $primary.
+// Active tab: accent plate, like a selected navigation-rail item.
 .hub-tab-btn.active {
-  background-color: $surface-container-high;
+  background-color: $primary;
 }
 
 // Tab icons are Nerd Font glyphs inside labels (no SVG for tab icons).
@@ -571,8 +571,9 @@ window.panel-hub {
   color: $on-surface-variant;
 }
 
+// On the accent plate the glyph flips to dark (on-primary), stays readable.
 .hub-tab-btn.active .hub-ic {
-  color: $primary;
+  color: $surface;
 }
 
 // Root box of every hub tab (calendar/weather/wifi): one class, equal padding
