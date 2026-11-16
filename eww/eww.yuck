@@ -107,6 +107,17 @@
       ;; ширина окна держится константой ($island-w).
       (box :hexpand true)
       (box :orientation "horizontal" :space-evenly false :class "right"
+        ;; Порядок правой группы задан владельцем: «Главная», раскладка, обои,
+        ;; часы, громкость. Слева от группы - воркспейсы, трей и растяжка.
+        ;;
+        ;; «Главная»: открывает хаб на вкладке home. panel.sh сам решает -
+        ;; открыть, переключить или закрыть. Кнопка подсвечена, пока хаб
+        ;; открыт именно на главной (panel_open + hub_tab), как активная
+        ;; вкладка в колонке. :timeout 3s - окно панели появляется не сразу.
+        (button :class {panel_open == "true" && hub_tab == 0 ? "home-btn active" : "home-btn"}
+          :timeout "3s"
+          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-hub home"
+          (label :class "home-btn-ic" :text ""))
         (button :class "layout" :onclick "$HOME/eww-island/adapters/x11/layout.sh next" layout)
         ;; Обои: глиф Meslo Nerd Font (картинка, U+F03E), как у остальных
         ;; кнопок острова. Команда запуска живёт в adapters/x11/wallpaper.sh:

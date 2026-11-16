@@ -269,6 +269,35 @@ menu separator {
   background-color: $surface-container-high;
 }
 
+// "Home" button on the island: same tonal chip as the wallpaper button next
+// to it, so the right group reads as one row of controls. While the hub is
+// open on the home tab the chip switches to the accent plate (active tab look).
+.home-btn {
+  min-width: 24px;
+  margin-right: 8px;
+  padding: 3px 8px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+}
+
+.home-btn:hover {
+  background-color: $surface-container-high;
+}
+
+.home-btn.active {
+  background-color: $primary;
+}
+
+.home-btn-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 15px;
+  color: $on-surface-variant;
+}
+
+.home-btn.active .home-btn-ic {
+  color: $surface;
+}
+
 .wall-ic {
   font-family: "MesloLGSDZ Nerd Font Mono";
   font-size: 16px;
