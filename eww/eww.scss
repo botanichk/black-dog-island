@@ -250,9 +250,6 @@ menu separator {
 }
 
 // Panel window itself is transparent: panel-frame draws shape and color.
-window.panel-calendar,
-window.panel-weather,
-window.panel-wifi,
 window.panel-hub {
   background: transparent;
   border: none;
@@ -265,40 +262,20 @@ window.panel-hub {
   border-radius: 0;
 }
 
+// Tab content padding comes from the .hub-tab wrapper (14 px on all sides,
+// see yuck); these boxes only carry the transparent background.
 .cal-panel,
 .wx-panel,
 .wf-panel {
   background-color: transparent;
-  padding: 10px 8px 16px 8px;
+  padding: 0;
 }
 
-.cal-panel,
-.wx-panel {
-  min-width: 200px;
-}
-
-// Weather panel has its own inner spacing: two columns need a tighter frame.
-.wx-panel {
-  padding: 10px 10px 14px 10px;
-}
-
-// Panel headings: Material title medium (15 px / 500).
-.cal-title,
+// Wi-Fi heading: Material title medium (15 px / 500).
 .wf-ssid {
   color: $on-surface;
   font-size: $t-title;
   font-weight: 500;
-}
-
-.cal-title {
-  padding: 2px 4px;
-}
-
-// Full date line under the month heading (caption tone, 12 px).
-.cal-full {
-  color: $on-surface-variant;
-  font-size: $t-secondary;
-  padding: 0 4px 10px 4px;
 }
 
 // --- "Today" card next to the calendar (hub tab) ---
@@ -329,14 +306,6 @@ window.panel-hub {
   color: $on-surface-variant;
   font-size: $t-secondary;
   padding-top: 2px;
-}
-
-// Inside the hub the tab wrapper (.hub-tab) owns the padding; the old panels
-// keep their own spacing. Without this the tab content would be padded twice.
-.hub-tab .cal-panel,
-.hub-tab .wx-panel,
-.hub-tab .wf-panel {
-  padding: 0;
 }
 
 // Calendar grid: GTK widget raised to a tonal card, selected day in accent.

@@ -173,7 +173,7 @@
 ;; :windowtype utility - xfwm4 не центрирует такие окна, а ставит их сразу по --pos:
 ;; панель появляется уже под островом, без прыжка из центра экрана. Фокус utility
 ;; получает, поэтому unfocus-close работает.
-;; Содержимое календаря: общее для вкладки хаба и старой панели.
+;; Содержимое календаря: используется вкладкой хаба.
 ;; Слева сам календарь (растягивается), справа карточка "Сегодня":
 ;; число крупно, под ним строка даты (из неё день недели) и месяц с годом.
 ;; Все данные - существующие переменные, новых скриптов нет.
@@ -187,15 +187,6 @@
       (label :class "cal-today-num" :text cal-day)
       (label :class "cal-today-dow" :text cal-full)
       (label :class "cal-today-my" :text cal-month-name))))
-
-(defwindow panel-calendar [w]
-  :monitor 0
-  :geometry (geometry :x "0px" :y "50px" :width w)
-  :stacking "fg"
-  :windowtype "utility"
-  :unfocus-close true
-  (panel-frame
-    (cal-content)))
 
 ;; Выпадающая панель погоды: текущая погода и прогноз на 4 дня.
 ;; Открывается по клику на индикатор погоды в острове (adapters/x11/panel.sh).
@@ -213,7 +204,7 @@
 ;; Панель погоды в духе Noctalia: две колонки, слева текущие условия и детали,
 ;; справа прогноз на 4 дня. Ширины: левая колонка фиксированная (GTK3 CSS не
 ;; умеет ни flex, ни проценты), правая добирает остаток через hexpand.
-;; Содержимое погоды: общее для вкладки хаба и старой панели.
+;; Содержимое погоды: используется вкладкой хаба.
 (defwidget wx-content []
   (box :orientation "horizontal" :space-evenly false :class "wx-panel" :halign "fill"
     ;; --- левая колонка: сейчас + детали; обе карточки vexpand - делят высоту ---
@@ -248,20 +239,11 @@
       (wday :icon w-d2icon :name w-d2name :desc w-d2desc :temp "${w-d2temp}°")
       (wday :icon w-d3icon :name w-d3name :desc w-d3desc :temp "${w-d3temp}°"))))
 
-(defwindow panel-weather [w]
-  :monitor 0
-  :geometry (geometry :x "0px" :y "50px" :width w)
-  :stacking "fg"
-  :windowtype "utility"
-  :unfocus-close true
-  (panel-frame
-    (wx-content)))
-
 ;; Выпадающая панель Wi-Fi: текущая сеть и список доступных.
 ;; Список приходит из адаптера как JSON-массив, цикл "for" разворачивает его
 ;; в строки. Клик по сети подключается к ней (nmcli умеет подключаться к сетям
 ;; с сохранённым профилем; к остальным нужен пароль, его ввести негде).
-;; Содержимое Wi-Fi: общее для вкладки хаба и старой панели.
+;; Содержимое Wi-Fi: используется вкладкой хаба.
 (defwidget wf-content []
   (box :orientation "vertical" :space-evenly false :class "wf-panel"
     (box :orientation "horizontal" :space-evenly false :class "wf-head" :halign "fill"
@@ -280,15 +262,6 @@
             (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
             (label :class "wf-net-name" :xalign 0 :halign "start" :hexpand true :text "${net.ssid}")
             (label :class "wf-net-sig" :xalign 1 :halign "end" :text "${net.sig}%"))))))))
-
-(defwindow panel-wifi [w]
-  :monitor 0
-  :geometry (geometry :x "0px" :y "50px" :width w)
-  :stacking "fg"
-  :windowtype "utility"
-  :unfocus-close true
-  (panel-frame
-    (wf-content)))
 
 ;; Хаб: вкладки calendar / weather / wifi в одном окне. Содержимое - общие
 ;; виджеты cal-content / wx-content / wf-content. Растяжка по всей цепочке
