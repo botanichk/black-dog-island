@@ -32,6 +32,12 @@ if timeout 3 "$EWW" --config "$CONF" ping >/dev/null 2>&1; then
   echo "демон Eww уже работает, использую существующий"
 else
   echo "запускаю демон Eww"
+  # Лог Eww дописывается между запусками: в хвосте копятся строки прошлых
+  # сессий ("kill command" и т.п.) и путают проверки. Чистим только при
+  # старте нового демона; при живом демоне (ветка выше) логи не трогаем.
+  for f in "${XDG_CACHE_HOME:-$HOME/.cache}/eww/eww_"*.log; do
+    [ -f "$f" ] && : > "$f"
+  done
   ( timeout 30 "$EWW" --config "$CONF" daemon >/dev/null 2>&1 || true ) &
   i=0
   while [ "$i" -lt $((PING_TIMEOUT * 10)) ]; do
