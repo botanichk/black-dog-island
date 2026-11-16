@@ -60,11 +60,12 @@ if wmctrl -l 2>/dev/null | grep -q ' Eww - panel-'; then
   tab=$("$EWW" --config "$CONF" state --all 2>/dev/null \
         | awk -F': ' '$1 == "hub_tab" {print $2; exit}' || true)
   case "${tab:-0}" in
-    0) name=calendar ;;
-    1) name=weather ;;
-    2) name=wifi ;;
-    3) name=shot ;;
-    *) name=calendar ;;
+    0) name=home ;;
+    1) name=calendar ;;
+    2) name=weather ;;
+    3) name=wifi ;;
+    4) name=shot ;;
+    *) name=home ;;
   esac
   # panel.sh на той же вкладке закрывает хаб; запасной путь - прямой close.
   "$ROOT/adapters/x11/panel.sh" panel-hub "$name" >/dev/null 2>&1 \

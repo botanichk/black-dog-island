@@ -152,11 +152,83 @@
     (box :class "proto-body" :hexpand true)
     (image :class "proto-corner-r" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-right.svg" :image-width 16 :image-height 16)))
 
-;; Хаб: одна панель с вкладками (календарь, погода, Wi-Fi, снимок), как в Noctalia.
+;; Хаб: одна панель с вкладками (главная, календарь, погода, Wi-Fi, снимок), как в Noctalia.
 ;; hub_tab - индекс вкладки стека (stack :selected принимает число):
-;; 0 = календарь, 1 = погода, 2 = Wi-Fi, 3 = снимок. Имена (calendar/weather/
-;; wifi/shot) использует panel.sh, в индекс они переводятся там же.
+;; 0 = главная, 1 = календарь, 2 = погода, 3 = Wi-Fi, 4 = снимок. Имена
+;; (home/calendar/weather/wifi/shot) использует panel.sh, в индекс они
+;; переводятся там же.
 (defvar hub_tab 0)
+
+;; --- вкладка «Главная» ---
+;; Одна команда раз в 2 с на все состояния вкладки: шесть отдельных defpoll
+;; запускали бы шесть процессов на каждый тик. JSON разбирается выражениями
+;; Eww (home.volume, home.wifi, ...).
+;; :initial с полным набором ключей обязателен: до первого опроса цикл и
+;; :value читают значения при сборке, и отсутствующий ключ даёт ошибку разбора.
+(defpoll home :interval "2s"
+  :initial "{\"wifi\":\"no\",\"bt\":\"no\",\"mute\":\"no\",\"volume\":0,\"brightness\":0,\"temp\":0,\"charging\":\"no\"}"
+  "$HOME/eww-island/adapters/system/home.sh all")
+
+;; Плитка-переключатель: иконка сверху, подпись снизу, активное состояние -
+;; плашка $primary. Клик уходит в adapters/system/home.sh set ...
+(defwidget home-tile [glyph name on onclick]
+  (button :class {on == "on" ? "home-tile active" : "home-tile"}
+          :hexpand true :timeout "5s" :onclick onclick
+    (box :orientation "vertical" :space-evenly false :class "home-tile-in" :halign "center" :valign "center"
+      (label :class "home-tile-ic" :text glyph)
+      (label :class "home-tile-name" :text name))))
+
+;; Строка ползунка: глиф, scale на всю ширину, число процентов справа.
+(defwidget home-slider [glyph value onclick]
+  (box :orientation "horizontal" :space-evenly false :class "home-row" :halign "fill"
+    (label :class "home-glyph" :text glyph)
+    (scale :class "home-scale" :hexpand true :timeout "2s"
+           :value value :min 0 :max 100 :round-digits 0
+           :onchange onclick)
+    (label :class "home-pct" :text "${round(value, 0)}%")))
+
+;; Строка системы: глиф, название, полоска (progress), значение справа.
+(defwidget home-sys [glyph name value text]
+  (box :orientation "horizontal" :space-evenly false :class "home-sys" :halign "fill"
+    (label :class "home-glyph" :text glyph)
+    (label :class "home-sys-name" :text name)
+    (progress :class "home-bar" :hexpand true :valign "center" :value value)
+    (label :class "home-val" :text text)))
+
+(defwidget home-content []
+  (box :orientation "vertical" :space-evenly false :class "home-panel" :hexpand true :vexpand true
+    (label :class "home-title" :xalign 0 :text "Быстрые настройки")
+    ;; Верхний ряд плиток на всю ширину: три равные кнопки.
+    (box :orientation "horizontal" :space-evenly false :class "home-tiles" :halign "fill"
+      (home-tile :glyph ""
+                 :name "Wi-Fi" :on {home.wifi}
+                 :onclick "$HOME/eww-island/adapters/system/home.sh set wifi toggle")
+      (home-tile :glyph ""
+                 :name "Bluetooth" :on {home.bt == "yes" ? "on" : "off"}
+                 :onclick "$HOME/eww-island/adapters/system/home.sh set bt toggle")
+      (home-tile :glyph ""
+                 :name "Звук" :on {home.mute == "no" ? "on" : "off"}
+                 :onclick "$HOME/eww-island/adapters/system/home.sh set mute toggle"))
+    ;; Ползунки: громкость и яркость, 0-100 (яркость не ниже 5 % - в скрипте).
+    (box :orientation "vertical" :space-evenly false :class "home-sliders" :halign "fill"
+      (home-slider :glyph ""
+                   :value {home.volume}
+                   :onclick "$HOME/eww-island/adapters/system/home.sh set volume {}")
+      (home-slider :glyph ""
+                   :value {home.brightness}
+                   :onclick "$HOME/eww-island/adapters/system/home.sh set brightness {}"))
+    ;; Блок системы: CPU, RAM, температура, батарея (со значком зарядки).
+    (box :orientation "vertical" :space-evenly false :class "home-system" :halign "fill" :vexpand true :valign "start"
+      (label :class "home-sub" :xalign 0 :text "Система")
+      (home-sys :glyph ""
+                :name "CPU" :value {round(EWW_CPU.avg, 0)} :text "${round(EWW_CPU.avg, 0)}%")
+      (home-sys :glyph ""
+                :name "RAM" :value {round(EWW_RAM.used_mem_perc, 0)} :text "${round(EWW_RAM.used_mem_perc, 0)}%")
+      (home-sys :glyph ""
+                :name "Температура" :value {home.temp} :text "${home.temp}°C")
+      (home-sys :glyph {home.charging == "yes" ? "" : ""}
+                :name "Батарея" :value {round(EWW_BATTERY.total_avg, 0)}
+                :text "${round(EWW_BATTERY.total_avg, 0)}%"))))
 
 ;; --- вкладка «Снимок» ---
 ;; Задержка в секундах: 0, 3 или 5. Кнопки пишут сюда же.
@@ -182,10 +254,11 @@
 ;; Левая колонка вкладок хаба (~56 px).
 (defwidget hub-rail []
   (box :orientation "vertical" :space-evenly false :class "hub-rail"
-    (hub-tab-btn :idx 0 :glyph "")
-    (hub-tab-btn :idx 1 :glyph "")
-    (hub-tab-btn :idx 2 :glyph "")
-    (hub-tab-btn :idx 3 :glyph "")))
+    (hub-tab-btn :idx 0 :glyph "")
+    (hub-tab-btn :idx 1 :glyph "")
+    (hub-tab-btn :idx 2 :glyph "")
+    (hub-tab-btn :idx 3 :glyph "")
+    (hub-tab-btn :idx 4 :glyph "")))
 
 ;; Общая рамка панели: верх прямой (панель продолжает остров), низ скруглён.
 ;; Растяжка на обоих уровнях: содержимое панели занимает всё окно по высоте.
@@ -372,6 +445,10 @@
       (hub-rail)
       (stack :selected hub_tab :transition "crossfade" :same-size true
              :hexpand true :vexpand true
+        (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
+                :class "hub-tab-body"
+          (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
+            (home-content)))
         (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
                 :class "hub-tab-body"
           (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true

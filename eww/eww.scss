@@ -650,6 +650,153 @@ window.panel-hub {
   min-height: 358px;
 }
 
+// --- hub: home tab (quick settings) ---
+// Three toggle tiles, two sliders and a system block. GTK3 has no flex/grid,
+// so equal widths come from hexpand in yuck; the row heights are fixed by CSS.
+.home-panel {
+  background-color: transparent;
+  padding: 0;
+}
+
+.home-title {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: 500;
+}
+
+.home-tiles {
+  padding: 10px 0 4px 0;
+}
+
+// Toggle tile: icon above the caption, tonal container, accent when on.
+.home-tile {
+  min-height: 58px;
+  padding: 6px 4px;
+  margin-right: 8px;
+  border-radius: $r-row;
+  background-color: $surface-container;
+}
+
+.home-tile:last-child {
+  margin-right: 0;
+}
+
+.home-tile:hover {
+  background-color: $surface-container-high;
+}
+
+// Active tile: accent plate, glyph and caption flip to the dark surface color.
+.home-tile.active {
+  background-color: $primary;
+}
+
+.home-tile-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 18px;
+  color: $on-surface-variant;
+  padding-bottom: 2px;
+}
+
+.home-tile-name {
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+.home-tile.active .home-tile-ic,
+.home-tile.active .home-tile-name {
+  color: $surface;
+}
+
+// Sliders: glyph, scale filling the row, percentage at the right edge.
+.home-sliders {
+  padding: 6px 0 2px 0;
+}
+
+.home-row {
+  padding: 2px 0;
+}
+
+.home-glyph {
+  min-width: 22px;
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 14px;
+  color: $on-surface-variant;
+  padding-right: 8px;
+}
+
+.home-pct {
+  min-width: 42px;
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+// GtkScale: thin trough, accent fill, round knob. GTK3 draws the fill from the
+// "highlight" node, so both the trough and the highlight get the radius.
+.home-scale trough {
+  min-height: 4px;
+  border-radius: 999px;
+  background-color: $surface-highest;
+}
+
+.home-scale highlight {
+  border-radius: 999px;
+  background-color: $primary;
+}
+
+.home-scale slider {
+  min-width: 12px;
+  min-height: 12px;
+  margin: -5px 0;
+  border-radius: 999px;
+  background-color: $on-surface;
+  border: none;
+  box-shadow: none;
+}
+
+// System block: caption, then four rows with a progress bar in the middle.
+.home-system {
+  padding-top: 10px;
+}
+
+.home-sub {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  font-weight: 500;
+  padding-bottom: 4px;
+}
+
+.home-sys {
+  padding: 3px 0;
+}
+
+.home-sys-name {
+  min-width: 96px;
+  color: $on-surface;
+  font-size: $t-secondary;
+  padding-right: 8px;
+}
+
+.home-val {
+  min-width: 52px;
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+// Progress bar: the width comes from min-width on the trough, the height from
+// the trough itself (GTK3 ignores :height on progressbar when a minimum is set).
+.home-bar trough {
+  min-height: 6px;
+  min-width: 60px;
+  border-radius: 999px;
+  background-color: $surface-highest;
+}
+
+.home-bar progress {
+  min-height: 6px;
+  border-radius: 999px;
+  background-color: $primary;
+}
+
 // --- hub: screenshot tab (step 3) ---
 // Three mode buttons, a delay switch, the latest thumbnail and two footer
 // actions. Everything is plain CssBox/button: no flex, so equal widths come
