@@ -11,6 +11,8 @@
 #
 # Порядок схем для перебора - theme/schemes/*.json, отсортированные по имени;
 # default всегда первая, чтобы переключение из light вело обратно в default.
+# Схемы палитр (p-*, u-*, wallpaper) в перебор не входят: они выводятся из
+# палитры и режима, их выбор живёт во вкладке «Цвета» (theme/colors-pick.sh).
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -30,7 +32,10 @@ for arg in "$@"; do
 done
 
 # Список схем: default первой, остальные по алфавиту.
-SCHEMES=$( { echo default; ls "$ROOT/theme/schemes" | sed 's/\.json$//' | grep -v '^default$' | sort; } | tr '\n' ' ')
+SCHEMES=$( { echo default; ls "$ROOT/theme/schemes" \
+  | sed 's/\.json$//' \
+  | grep -v -e '^default$' -e '^p-' -e '^u-' -e '^wallpaper$' \
+  | sort; } | tr '\n' ' ')
 CUR=$(tr -d ' \t\r\n' < "$ROOT/theme/current" 2>/dev/null || echo default)
 [ -n "$CUR" ] || CUR=default
 
@@ -58,7 +63,8 @@ if wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub'; then
   idx=$("$EWW" --config "$ROOT/eww" state 2>/dev/null | awk -F': ' '$1=="hub_tab"{print $2; exit}')
   case "${idx:-0}" in
     0) tab=home ;; 1) tab=calendar ;; 2) tab=weather ;;
-    3) tab=wifi ;; 4) tab=shot ;; 5) tab=media ;; *) tab=home ;;
+    3) tab=wifi ;; 4) tab=shot ;; 5) tab=media ;; 6) tab=colors ;;
+    *) tab=home ;;
   esac
 fi
 

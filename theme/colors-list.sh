@@ -3,17 +3,24 @@
 #
 # usage: theme/colors-list.sh
 #
-# Печатает JSON-массив, который читает `(for p in ...)` в eww.yuck. Цвета уже
-# подобраны под режим из theme/mode: превью показывает ОДИН вариант палитры,
-# тот, что сейчас выбран (тёмный или светлый), а не оба сразу.
+# Печатает JSON для вкладки «Цвета». Цвета уже подобраны под режим из
+# theme/mode: превью показывает ОДИН вариант палитры, тот, что сейчас выбран
+# (тёмный или светлый), а не оба сразу.
 #
-#   [{"id":"n-island","label":"Остров","c1":"#141414","c2":"#1c1e22",
-#     "c3":"#4fc3f7","cur":1}, ...]
+#   {"builtin": [[карточка, карточка, карточка], [...]],
+#    "user":    [[карточка, карточка], ...]}
+#
+#   карточка: {"id":"p-noctalia","label":"Noctalia","c1":"#070722",
+#              "c2":"#11112d","c3":"#fff59b","cur":1}
 #
 #   id  - значение для theme/colors-pick.sh palette <id>;
 #   c1  - surface, c2 - surface_container (второй уровень), c3 - primary
 #         (после подгонки контраста, то есть ровно тот, что попадёт в интерфейс);
 #   cur - 1 у действующей схемы.
+#
+# Строки нарезаны заранее: в GTK3 нет сетки, а вложенные for в yuck читать
+# тяжело. Встроенные - по 3 в ряд (карточка 165 px), свои - по 2 (251 px):
+# у своих имена произвольной длины, им нужно место.
 #
 # Источники:
 #   n-island          - наши схемы default.json / light.json (вид до шага 11);
@@ -109,6 +116,20 @@ if user_dir.is_dir():
              "label": pal["label"] if pal.get("label") != path.stem else label,
              "c1": c["surface"], "c2": c["surface_container"], "c3": c["primary"]})
 
+
+def chunk(seq, size):
+    return [seq[i:i + size] for i in range(0, len(seq), size)]
+
+
+# наша схема всегда первая и одна: у неё отдельный ряд, чтобы не ломать сетку
+head = items[:1]
+rest = items[1:]
+user = [x for x in rest if x["id"].startswith("u-")]
+builtin = [x for x in rest if not x["id"].startswith("u-")]
+
+out = {"builtin": chunk(builtin, 3), "user": chunk(user, 2)}
+if head:
+    out["native"] = head[0]
 # JSON в одну строку: Eww читает его целиком, переносы ему не нужны.
-sys.stdout.write(json.dumps(items, ensure_ascii=False, separators=(",", ":")) + "\n")
+sys.stdout.write(json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n")
 PY
