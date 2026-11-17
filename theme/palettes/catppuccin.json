@@ -1,0 +1,43 @@
+{
+  "_comment": "Встроенная палитра Noctalia «Catppuccin», тег v5.4.1, источник src/theme/builtin_palettes.cpp. Не править вручную: на острове это схема p-catppuccin.",
+  "name": "Catppuccin",
+  "label": "Catppuccin",
+  "roles": {
+    "dark": {
+      "primary": "#cba6f7",
+      "onPrimary": "#11111b",
+      "secondary": "#fab387",
+      "onSecondary": "#11111b",
+      "tertiary": "#94e2d5",
+      "onTertiary": "#11111b",
+      "error": "#f38ba8",
+      "onError": "#11111b",
+      "surface": "#1e1e2e",
+      "onSurface": "#cdd6f4",
+      "surfaceVariant": "#313244",
+      "onSurfaceVariant": "#a3b4eb",
+      "outline": "#4c4f69",
+      "shadow": "#11111b",
+      "hover": "#94e2d5",
+      "onHover": "#11111b"
+    },
+    "light": {
+      "primary": "#8839ef",
+      "onPrimary": "#eff1f5",
+      "secondary": "#fe640b",
+      "onSecondary": "#eff1f5",
+      "tertiary": "#40a02b",
+      "onTertiary": "#eff1f5",
+      "error": "#d20f39",
+      "onError": "#dce0e8",
+      "surface": "#eff1f5",
+      "onSurface": "#4c4f69",
+      "surfaceVariant": "#ccd0da",
+      "onSurfaceVariant": "#6c6f85",
+      "outline": "#a5adcb",
+      "shadow": "#dce0e8",
+      "hover": "#40a02b",
+      "onHover": "#eff1f5"
+    }
+  }
+}

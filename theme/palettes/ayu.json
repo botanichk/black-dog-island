@@ -1,0 +1,43 @@
+{
+  "_comment": "Встроенная палитра Noctalia «Ayu», тег v5.4.1, источник src/theme/builtin_palettes.cpp. Не править вручную: на острове это схема p-ayu.",
+  "name": "Ayu",
+  "label": "Ayu",
+  "roles": {
+    "dark": {
+      "primary": "#e6b450",
+      "onPrimary": "#0b0e14",
+      "secondary": "#aad94c",
+      "onSecondary": "#0b0e14",
+      "tertiary": "#39bae6",
+      "onTertiary": "#0b0e14",
+      "error": "#d95757",
+      "onError": "#0b0e14",
+      "surface": "#0b0e14",
+      "onSurface": "#d1d1c7",
+      "surfaceVariant": "#1e222a",
+      "onSurfaceVariant": "#8e959e",
+      "outline": "#565b66",
+      "shadow": "#000000",
+      "hover": "#39bae6",
+      "onHover": "#0b0e14"
+    },
+    "light": {
+      "primary": "#ff8f40",
+      "onPrimary": "#f8f9fa",
+      "secondary": "#86b300",
+      "onSecondary": "#f8f9fa",
+      "tertiary": "#55b4d4",
+      "onTertiary": "#f8f9fa",
+      "error": "#e65050",
+      "onError": "#f8f9fa",
+      "surface": "#f8f9fa",
+      "onSurface": "#42474c",
+      "surfaceVariant": "#e4e6e9",
+      "onSurfaceVariant": "#6e757c",
+      "outline": "#8a9199",
+      "shadow": "#f8f9fa",
+      "hover": "#55b4d4",
+      "onHover": "#f8f9fa"
+    }
+  }
+}

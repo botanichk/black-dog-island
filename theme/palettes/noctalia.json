@@ -1,0 +1,43 @@
+{
+  "_comment": "Встроенная палитра Noctalia «Noctalia», тег v5.4.1, источник src/theme/builtin_palettes.cpp. Не править вручную: на острове это схема p-noctalia.",
+  "name": "Noctalia",
+  "label": "Noctalia",
+  "roles": {
+    "dark": {
+      "primary": "#fff59b",
+      "onPrimary": "#0e0e43",
+      "secondary": "#a9aefe",
+      "onSecondary": "#0e0e43",
+      "tertiary": "#9bfece",
+      "onTertiary": "#0e0e43",
+      "error": "#fd4663",
+      "onError": "#0e0e43",
+      "surface": "#070722",
+      "onSurface": "#f3edf7",
+      "surfaceVariant": "#11112d",
+      "onSurfaceVariant": "#7c80b4",
+      "outline": "#21215f",
+      "shadow": "#070722",
+      "hover": "#9bfece",
+      "onHover": "#0e0e43"
+    },
+    "light": {
+      "primary": "#5d65f5",
+      "onPrimary": "#dadcff",
+      "secondary": "#8e93d8",
+      "onSecondary": "#dadcff",
+      "tertiary": "#0e0e43",
+      "onTertiary": "#fef29a",
+      "error": "#fd4663",
+      "onError": "#0e0e43",
+      "surface": "#e6e8fa",
+      "onSurface": "#0e0e43",
+      "surfaceVariant": "#eff0ff",
+      "onSurfaceVariant": "#4b55c8",
+      "outline": "#8288fc",
+      "shadow": "#f3edf7",
+      "hover": "#0e0e43",
+      "onHover": "#fef29a"
+    }
+  }
+}

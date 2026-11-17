@@ -1,0 +1,43 @@
+{
+  "_comment": "Встроенная палитра Noctalia «Gruvbox», тег v5.4.1, источник src/theme/builtin_palettes.cpp. Не править вручную: на острове это схема p-gruvbox.",
+  "name": "Gruvbox",
+  "label": "Gruvbox",
+  "roles": {
+    "dark": {
+      "primary": "#b8bb26",
+      "onPrimary": "#282828",
+      "secondary": "#fabd2f",
+      "onSecondary": "#282828",
+      "tertiary": "#83a598",
+      "onTertiary": "#282828",
+      "error": "#fb4934",
+      "onError": "#282828",
+      "surface": "#282828",
+      "onSurface": "#fbf1c7",
+      "surfaceVariant": "#3c3836",
+      "onSurfaceVariant": "#ebdbb2",
+      "outline": "#57514e",
+      "shadow": "#282828",
+      "hover": "#83a598",
+      "onHover": "#282828"
+    },
+    "light": {
+      "primary": "#98971a",
+      "onPrimary": "#fbf1c7",
+      "secondary": "#d79921",
+      "onSecondary": "#fbf1c7",
+      "tertiary": "#458588",
+      "onTertiary": "#fbf1c7",
+      "error": "#cc241d",
+      "onError": "#fbf1c7",
+      "surface": "#fbf1c7",
+      "onSurface": "#3c3836",
+      "surfaceVariant": "#ebdbb2",
+      "onSurfaceVariant": "#7c6f64",
+      "outline": "#bdae93",
+      "shadow": "#d5c4a1",
+      "hover": "#458588",
+      "onHover": "#fbf1c7"
+    }
+  }
+}

@@ -1,2 +1,6 @@
 build/
 eww/assets/weather-src/
+theme/schemes/p-*.json
+theme/schemes/u-*.json
+theme/schemes/wallpaper.json
+__pycache__/

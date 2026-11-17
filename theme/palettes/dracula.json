@@ -1,0 +1,43 @@
+{
+  "_comment": "Встроенная палитра Noctalia «Dracula», тег v5.4.1, источник src/theme/builtin_palettes.cpp. Не править вручную: на острове это схема p-dracula.",
+  "name": "Dracula",
+  "label": "Dracula",
+  "roles": {
+    "dark": {
+      "primary": "#bd93f9",
+      "onPrimary": "#282a36",
+      "secondary": "#ff79c6",
+      "onSecondary": "#4e1d32",
+      "tertiary": "#8be9fd",
+      "onTertiary": "#003543",
+      "error": "#ff5555",
+      "onError": "#282a36",
+      "surface": "#282a36",
+      "onSurface": "#f8f8f2",
+      "surfaceVariant": "#44475a",
+      "onSurfaceVariant": "#d6d8e0",
+      "outline": "#5a5e77",
+      "shadow": "#282a36",
+      "hover": "#8be9fd",
+      "onHover": "#003543"
+    },
+    "light": {
+      "primary": "#8332f4",
+      "onPrimary": "#ffffff",
+      "secondary": "#ff1399",
+      "onSecondary": "#ffffff",
+      "tertiary": "#0398b9",
+      "onTertiary": "#ffffff",
+      "error": "#ff5555",
+      "onError": "#282a36",
+      "surface": "#f8f8f2",
+      "onSurface": "#282a36",
+      "surfaceVariant": "#e6e6ea",
+      "onSurfaceVariant": "#44475a",
+      "outline": "#cacad3",
+      "shadow": "#d6d8e0",
+      "hover": "#0398b9",
+      "onHover": "#ffffff"
+    }
+  }
+}

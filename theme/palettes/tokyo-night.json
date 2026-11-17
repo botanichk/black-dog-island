@@ -1,0 +1,43 @@
+{
+  "_comment": "Встроенная палитра Noctalia «Tokyo-Night», тег v5.4.1, источник src/theme/builtin_palettes.cpp. Не править вручную: на острове это схема p-tokyo-night.",
+  "name": "Tokyo-Night",
+  "label": "Tokyo Night",
+  "roles": {
+    "dark": {
+      "primary": "#7aa2f7",
+      "onPrimary": "#16161e",
+      "secondary": "#bb9af7",
+      "onSecondary": "#16161e",
+      "tertiary": "#9ece6a",
+      "onTertiary": "#16161e",
+      "error": "#f7768e",
+      "onError": "#16161e",
+      "surface": "#1a1b26",
+      "onSurface": "#c0caf5",
+      "surfaceVariant": "#24283b",
+      "onSurfaceVariant": "#9aa5ce",
+      "outline": "#353d57",
+      "shadow": "#15161e",
+      "hover": "#9ece6a",
+      "onHover": "#16161e"
+    },
+    "light": {
+      "primary": "#2e7de9",
+      "onPrimary": "#e1e2e7",
+      "secondary": "#9854f1",
+      "onSecondary": "#e1e2e7",
+      "tertiary": "#587539",
+      "onTertiary": "#e1e2e7",
+      "error": "#f52a65",
+      "onError": "#e1e2e7",
+      "surface": "#e1e2e7",
+      "onSurface": "#3760bf",
+      "surfaceVariant": "#d0d5e3",
+      "onSurfaceVariant": "#6172b0",
+      "outline": "#b4b5b9",
+      "shadow": "#a8aecb",
+      "hover": "#587539",
+      "onHover": "#e1e2e7"
+    }
+  }
+}

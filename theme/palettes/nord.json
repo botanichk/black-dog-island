@@ -1,0 +1,43 @@
+{
+  "_comment": "Встроенная палитра Noctalia «Nord», тег v5.4.1, источник src/theme/builtin_palettes.cpp. Не править вручную: на острове это схема p-nord.",
+  "name": "Nord",
+  "label": "Nord",
+  "roles": {
+    "dark": {
+      "primary": "#8fbcbb",
+      "onPrimary": "#2e3440",
+      "secondary": "#88c0d0",
+      "onSecondary": "#2e3440",
+      "tertiary": "#5e81ac",
+      "onTertiary": "#2e3440",
+      "error": "#bf616a",
+      "onError": "#2e3440",
+      "surface": "#2e3440",
+      "onSurface": "#eceff4",
+      "surfaceVariant": "#3b4252",
+      "onSurfaceVariant": "#d8dee9",
+      "outline": "#505a70",
+      "shadow": "#2e3440",
+      "hover": "#5e81ac",
+      "onHover": "#2e3440"
+    },
+    "light": {
+      "primary": "#5e81ac",
+      "onPrimary": "#eceff4",
+      "secondary": "#64adc2",
+      "onSecondary": "#eceff4",
+      "tertiary": "#6fa9a8",
+      "onTertiary": "#eceff4",
+      "error": "#bf616a",
+      "onError": "#eceff4",
+      "surface": "#eceff4",
+      "onSurface": "#2e3440",
+      "surfaceVariant": "#e5e9f0",
+      "onSurfaceVariant": "#4c566a",
+      "outline": "#c5cedd",
+      "shadow": "#d8dee9",
+      "hover": "#6fa9a8",
+      "onHover": "#eceff4"
+    }
+  }
+}

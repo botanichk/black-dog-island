@@ -1,0 +1,43 @@
+{
+  "_comment": "Встроенная палитра Noctalia «Rosé Pine», тег v5.4.1, источник src/theme/builtin_palettes.cpp. Не править вручную: на острове это схема p-rosepine.",
+  "name": "Rosé Pine",
+  "label": "Rosé Pine",
+  "roles": {
+    "dark": {
+      "primary": "#ebbcba",
+      "onPrimary": "#191724",
+      "secondary": "#9ccfd8",
+      "onSecondary": "#191724",
+      "tertiary": "#31748f",
+      "onTertiary": "#e0def4",
+      "error": "#eb6f92",
+      "onError": "#191724",
+      "surface": "#191724",
+      "onSurface": "#e0def4",
+      "surfaceVariant": "#26233a",
+      "onSurfaceVariant": "#908caa",
+      "outline": "#403d52",
+      "shadow": "#191724",
+      "hover": "#524f67",
+      "onHover": "#e0def4"
+    },
+    "light": {
+      "primary": "#d7827e",
+      "onPrimary": "#faf4ed",
+      "secondary": "#56949f",
+      "onSecondary": "#faf4ed",
+      "tertiary": "#286983",
+      "onTertiary": "#faf4ed",
+      "error": "#b4637a",
+      "onError": "#faf4ed",
+      "surface": "#fffaf3",
+      "onSurface": "#575279",
+      "surfaceVariant": "#f2e9e1",
+      "onSurfaceVariant": "#797593",
+      "outline": "#dfdad9",
+      "shadow": "#faf4ed",
+      "hover": "#cecacd",
+      "onHover": "#575279"
+    }
+  }
+}
