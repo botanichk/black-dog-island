@@ -18,9 +18,11 @@
 Зависимости только из системы: python3. Ничего не ставим.
 """
 
+import hashlib
 import json
 import pathlib
 import re
+import sys
 
 # --- роли Noctalia (v5.4.1), 16 штук, в порядке файла ---------------------
 NOTCALIA_ROLES = [
@@ -214,6 +216,21 @@ def slug(text):
     return out or "scheme"
 
 
+def slug_unique(text):
+    """slug + короткий хвост, если имя потеряло смысл при переводе в ASCII.
+
+    Без хвоста «Своя тема» и «Моя тема» дают одинаковый пустой slug, а
+    «тест-ADW» и «ADW» - один и тот же «adw». Тогда две разные палитры
+    писали бы одну схему. Хвост считается от исходного имени, поэтому
+    он стабилен между запусками (не случайный)."""
+    base = slug(text)
+    has_non_ascii = any(ord(ch) > 127 for ch in str(text))
+    if base != "scheme" and not has_non_ascii:
+        return base
+    tail = hashlib.sha1(str(text).encode("utf-8")).hexdigest()[:6]
+    return "%s-%s" % (base, tail) if base else tail
+
+
 # --- схема нашего формата -------------------------------------------------
 
 def build_scheme(palette, mode, base_colors, base_alphas, base_gradients):
@@ -229,6 +246,38 @@ def build_scheme(palette, mode, base_colors, base_alphas, base_gradients):
         roles = palette["roles"].get(alt) or {}
     if not roles:
         raise ValueError("палитра «%s»: пустой режим %s" % (palette["name"], mode))
+
+    # Неполная палитра - обычное дело: у человека может быть только
+    # primary+surface, а у Noctalia при отсутствии роли подставляется
+    # прозрачный чёрный (мы так не хотим - получилось бы чёрное на чёрном).
+    # Поэтому недостающее выводим и говорим об этом в stderr.
+    missing = []
+    surface = roles.get("surface")
+    primary_raw = roles.get("primary")
+    if not surface or not primary_raw:
+        raise ValueError("палитра «%s»: нет %s"
+                         % (palette["name"],
+                            "surface" if not surface else "primary"))
+    if not roles.get("surfaceVariant"):
+        # следующий уровень после surface, как surface_container у Noctalia
+        roles["surfaceVariant"] = shift_lightness(
+            surface, 0.06 if rgb_to_hsl(surface)[2] < 0.5 else -0.06)
+        missing.append("surfaceVariant")
+    if not roles.get("onSurface"):
+        roles["onSurface"] = best_ink(surface)
+        missing.append("onSurface")
+    if not roles.get("onSurfaceVariant"):
+        roles["onSurfaceVariant"] = mix(roles["onSurface"], surface, 0.35)
+        missing.append("onSurfaceVariant")
+    if not roles.get("outline"):
+        roles["outline"] = mix(roles["surfaceVariant"], roles["onSurface"], 0.25)
+        missing.append("outline")
+    if not roles.get("error"):
+        roles["error"] = "#e5484d" if rgb_to_hsl(surface)[2] < 0.5 else "#b3261e"
+        missing.append("error")
+    if missing:
+        print("палитра «%s»: нет ролей %s - выведены по формулам"
+              % (palette["name"], ", ".join(missing)), file=sys.stderr)
 
     surface = roles["surface"]
     variant = roles["surfaceVariant"]
