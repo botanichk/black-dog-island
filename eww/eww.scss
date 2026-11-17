@@ -810,19 +810,6 @@ window.panel-hub {
   min-height: 8px;
 }
 
-// Theme switch (themes step 2): same footprint as a tab button, but never
-// gets the active plate - it is an action, not a tab.
-.hub-theme-btn {
-  min-width: 40px;
-  min-height: 40px;
-  margin: 2px 0;
-  border-radius: $r-control;
-}
-
-.hub-theme-btn:hover {
-  background-color: $state-hover;
-}
-
 // Root box of every hub tab (calendar/weather/wifi): one class, equal padding
 // on all sides, so tabs look uniform. The box itself fills the tab area
 // (hexpand/vexpand are set in yuck).
@@ -1291,4 +1278,148 @@ window.panel-hub {
 .media-off-text {
   color: $on-surface-variant;
   font-size: $t-secondary;
+}
+
+// --- hub: colors tab (step 11) --------------------------------------------
+// Palette picker: our own scheme, 10 built-in Noctalia palettes, user palettes
+// from ~/.config/noctalia/palettes, and wallpaper-derived colours.
+// Only the active mode (dark or light) is previewed: no room for 20 cards.
+// Layout budget is in docs/tasks/11-colors.md (509 x 330 px of tab space).
+.colors-panel {
+  padding: 0;
+}
+
+// Header row: title left, mode segments right. One row keeps 20 px for cards.
+.colors-head {
+  min-height: 28px;
+}
+
+.colors-title {
+  color: $on-surface;
+  font-size: $t-title;
+  font-weight: 500;
+}
+
+// Mode switch: two segments, the active one gets the accent plate.
+.colors-mode {
+  border-radius: $r-control;
+  background-color: $surface-container;
+}
+
+.colors-seg {
+  min-height: 24px;
+  padding: 2px 10px;
+  border-radius: $r-control;
+  color: $on-surface-variant;
+  font-size: $t-secondary;
+}
+
+.colors-seg:hover {
+  background-color: $state-hover;
+}
+
+.colors-seg.active {
+  background-color: $primary;
+  color: $on-primary;
+}
+
+// Scroll viewport: 246 px, the rest of the tab is the fixed "wallpaper" row.
+.colors-scroll {
+  min-height: 246px;
+}
+
+.colors-body {
+  padding: 8px 0 0 0;
+}
+
+// Section captions ("Наша схема", "Встроенные", "Свои").
+.colors-sec {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  padding: 6px 0 3px 0;
+}
+
+// One row of cards. Rows are pre-chunked by colors-list.sh: 3 builtin,
+// 2 user cards. GTK3 has no grid, so widths come from hexpand.
+.colors-row {
+  padding: 0 0 5px 0;
+}
+
+// Palette card: three colour strips over the name. 38 px tall, 165 px wide
+// for builtin (509-12)/3 and 251 px for user (509-6)/2.
+.palette-card {
+  min-height: 34px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+}
+
+.palette-card:hover {
+  background-color: $state-hover;
+}
+
+// Active palette: lifted background + accent name + check glyph (set in yuck).
+// NOT the primary plate: the third preview strip is the palette's own primary
+// and would vanish against a primary background - every selected card would
+// look like it has only two colours.
+.palette-card.active {
+  background-color: $surface-container-high;
+}
+
+.palette-card.active .palette-name {
+  color: $primary;
+}
+
+.palette-in {
+  padding: 3px 5px;
+}
+
+// Colour strips. Height fixed here (not in yuck): GTK3 would size the box
+// from its content, and the strips have none.
+.palette-dots {
+  min-height: 10px;
+}
+
+.palette-dot {
+  min-height: 10px;
+}
+
+// First and last strip get rounded outer corners to match the card.
+.palette-dot:first-child {
+  border-radius: $r-control 0 0 $r-control;
+}
+
+.palette-dot:last-child {
+  border-radius: 0 $r-control $r-control 0;
+}
+
+.palette-name {
+  color: $on-surface;
+  font-size: $t-caption;
+  padding: 2px 0 0 0;
+}
+
+// Bottom row: wallpaper chips. Fixed (never scrolls away) so the way back
+// to wallpaper colours is always one click.
+.colors-wall {
+  min-height: 38px;
+  padding: 6px 0 0 0;
+}
+
+.colors-chip {
+  min-height: 26px;
+  margin-left: 4px;
+  padding: 2px 8px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+  color: $on-surface-variant;
+  font-size: $t-caption;
+}
+
+.colors-chip:hover {
+  background-color: $state-hover;
+}
+
+.colors-chip.active {
+  background-color: $primary;
+  color: $on-primary;
 }

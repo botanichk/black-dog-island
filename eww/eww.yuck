@@ -2,9 +2,16 @@
 ;; Только чтение информации и переключение рабочих столов. Без трея и без резервирования места.
 
 (defpoll clock :interval "1s" "date +%H:%M")
-;; Текущая схема темы (theme/current). Нужна кнопке переключения: она
-;; показывает глиф той темы, на которую переключит.
-(defpoll theme-now :interval "10s" "cat $HOME/eww-island/theme/current")
+;; Палитры для вкладки «Цвета» (шаг 11): JSON-массив карточек, цвета уже под
+;; режим из theme/mode. :initial обязателен - цикл for читает значение при
+;; сборке, до первого опроса переменная пуста и разбор JSON падает.
+;; Опрос раз в 5 с: человек может добавить свою палитру файлом, список
+;; должен это заметить без перезапуска острова.
+(defpoll colors-list :interval "5s" :initial "[]"
+  "$HOME/eww-island/theme/colors-list.sh")
+;; Действующие режим и схема - для подсветки выбранного.
+(defpoll colors-mode :interval "3s" :initial "dark" "cat $HOME/eww-island/theme/mode")
+(defpoll colors-now :interval "3s" :initial "default" "cat $HOME/eww-island/theme/current")
 
 ;; Событийно: xprop -spy печатает индекс рабочего стола при каждом изменении.
 (deflisten cur_ws :initial "0" "xprop -spy -root _NET_CURRENT_DESKTOP | sed -u -n 's/.*= //p'")
@@ -289,15 +296,11 @@
     (hub-tab-btn :idx 2 :glyph "")
     (hub-tab-btn :idx 3 :glyph "")
     (hub-tab-btn :idx 4 :glyph "")
-    ;; Растяжка: тема уезжает к низу колонки, вкладки остаются сверху.
+    ;; Растяжка: столбец вкладок сверху, «Цвета» - внизу, как раньше кнопка темы.
     (box :class "hub-rail-gap" :vexpand true)
-    ;; Переключатель темы (шаг 2 тем). switch.sh помнит выбор в theme/current
-    ;; и сам переоткрывает хаб на этой вкладке: reload закрывает окно и
-    ;; сбрасывает hub_tab на 0.
-    (button :class "hub-theme-btn" :timeout "8s"
-            :tooltip {theme-now == "light" ? "Тема: light -> default" : "Тема: default -> light"}
-            :onclick "$HOME/eww-island/theme/switch.sh"
-      (label :class "hub-ic" :text {theme-now == "light" ? "" : "󰖨"}))))
+    ;; Выбор цвета (шаг 11): бывшая кнопка темы стала 7-й вкладкой. Слот тот же
+    ;; 44 px, поэтому высота рейла и окна хаба не меняются (замерено).
+    (hub-tab-btn :idx 6 :glyph "󰏘")))
 
 ;; Общая рамка панели: верх прямой (панель продолжает остров), низ скруглён.
 ;; Растяжка на обоих уровнях: содержимое панели занимает всё окно по высоте.
@@ -583,6 +586,98 @@
           (media-btn :glyph {media.status == "playing" ? "" : ""} :action "playpause" :cls "media-btn play" :disabled {!media.canpause})
           (media-btn :glyph "" :action "next" :cls "media-btn" :disabled {!media.cannext}))))))
 
+;; --- вкладка «Цвета» (шаг 11) ---
+;; Выбор цветовой схемы: наша схема, 10 встроенных палитр Noctalia и свои
+;; палитры из ~/.config/noctalia/palettes. Превью показывает ТОЛЬКО текущий
+;; режим: переключатель «Тёмная/Светлая» перекрашивает карточки и сразу
+;; применяется. Обе ветки палитры одновременно не рисуются - места в хабе
+;; нет (полная раскладка посчитана в docs/tasks/11-colors.md).
+
+;; Карточка палитры: три полоски цветов (surface, второй уровень, акцент)
+;; и подпись. :style в нашей сборке Eww перезагружается при каждом изменении
+;; (widget_definitions.rs:212-217), поэтому превью меняется вместе с режимом
+;; без перезапуска и без отдельных SVG.
+(defwidget palette-card [id label c1 c2 c3 cur w]
+  ;; w - ширина карточки в пикселях: 165 у встроенных (три в ряд),
+  ;; 251 у своих (два в ряд). Без неё единственная карточка в ряду
+  ;; растягивается на все 509 px: hexpand тянет её на всю строку.
+  (button :class {cur == 1 ? "palette-card active" : "palette-card"}
+          :width w :timeout "8s"
+          :onclick "$HOME/eww-island/theme/colors-pick.sh palette ${id}"
+    (box :orientation "vertical" :space-evenly false :class "palette-in"
+         :hexpand true :halign "fill"
+      ;; Полоски: цвета палитры как есть. height в CSS, не здесь: GTK3
+      ;; растягивает box по содержимому, а нам нужна ровная высота ряда.
+      (box :orientation "horizontal" :space-evenly false :class "palette-dots" :halign "fill"
+        (box :class "palette-dot" :hexpand true :style "background-color: ${c1}")
+        (box :class "palette-dot" :hexpand true :style "background-color: ${c2}")
+        (box :class "palette-dot" :hexpand true :style "background-color: ${c3}"))
+      ;; Действующая палитра помечается галочкой, а не плашкой $primary:
+      ;; третья полоска превью - это и есть primary, на плашке она пропадала.
+      (label :class "palette-name" :xalign 0 :limit-width 24
+             :text {cur == 1 ? " " + label : label}))))
+
+(defwidget colors-content []
+  (box :orientation "vertical" :space-evenly false :class "colors-panel"
+       :hexpand true :vexpand true
+    ;; Шапка: заголовок и переключатель режима в одну строку - экономит 20 px,
+    ;; которых в хабе нет.
+    (box :orientation "horizontal" :space-evenly false :class "colors-head" :halign "fill"
+      (label :class "colors-title" :xalign 0 :hexpand true :text "Цвет острова")
+      (box :orientation "horizontal" :space-evenly false :class "colors-mode"
+        (button :class {colors-mode == "dark" ? "colors-seg active" : "colors-seg"}
+                :timeout "8s"
+                :onclick "$HOME/eww-island/theme/colors-pick.sh mode dark"
+          (label :text "Тёмная"))
+        (button :class {colors-mode == "light" ? "colors-seg active" : "colors-seg"}
+                :timeout "8s"
+                :onclick "$HOME/eww-island/theme/colors-pick.sh mode light"
+          (label :text "Светлая"))))
+    ;; Прокрутка: встроенных 10 карточек + свои, которые могут быть любые.
+    ;; Высота вьюпорта 246 px - из расчёта docs/tasks/11-colors.md; при большем
+    ;; числе палитр вкладка прокручивается, низ с «С обоев» не съезжает.
+    (scroll :height 246 :hexpand true :vexpand true :vscroll true :hscroll false
+            :class "colors-scroll"
+      (box :orientation "vertical" :space-evenly false :class "colors-body"
+           :hexpand true :halign "fill"
+        (label :class "colors-sec" :xalign 0 :text "Наша схема")
+        (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
+          (palette-card :id {colors-list.native.id} :label {colors-list.native.label}
+                        :c1 {colors-list.native.c1} :c2 {colors-list.native.c2}
+                        :c3 {colors-list.native.c3} :cur {colors-list.native.cur} :w 165))
+        (label :class "colors-sec" :xalign 0 :text "Встроенные")
+        (for row in {colors-list.builtin}
+          (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
+            (for p in {row}
+              (palette-card :id {p.id} :label {p.label} :c1 {p.c1}
+                            :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 165))))
+        ;; Блок «Свои» рисуется только если свои палитры есть.
+        (for z in {length(colors-list.user) > 0 ? "[1]" : "[]"}
+          (label :class "colors-sec" :xalign 0 :text "Свои"))
+        (for row in {colors-list.user}
+          (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
+            (for p in {row}
+              (palette-card :id {p.id} :label {p.label} :c1 {p.c1}
+                            :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 251))))))
+    ;; Низ вкладки: цвета из обоев текущего рабочего стола.
+    (box :orientation "horizontal" :space-evenly false :class "colors-wall" :halign "fill"
+      (label :class "colors-sec" :xalign 0 :hexpand true :text "С обоев")
+      ;; 4 схемы из 10: все десять не влезают в 509 px, а разница между
+      ;; m3-content и m3-monochrome для острова неощутима.
+      (button :class {colors-now == "wallpaper" ? "colors-chip active" : "colors-chip"}
+              :timeout "10s"
+              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper m3-tonal-spot"
+        (label :text "Спокойная"))
+      (button :class "colors-chip" :timeout "10s"
+              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper vibrant"
+        (label :text "Яркая"))
+      (button :class "colors-chip" :timeout "10s"
+              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper soft"
+        (label :text "Мягкая"))
+      (button :class "colors-chip" :timeout "10s"
+              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper muted"
+        (label :text "Тихая")))))
+
 ;; Хаб: вкладки calendar / weather / wifi / shot / media в одном окне. Содержимое - общие
 ;; виджеты cal-content / wx-content / wf-content / shot-content / media-content. Растяжка по всей цепочке
 ;; (окно -> panel-frame -> hub-panel -> stack -> вкладка): вкладка занимает
@@ -623,4 +718,8 @@
         (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
                 :class "hub-tab-body"
           (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
-            (media-content)))))))
+            (media-content)))
+        (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false
+                :class "hub-tab-body"
+          (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
+            (colors-content)))))))

@@ -32,6 +32,7 @@ tab_index() {
     wifi)     echo 3 ;;
     shot)     echo 4 ;;
     media)    echo 5 ;;
+    colors)   echo 6 ;;
     *)        echo "" ;;
   esac
 }
