@@ -28,6 +28,9 @@ $on-surface-dim: rgba(230, 232, 236, 0.32);
 $text-shadow: rgba(0, 0, 0, 0.75);
 $wx-shade: rgba(0, 0, 0, 0.35);
 $wx-scrim: rgba(0, 0, 0, 0.45);
+// Base colour for the per-scene darkening layer: its alpha comes from
+// forecast.sh (runtime variable w-shade), the colour from the scheme.
+$wx-ink: rgba(0, 0, 0, 1);
 
 // --- weather card fallback gradients (scene backdrops are JPEG files) ---
 $wx-clear-day-a: #1a4d66;

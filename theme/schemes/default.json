@@ -24,7 +24,8 @@
     "on_surface_dim": {"color": "on_surface", "alpha": 0.32},
     "text_shadow": {"color": "#000000", "alpha": 0.75},
     "wx_shade": {"color": "#000000", "alpha": 0.35},
-    "wx_scrim": {"color": "#000000", "alpha": 0.45}
+    "wx_scrim": {"color": "#000000", "alpha": 0.45},
+    "wx_ink": {"color": "#000000", "alpha": 1.0}
   },
   "weather_gradients": {
     "_comment": "Запасные CSS-градиенты верхней карточки (видны, только если убрать inline :style с JPEG). Не перекрашиваются схемой, но перечислены, чтобы цвета не искать по файлу.",

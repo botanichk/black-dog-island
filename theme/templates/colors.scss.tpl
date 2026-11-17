@@ -28,6 +28,9 @@ $on-surface-dim: {{on_surface_dim}};
 $text-shadow: {{text_shadow}};
 $wx-shade: {{wx_shade}};
 $wx-scrim: {{wx_scrim}};
+// Base colour for the per-scene darkening layer: its alpha comes from
+// forecast.sh (runtime variable w-shade), the colour from the scheme.
+$wx-ink: {{wx_ink}};
 
 // --- weather card fallback gradients (scene backdrops are JPEG files) ---
 $wx-clear-day-a: {{wx_clear_day_a}};

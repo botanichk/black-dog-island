@@ -10,44 +10,20 @@
 // Comments are stripped by the compiler, so the source may keep them.
 
 // --- palette: Material 3 dark, neutral + accent ---
-$surface: #141414;              // island body, panel body
-$surface-container: #1c1e22;    // cards and chips inside surfaces
-$surface-container-high: #25282e; // hovered / selected container
-$surface-highest: #2b2f36;
-$outline: #2e3138;
-$on-surface: #e6e8ec;
-$on-surface-variant: #9aa0a6;
-$primary: #4fc3f7;
-$primary-dim: #2a6e8f;
-$error: #f2b8b5;
+// Все цвета приходят из eww/colors.scss (GENERATED из theme/schemes/<схема>.json
+// через theme/apply.sh). Здесь их не определять: правка потеряется при
+// следующем применении схемы. Радиусы и кегли живут в этом файле.
+@import "colors";
 
 // --- weather card backdrops (hub step 2б) ---
 // Eight kinds, two gradient stops each, muted so they stay in the island
 // palette. Every card stacks a uniform 0.35 black layer on top for contrast
 // (GTK3 has no background-blend-mode, so it is a second gradient layer).
-$wx-clear-day-a: #1a4d66;       // day sky, cyan accent direction
-$wx-clear-day-b: #17262e;
-$wx-clear-night-a: #223052;     // deep navy night
-$wx-clear-night-b: #151a26;
-$wx-cloudy-day-a: #3d4853;
-$wx-cloudy-day-b: #23272c;
-$wx-cloudy-night-a: #2a313a;
-$wx-cloudy-night-b: #171a1e;
-$wx-rain-a: #263d4c;
-$wx-rain-b: #191f25;
-$wx-snow-a: #414e5a;
-$wx-snow-b: #262b31;
-$wx-fog-a: #394046;
-$wx-fog-b: #22262a;
-$wx-storm-a: #332d4e;
-$wx-storm-b: #1a1726;
-$wx-shade: rgba(0, 0, 0, 0.35);
+// Цвета градиентов ($wx-*-a/b) и $wx-shade тоже в colors.scss.
 
 // --- state layers: Material overlay opacities, no transitions ---
-$state-hover: rgba(255, 255, 255, 0.08);
-$state-press: rgba(255, 255, 255, 0.12);
-$state-selected: rgba(79, 195, 247, 0.14);
-$divider: rgba(255, 255, 255, 0.08);
+// $state-hover, $state-press, $state-selected, $divider, $on-surface-dim,
+// $text-shadow, $wx-scrim - из colors.scss.
 
 // --- shape scale: 8 / 12 / 16 / 18 (px) ---
 $r-control: 8px;
@@ -390,13 +366,13 @@ window.panel-hub {
 
 .cal:selected {
   background-color: $primary-dim;
-  color: #ffffff;
+  color: $on-primary;
   border-radius: $r-control;
 }
 
 // Days outside the current month: disabled tone, not invisible.
 .cal:indeterminate {
-  color: rgba(230, 232, 236, 0.32);
+  color: $on-surface-dim;
 }
 
 // --- weather panel: Noctalia-style two columns ---
@@ -446,7 +422,7 @@ window.panel-hub {
 // backgrounds (text ink masked out) gave 7.9-19.5% mean, p95 <= 27.5.
 .wx-cur {
   background-color: $surface-container;
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-clear-day-a, $wx-clear-day-b);
   border-radius: $r-card;
@@ -454,49 +430,49 @@ window.panel-hub {
 }
 
 .wx-cur.clear-day {
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-clear-day-a, $wx-clear-day-b);
 }
 
 .wx-cur.clear-night {
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-clear-night-a, $wx-clear-night-b);
 }
 
 .wx-cur.cloudy-day {
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-cloudy-day-a, $wx-cloudy-day-b);
 }
 
 .wx-cur.cloudy-night {
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-cloudy-night-a, $wx-cloudy-night-b);
 }
 
 .wx-cur.rain {
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-rain-a, $wx-rain-b);
 }
 
 .wx-cur.snow {
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-snow-a, $wx-snow-b);
 }
 
 .wx-cur.fog {
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-fog-a, $wx-fog-b);
 }
 
 .wx-cur.storm {
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+  background-image: linear-gradient(90deg, $wx-scrim, rgba(0, 0, 0, 0) 60%),
                     linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-storm-a, $wx-storm-b);
 }
@@ -514,7 +490,7 @@ window.panel-hub {
   color: $on-surface;
   font-size: 44px;
   font-weight: 700;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  text-shadow: 0 1px 3px $text-shadow;
 }
 
 .wx-cur-desc {
@@ -522,7 +498,7 @@ window.panel-hub {
   font-size: 15px;
   font-weight: 600;
   padding-top: 2px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  text-shadow: 0 1px 3px $text-shadow;
 }
 
 // Диапазон дня: раньше стоял справа внизу, теперь третья строка столбца.
@@ -531,7 +507,7 @@ window.panel-hub {
   font-size: 13px;
   font-weight: 600;
   padding-top: 2px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  text-shadow: 0 1px 3px $text-shadow;
 }
 
 // Details card: key/value rows, no gap between them (like the dashboard card).

@@ -357,8 +357,11 @@
       ;; (затемняет только левую часть под текстом, справа прозрачный),
       ;; равномерное затемнение (alpha из w-shade) и сама картинка.
       ;; background-size/position перечислены для каждого слоя по порядку.
+      ;; Цвета затемнения - из colors.scss, поэтому не :style (он оборачивает
+      ;; содержимое в "* { ... }", и @import внутри невозможен), а :css:
+      ;; он компилируется как есть, абсолютный путь ${EWW_CONFIG_DIR}.
       (box :orientation "horizontal" :space-evenly false :class "wx-cur ${wx-kind}" :halign "fill" :vexpand true
-        :style "background-image: linear-gradient(90deg, rgba(0,0,0,0.45), rgba(0,0,0,0) 60%), linear-gradient(rgba(0,0,0,${w-shade}), rgba(0,0,0,${w-shade})), url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.jpg'); background-size: 100% 100%, 100% 100%, cover; background-position: left top, left top, 75% 50%;"
+        :css "@import \"${EWW_CONFIG_DIR}/colors.scss\"; * { background-image: linear-gradient(90deg, $wx-scrim, rgba($wx-ink, 0) 60%), linear-gradient(rgba($wx-ink, ${w-shade}), rgba($wx-ink, ${w-shade})), url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.jpg'); background-size: 100% 100%, 100% 100%, cover; background-position: left top, left top, 75% 50%; }"
         ;; Текст (задание 07): без иконки и подложки, столбцом в левом верхнем
         ;; углу карточки - температура, описание, диапазон дня.
         (box :orientation "vertical" :space-evenly false :class "wx-cur-main" :halign "start" :valign "start" :hexpand true
