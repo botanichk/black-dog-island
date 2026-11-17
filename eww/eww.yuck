@@ -176,19 +176,6 @@
   :resizable false
   (island-root))
 
-;; Прототип вогнутых верхних углов (этап 2). Временное окно: проверяем, что
-;; вырез угла реально прозрачный и видно рабочий стол. Углы - отдельные SVG:
-;; GTK3 CSS не умеет вогнутые радиусы, а radial-gradient даёт размытую кромку.
-(defwindow proto-corners
-  :monitor 0
-  :geometry (geometry :x "420px" :y "220px" :width "320px" :height "90px")
-  :stacking "fg"
-  :windowtype "normal"
-  (box :orientation "horizontal" :space-evenly false :class "proto"
-    (image :class "proto-corner-l" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-left.svg" :image-width 16 :image-height 16)
-    (box :class "proto-body" :hexpand true)
-    (image :class "proto-corner-r" :valign "start" :path "${EWW_CONFIG_DIR}/assets/panel-corner-right.svg" :image-width 16 :image-height 16)))
-
 ;; Хаб: одна панель с вкладками (главная, календарь, погода, Wi-Fi, снимок, медиа), как в Noctalia.
 ;; hub_tab - индекс вкладки стека (stack :selected принимает число):
 ;; 0 = главная, 1 = календарь, 2 = погода, 3 = Wi-Fi, 4 = снимок, 5 = медиа.

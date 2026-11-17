@@ -289,8 +289,7 @@ menu separator {
   padding: 0 12px;
 }
 
-.panel-body,
-.panel-strip {
+.panel-body {
   background-color: $surface;
   border: none;
   border-radius: 0 0 $r-surface $r-surface;
@@ -1292,17 +1291,4 @@ window.panel-hub {
 .media-off-text {
   color: $on-surface-variant;
   font-size: $t-secondary;
-}
-
-// --- prototype window for the concave corners (stage 2, unused) ---
-window.proto-corners {
-  background: transparent;
-}
-
-.proto {
-  background: transparent;
-}
-
-.proto-body {
-  background-color: $surface;
 }

@@ -111,6 +111,19 @@ for t in sorted(tdir.glob("*.svg")):
     (adr / t.name).write_text(svg, encoding="utf-8")
     n += 1
 print("eww/assets/*.svg <- %d файлов" % n)
+
+# --- 4. проверка на сироты ---
+# В eww/assets/ лежит не только то, что рендерится из шаблонов: 16 JPEG-сцен
+# погоды и статичные SVG (точки рабочих столов, углы острова). Поэтому
+# удалять "лишнее" нельзя - снесёт их. Только предупреждаем: если появился
+# SVG, которого нет в шаблонах, значит его забыли удалить при чистке.
+have = {f.name for f in adr.glob("*.svg")}
+made = {t.name for t in tdir.glob("*.svg")}
+orphans = sorted(have - made)
+if orphans:
+    print("сироты в eww/assets (SVG не из шаблонов): %s" % " ".join(orphans))
+else:
+    print("сирот нет: все SVG в eww/assets из шаблонов")
 PY
 
 if [ "$RELOAD" -eq 1 ]; then

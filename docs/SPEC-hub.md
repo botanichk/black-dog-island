@@ -20,6 +20,8 @@
 - Темы, шаг 2 (светлая схема light, роли on_primary/on_primary_dim/on_media,
   переключатель theme/switch.sh и кнопка внизу колонки вкладок): СДЕЛАНО,
   см. docs/THEME.md и docs/tasks/09-theme-light.md.
+- Чистка (окно-прототип proto-corners, класс panel-strip, 14 SVG-сирот,
+  проверка сирот в apply.sh): СДЕЛАНО, см. docs/tasks/10-remove-dead.md.
 Дальше по ROADMAP.md: Wi-Fi с управлением, центр управления, косметика.
 
 ## Общие законы (не менять)
