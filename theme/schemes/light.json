@@ -1,0 +1,78 @@
+{
+  "_comment": "Светлая схема (Material 3 light). Роли те же, что в default; значения подобраны по контрасту WCAG: текст 4.5:1, иконки и границы 3:1 (таблица в docs/tasks/09-theme-light.md).",
+  "name": "light",
+  "colors": {
+    "surface": "#f4f5f7",
+    "surface_container": "#e9eaee",
+    "surface_high": "#dfe1e6",
+    "surface_highest": "#d3d6dc",
+    "outline": "#7c8289",
+    "on_surface": "#14171c",
+    "on_surface_variant": "#4a5058",
+    "primary": "#0959ab",
+    "primary_dim": "#376fae",
+    "error": "#b3261e",
+    "on_primary": "#ffffff",
+    "on_primary_dim": "#ffffff",
+    "weather_cloud": "#5d6b75",
+    "weather_snow": "#7b8790",
+    "on_media": "#ffffff"
+  },
+  "alphas": {
+    "state_hover": {
+      "color": "#000000",
+      "alpha": 0.08
+    },
+    "state_press": {
+      "color": "#000000",
+      "alpha": 0.12
+    },
+    "state_selected": {
+      "color": "primary",
+      "alpha": 0.14
+    },
+    "divider": {
+      "color": "#000000",
+      "alpha": 0.08
+    },
+    "on_surface_dim": {
+      "color": "on_surface",
+      "alpha": 0.32
+    },
+    "text_shadow": {
+      "color": "#000000",
+      "alpha": 0.55
+    },
+    "wx_shade": {
+      "color": "#000000",
+      "alpha": 0.35
+    },
+    "wx_scrim": {
+      "color": "#000000",
+      "alpha": 0.45
+    },
+    "wx_ink": {
+      "color": "#000000",
+      "alpha": 1.0
+    }
+  },
+  "weather_gradients": {
+    "_comment": "Запасные CSS-градиенты верхней карточки (видны, только если убрать inline :style с JPEG). Не перекрашиваются схемой, но перечислены, чтобы цвета не искать по файлу.",
+    "clear_day_a": "#1a4d66",
+    "clear_day_b": "#17262e",
+    "clear_night_a": "#223052",
+    "clear_night_b": "#151a26",
+    "cloudy_day_a": "#3d4853",
+    "cloudy_day_b": "#23272c",
+    "cloudy_night_a": "#2a313a",
+    "cloudy_night_b": "#171a1e",
+    "rain_a": "#263d4c",
+    "rain_b": "#191f25",
+    "snow_a": "#414e5a",
+    "snow_b": "#262b31",
+    "fog_a": "#394046",
+    "fog_b": "#22262a",
+    "storm_a": "#332d4e",
+    "storm_b": "#1a1726"
+  }
+}

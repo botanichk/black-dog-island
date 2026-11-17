@@ -12,20 +12,49 @@
     "primary": "#4fc3f7",
     "primary_dim": "#2a6e8f",
     "error": "#f2b8b5",
-    "on_primary": "#ffffff",
+    "on_primary": "#141414",
+    "on_primary_dim": "#ffffff",
+    "on_media": "#ffffff",
     "weather_cloud": "#90a4ae",
     "weather_snow": "#b0bec5"
   },
   "alphas": {
-    "state_hover": {"color": "#ffffff", "alpha": 0.08},
-    "state_press": {"color": "#ffffff", "alpha": 0.12},
-    "state_selected": {"color": "primary", "alpha": 0.14},
-    "divider": {"color": "#ffffff", "alpha": 0.08},
-    "on_surface_dim": {"color": "on_surface", "alpha": 0.32},
-    "text_shadow": {"color": "#000000", "alpha": 0.75},
-    "wx_shade": {"color": "#000000", "alpha": 0.35},
-    "wx_scrim": {"color": "#000000", "alpha": 0.45},
-    "wx_ink": {"color": "#000000", "alpha": 1.0}
+    "state_hover": {
+      "color": "#ffffff",
+      "alpha": 0.08
+    },
+    "state_press": {
+      "color": "#ffffff",
+      "alpha": 0.12
+    },
+    "state_selected": {
+      "color": "primary",
+      "alpha": 0.14
+    },
+    "divider": {
+      "color": "#ffffff",
+      "alpha": 0.08
+    },
+    "on_surface_dim": {
+      "color": "on_surface",
+      "alpha": 0.32
+    },
+    "text_shadow": {
+      "color": "#000000",
+      "alpha": 0.75
+    },
+    "wx_shade": {
+      "color": "#000000",
+      "alpha": 0.35
+    },
+    "wx_scrim": {
+      "color": "#000000",
+      "alpha": 0.45
+    },
+    "wx_ink": {
+      "color": "#000000",
+      "alpha": 1.0
+    }
   },
   "weather_gradients": {
     "_comment": "Запасные CSS-градиенты верхней карточки (видны, только если убрать inline :style с JPEG). Не перекрашиваются схемой, но перечислены, чтобы цвета не искать по файлу.",

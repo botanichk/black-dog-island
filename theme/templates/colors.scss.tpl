@@ -16,6 +16,12 @@ $primary: {{primary}};
 $primary-dim: {{primary_dim}};
 $error: {{error}};
 $on-primary: {{on_primary}};
+// Text on the muted accent plate ($primary-dim): dark in the dark scheme
+// on light-blue, white in the light scheme on dark-blue.
+$on-primary-dim: {{on_primary_dim}};
+// Text drawn above photographs (player artwork, screenshot thumbnails):
+// stays light in every scheme, because the picture underneath is dark.
+$on-media: {{on_media}};
 $weather-cloud: {{weather_cloud}};
 $weather-snow: {{weather_snow}};
 

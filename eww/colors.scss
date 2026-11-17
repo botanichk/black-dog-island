@@ -15,7 +15,13 @@ $on-surface-variant: #9aa0a6;
 $primary: #4fc3f7;
 $primary-dim: #2a6e8f;
 $error: #f2b8b5;
-$on-primary: #ffffff;
+$on-primary: #141414;
+// Text on the muted accent plate ($primary-dim): dark in the dark scheme
+// on light-blue, white in the light scheme on dark-blue.
+$on-primary-dim: #ffffff;
+// Text drawn above photographs (player artwork, screenshot thumbnails):
+// stays light in every scheme, because the picture underneath is dark.
+$on-media: #ffffff;
 $weather-cloud: #90a4ae;
 $weather-snow: #b0bec5;
 

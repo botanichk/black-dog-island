@@ -17,16 +17,28 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-SCHEME=${1:-}
-[ -n "$SCHEME" ] || { echo "usage: theme/apply.sh <схема> [--reload]" >&2; exit 2; }
-shift || true
+
+# Разбор аргументов: первый не-флаг - схема, --reload - перечитать конфиг.
+SCHEME=""
 RELOAD=0
 for arg in "$@"; do
   case "$arg" in
     --reload) RELOAD=1 ;;
-    *) echo "неизвестный аргумент: $arg" >&2; exit 2 ;;
+    -*) echo "неизвестный аргумент: $arg" >&2; exit 2 ;;
+    *)
+      if [ -n "$SCHEME" ]; then
+        echo "лишний аргумент: $arg" >&2; exit 2
+      fi
+      SCHEME=$arg ;;
   esac
 done
+# Без аргумента берём схему из theme/current: так apply.sh не сбрасывает выбор.
+if [ -z "$SCHEME" ]; then
+  if [ -f "$ROOT/theme/current" ]; then
+    SCHEME=$(tr -d ' \t\r\n' < "$ROOT/theme/current")
+  fi
+  SCHEME=${SCHEME:-default}
+fi
 
 JSON="$ROOT/theme/schemes/$SCHEME.json"
 [ -f "$JSON" ] || { echo "нет схемы: $JSON" >&2; echo "есть: $(ls "$ROOT/theme/schemes" | sed 's/\.json$//' | tr '\n' ' ')" >&2; exit 2; }
@@ -113,3 +125,8 @@ if [ "$RELOAD" -eq 1 ]; then
     echo "eww reload: код 1 (демон не ответил, конфиг может быть уже перечитан)" >&2
   fi
 fi
+
+# Запоминаем выбор последним шагом: если рендер упал, theme/current не врёт.
+# apply.sh без аргумента возьмёт схему отсюда.
+printf '%s\n' "$SCHEME" > "$ROOT/theme/current"
+echo "схема: $SCHEME (theme/current)"
