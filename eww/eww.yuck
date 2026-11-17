@@ -254,7 +254,7 @@
       (home-slider :glyph ""
                    :value {home.volume}
                    :onclick "$HOME/eww-island/adapters/system/home.sh set volume {}")
-      (home-slider :glyph ""
+      (home-slider :glyph "󰖨"
                    :value {home.brightness}
                    :onclick "$HOME/eww-island/adapters/system/home.sh set brightness {}"))
     ;; Блок системы: CPU, RAM, температура, батарея (со значком зарядки).
@@ -299,7 +299,7 @@
     (hub-tab-btn :idx 0 :glyph "")
     (hub-tab-btn :idx 5 :glyph "")
     (hub-tab-btn :idx 1 :glyph "")
-    (hub-tab-btn :idx 2 :glyph "")
+    (hub-tab-btn :idx 2 :glyph "")
     (hub-tab-btn :idx 3 :glyph "")
     (hub-tab-btn :idx 4 :glyph "")
     ;; Растяжка: тема уезжает к низу колонки, вкладки остаются сверху.
@@ -310,7 +310,7 @@
     (button :class "hub-theme-btn" :timeout "8s"
             :tooltip {theme-now == "light" ? "Тема: light -> default" : "Тема: default -> light"}
             :onclick "$HOME/eww-island/theme/switch.sh"
-      (label :class "hub-ic" :text {theme-now == "light" ? "" : ""}))))
+      (label :class "hub-ic" :text {theme-now == "light" ? "" : "󰖨"}))))
 
 ;; Общая рамка панели: верх прямой (панель продолжает остров), низ скруглён.
 ;; Растяжка на обоих уровнях: содержимое панели занимает всё окно по высоте.
