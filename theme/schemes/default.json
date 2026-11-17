@@ -1,0 +1,48 @@
+{
+  "_comment": "Схема по умолчанию. Значения 1:1 с палитрой из eww/eww.scss до шага 08 (Material 3 dark). Роли с alpha хранят цвет и alpha отдельно: apply.sh собирает rgba().",
+  "name": "default",
+  "colors": {
+    "surface": "#141414",
+    "surface_container": "#1c1e22",
+    "surface_high": "#25282e",
+    "surface_highest": "#2b2f36",
+    "outline": "#2e3138",
+    "on_surface": "#e6e8ec",
+    "on_surface_variant": "#9aa0a6",
+    "primary": "#4fc3f7",
+    "primary_dim": "#2a6e8f",
+    "error": "#f2b8b5",
+    "on_primary": "#ffffff",
+    "weather_cloud": "#90a4ae",
+    "weather_snow": "#b0bec5"
+  },
+  "alphas": {
+    "state_hover": {"color": "#ffffff", "alpha": 0.08},
+    "state_press": {"color": "#ffffff", "alpha": 0.12},
+    "state_selected": {"color": "primary", "alpha": 0.14},
+    "divider": {"color": "#ffffff", "alpha": 0.08},
+    "on_surface_dim": {"color": "on_surface", "alpha": 0.32},
+    "text_shadow": {"color": "#000000", "alpha": 0.75},
+    "wx_shade": {"color": "#000000", "alpha": 0.35},
+    "wx_scrim": {"color": "#000000", "alpha": 0.45}
+  },
+  "weather_gradients": {
+    "_comment": "Запасные CSS-градиенты верхней карточки (видны, только если убрать inline :style с JPEG). Не перекрашиваются схемой, но перечислены, чтобы цвета не искать по файлу.",
+    "clear_day_a": "#1a4d66",
+    "clear_day_b": "#17262e",
+    "clear_night_a": "#223052",
+    "clear_night_b": "#151a26",
+    "cloudy_day_a": "#3d4853",
+    "cloudy_day_b": "#23272c",
+    "cloudy_night_a": "#2a313a",
+    "cloudy_night_b": "#171a1e",
+    "rain_a": "#263d4c",
+    "rain_b": "#191f25",
+    "snow_a": "#414e5a",
+    "snow_b": "#262b31",
+    "fog_a": "#394046",
+    "fog_b": "#22262a",
+    "storm_a": "#332d4e",
+    "storm_b": "#1a1726"
+  }
+}

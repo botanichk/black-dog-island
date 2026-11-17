@@ -1,0 +1,48 @@
+// GENERATED FILE - do not edit. Source: theme/templates/colors.scss.tpl
+// Scheme: default
+// Regenerate: theme/apply.sh <scheme> [--reload]
+// Keep this file ASCII-only: the SCSS compiler emits "@charset" for non-ASCII
+// input and GTK rejects that rule, dropping the whole stylesheet.
+
+// --- palette roles ---
+$surface: #141414;
+$surface-container: #1c1e22;
+$surface-container-high: #25282e;
+$surface-highest: #2b2f36;
+$outline: #2e3138;
+$on-surface: #e6e8ec;
+$on-surface-variant: #9aa0a6;
+$primary: #4fc3f7;
+$primary-dim: #2a6e8f;
+$error: #f2b8b5;
+$on-primary: #ffffff;
+$weather-cloud: #90a4ae;
+$weather-snow: #b0bec5;
+
+// --- transparent roles (colour + alpha, assembled by apply.sh) ---
+$state-hover: rgba(255, 255, 255, 0.08);
+$state-press: rgba(255, 255, 255, 0.12);
+$state-selected: rgba(79, 195, 247, 0.14);
+$divider: rgba(255, 255, 255, 0.08);
+$on-surface-dim: rgba(230, 232, 236, 0.32);
+$text-shadow: rgba(0, 0, 0, 0.75);
+$wx-shade: rgba(0, 0, 0, 0.35);
+$wx-scrim: rgba(0, 0, 0, 0.45);
+
+// --- weather card fallback gradients (scene backdrops are JPEG files) ---
+$wx-clear-day-a: #1a4d66;
+$wx-clear-day-b: #17262e;
+$wx-clear-night-a: #223052;
+$wx-clear-night-b: #151a26;
+$wx-cloudy-day-a: #3d4853;
+$wx-cloudy-day-b: #23272c;
+$wx-cloudy-night-a: #2a313a;
+$wx-cloudy-night-b: #171a1e;
+$wx-rain-a: #263d4c;
+$wx-rain-b: #191f25;
+$wx-snow-a: #414e5a;
+$wx-snow-b: #262b31;
+$wx-fog-a: #394046;
+$wx-fog-b: #22262a;
+$wx-storm-a: #332d4e;
+$wx-storm-b: #1a1726;
