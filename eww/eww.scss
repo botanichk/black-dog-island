@@ -410,94 +410,128 @@ window.panel-hub {
   padding: 0 4px 8px 4px;
 }
 
-// Current conditions: tonal card with a large icon and the temperature hero.
+// Current conditions: tonal card with the temperature hero in the top-left.
 // Backdrop has two sets, as required by step 2б:
-//   * yuck sets an inline background-image: a 0.35 darkening layer above the
-//     SVG from assets/wx-bg-<bg>.svg. An inline style overrides every
-//     background-image from a class, so this always wins while it is present.
+//   * yuck sets an inline background-image with the JPEG scene and both
+//     darkening layers. An inline style overrides every background-image from
+//     a class, so this always wins while it is present.
 //   * the rules below are the gradient fallback: wx-kind adds a class
 //     (clear-day, clear-night, cloudy-day, cloudy-night, rain, snow, fog,
 //     storm). They show only when the inline style is removed (switching back
 //     to gradients); an inline style overrides them as a whole.
-// Gradient layers are listed topmost first: darkening above the sky.
+// Gradient layers are listed topmost first: side darkening for the text
+// column, uniform darkening above the sky. The side layer keeps the right
+// part of the card (the heroes) untouched: alpha fades to 0 at 60% width.
+// Brightness of the text zone (left 40% of width, top 55% of height) after the
+// uniform layer "before" = before this step, "after" = with the side gradient:
+//   вид            raw  alpha  before  after
+//   clear-day     56.2   0.65    19.7   13.9
+//   clear-night   16.6   0.30    11.6    8.1
+//   cloud-day     56.1   0.63    20.7   14.6
+//   cloud-night   20.7   0.30    14.5   10.3
+//   drizzle-day   58.5   0.61    22.8   15.9
+//   drizzle-night 19.9   0.30    13.9    9.8
+//   fog-day       77.9   0.65    27.3   19.0
+//   fog-night     35.1   0.51    17.2   12.1
+//   partly-day    66.8   0.65    23.4   16.5
+//   partly-night  36.3   0.33    24.3   17.7
+//   rain-day      62.8   0.62    23.9   16.7
+//   rain-night    19.6   0.30    13.7    9.7
+//   snow-day      70.2   0.65    24.6   17.2
+//   snow-night    17.6   0.30    12.3    8.6
+//   storm-day     37.1   0.39    22.6   16.0
+//   storm-night   37.2   0.30    26.0   18.3
+// Alphas stay as forecast.sh returns them; after the side layer the worst zone
+// is 19.0% (limit 25%). The same zone measured on the real screen for all 16
+// backgrounds (text ink masked out) gave 7.9-19.5% mean, p95 <= 27.5.
 .wx-cur {
   background-color: $surface-container;
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-clear-day-a, $wx-clear-day-b);
   border-radius: $r-card;
-  padding: 10px 12px;
+  padding: 0 16px 16px 16px;
 }
 
 .wx-cur.clear-day {
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-clear-day-a, $wx-clear-day-b);
 }
 
 .wx-cur.clear-night {
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-clear-night-a, $wx-clear-night-b);
 }
 
 .wx-cur.cloudy-day {
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-cloudy-day-a, $wx-cloudy-day-b);
 }
 
 .wx-cur.cloudy-night {
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-cloudy-night-a, $wx-cloudy-night-b);
 }
 
 .wx-cur.rain {
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-rain-a, $wx-rain-b);
 }
 
 .wx-cur.snow {
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-snow-a, $wx-snow-b);
 }
 
 .wx-cur.fog {
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-fog-a, $wx-fog-b);
 }
 
 .wx-cur.storm {
-  background-image: linear-gradient($wx-shade, $wx-shade),
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%),
+                    linear-gradient($wx-shade, $wx-shade),
                     linear-gradient(160deg, $wx-storm-a, $wx-storm-b);
 }
 
-// Подложка под иконку погоды. Сцены разные по яркости (под иконкой бывают
-// почти белые пятна - снег, молния), поэтому иконка #4fc3f7 местами сливалась
-// с фоном: худший контраст штриха был 1.05 при пороге 3.0. Полупрозрачная
-// чёрная плитка (alpha 0.50) поднимает его до 3.48 на всех 16 фонах.
-// Отступы 4 px по бокам и margin-right 6 px вместо прежних 10 px у самой
-// иконки держат ту же ширину блока: 64 + 4 + 4 + 6 = 78 против 64 + 10.
-.wx-icon-back {
-  background-color: rgba(0, 0, 0, 0.50);
-  border-radius: $r-control;
-  padding: 4px;
-  margin-right: 6px;
+// Текст верхней карточки (задание 07): без иконки, столбцом в левом верхнем
+// углу. Все три строки белые и полужирные, как часы острова ($on-surface
+// #e6e8ec, а не приглушённый $on-surface-variant): на светлых сценах
+// приглушённый серый не читался. text-shadow в GTK3 нашей сборки (3.24.52)
+// применяется - проверено отдельным рендером label в Gtk.OffscreenWindow.
+.wx-cur-main {
+  padding: 0;
 }
 
 .wx-cur-temp {
   color: $on-surface;
-  font-size: 34px;
-  font-weight: 500;
+  font-size: 44px;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
 }
 
 .wx-cur-desc {
-  color: $on-surface-variant;
-  font-size: $t-body;
+  color: $on-surface;
+  font-size: 15px;
+  font-weight: 600;
   padding-top: 2px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
 }
 
-// Today's min / max range, muted, bottom-right corner of the card.
+// Диапазон дня: раньше стоял справа внизу, теперь третья строка столбца.
 .wx-cur-range {
-  color: $on-surface-variant;
-  font-size: $t-secondary;
-  padding: 0 2px 1px 8px;
+  color: $on-surface;
+  font-size: 13px;
+  font-weight: 600;
+  padding-top: 2px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
 }
 
 // Details card: key/value rows, no gap between them (like the dashboard card).

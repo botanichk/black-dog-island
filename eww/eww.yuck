@@ -21,7 +21,6 @@
 (defpoll w-temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh temp")
 (defpoll w-feels :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh feels")
 (defpoll w-desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh desc")
-(defpoll w-icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh icon")
 ;; JPEG-фон верхней карточки: assets/wx-bg-<bg>.jpg, 16 видов
 ;; (ясно/переменно/облачно/морось/дождь/снег/туман/гроза, день и ночь).
 ;; Файлы делает scripts/build-weather-bg.sh из eww/assets/weather-src/.
@@ -354,18 +353,18 @@
       (label :class "wx-city" :xalign 0 :text w-city)
       ;; JPEG-фон сцены, герои (фонарь, Жулик) - в правой части кадра, поэтому
       ;; background-position 75% 50%: при обрезке cover правый край держится,
-      ;; а лишнее уходит из левого. Затемнение - верхний слой, alpha из w-shade.
+      ;; а лишнее уходит из левого. Слои сверху вниз: боковой градиент
+      ;; (затемняет только левую часть под текстом, справа прозрачный),
+      ;; равномерное затемнение (alpha из w-shade) и сама картинка.
+      ;; background-size/position перечислены для каждого слоя по порядку.
       (box :orientation "horizontal" :space-evenly false :class "wx-cur ${wx-kind}" :halign "fill" :vexpand true
-        :style "background-image: linear-gradient(rgba(0,0,0,${w-shade}), rgba(0,0,0,${w-shade})), url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.jpg'); background-size: 100% 100%, cover; background-position: left top, 75% 50%;"
-        ;; Иконка, температура и описание - один блок по центру высоты карточки;
-        ;; диапазон дня остаётся отдельно справа внизу.
-        (box :orientation "horizontal" :space-evenly false :class "wx-cur-main" :halign "start" :valign "center" :hexpand true
-          (box :orientation "horizontal" :space-evenly false :class "wx-icon-back" :valign "center" :halign "center"
-            (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 64 :image-height 64))
-          (box :orientation "vertical" :space-evenly false :halign "start" :valign "center"
-            (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
-            (label :class "wx-cur-desc" :xalign 0 :text w-desc)))
-        (label :class "wx-cur-range" :halign "end" :valign "end" :text "${w-d0temp}°"))
+        :style "background-image: linear-gradient(90deg, rgba(0,0,0,0.45), rgba(0,0,0,0) 60%), linear-gradient(rgba(0,0,0,${w-shade}), rgba(0,0,0,${w-shade})), url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.jpg'); background-size: 100% 100%, 100% 100%, cover; background-position: left top, left top, 75% 50%;"
+        ;; Текст (задание 07): без иконки и подложки, столбцом в левом верхнем
+        ;; углу карточки - температура, описание, диапазон дня.
+        (box :orientation "vertical" :space-evenly false :class "wx-cur-main" :halign "start" :valign "start" :hexpand true
+          (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
+          (label :class "wx-cur-desc" :xalign 0 :text w-desc)
+          (label :class "wx-cur-range" :xalign 0 :text "${w-d0temp}°")))
       (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill" :vexpand false :valign "end"
         (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
           (label :class "wx-dk" :xalign 0 :hexpand true :text "Ощущается")
