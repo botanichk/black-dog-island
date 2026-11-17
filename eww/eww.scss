@@ -271,7 +271,7 @@ menu separator {
 }
 
 .home-btn.active .home-btn-ic {
-  color: $surface;
+  color: $on-primary;
 }
 
 .wall-ic {
@@ -366,7 +366,7 @@ window.panel-hub {
 
 .cal:selected {
   background-color: $primary-dim;
-  color: $on-primary;
+  color: $on-primary-dim;
   border-radius: $r-control;
 }
 
@@ -487,14 +487,14 @@ window.panel-hub {
 }
 
 .wx-cur-temp {
-  color: $on-surface;
+  color: $on-media;
   font-size: 44px;
   font-weight: 700;
   text-shadow: 0 1px 3px $text-shadow;
 }
 
 .wx-cur-desc {
-  color: $on-surface;
+  color: $on-media;
   font-size: 15px;
   font-weight: 600;
   padding-top: 2px;
@@ -503,7 +503,7 @@ window.panel-hub {
 
 // Диапазон дня: раньше стоял справа внизу, теперь третья строка столбца.
 .wx-cur-range {
-  color: $on-surface;
+  color: $on-media;
   font-size: 13px;
   font-weight: 600;
   padding-top: 2px;
@@ -666,7 +666,7 @@ window.panel-hub {
 }
 
 .wf-radio.on .wf-radio-ic {
-  color: $surface;
+  color: $on-primary;
 }
 
 // Two action rows under the header: quiet, equal width buttons.
@@ -705,7 +705,7 @@ window.panel-hub {
 // "Включить" in the empty state: the accent is the single call to action.
 .wf-btn.accent {
   background-color: $primary;
-  color: $surface;
+  color: $on-primary;
 }
 
 .wf-btn.accent:hover {
@@ -715,7 +715,7 @@ window.panel-hub {
 // Destructive confirmation button (turn Wi-Fi off).
 .wf-btn.danger {
   background-color: $error;
-  color: $surface;
+  color: $on-primary;
 }
 
 // Empty state when the radio is off: centred glyph, title, hint, button.
@@ -802,7 +802,26 @@ window.panel-hub {
 
 // On the accent plate the glyph flips to dark (on-primary), stays readable.
 .hub-tab-btn.active .hub-ic {
-  color: $surface;
+  color: $on-primary;
+}
+
+// Rail spacer: pushes the theme switch to the bottom of the column, so the
+// tab buttons stay grouped at the top and their positions do not shift.
+.hub-rail-gap {
+  min-height: 8px;
+}
+
+// Theme switch (themes step 2): same footprint as a tab button, but never
+// gets the active plate - it is an action, not a tab.
+.hub-theme-btn {
+  min-width: 40px;
+  min-height: 40px;
+  margin: 2px 0;
+  border-radius: $r-control;
+}
+
+.hub-theme-btn:hover {
+  background-color: $state-hover;
 }
 
 // Root box of every hub tab (calendar/weather/wifi): one class, equal padding
@@ -874,7 +893,7 @@ window.panel-hub {
 
 .home-tile.active .home-tile-ic,
 .home-tile.active .home-tile-name {
-  color: $surface;
+  color: $on-primary;
 }
 
 // Sliders: glyph, scale filling the row, percentage at the right edge.
@@ -1040,7 +1059,7 @@ window.panel-hub {
 
 .shot-seg.active {
   background-color: $primary;
-  color: $surface;
+  color: $on-primary;
 }
 
 // Latest thumbnail: tonal card, image centred and scaled by width only.
@@ -1239,7 +1258,7 @@ window.panel-hub {
 
 .media-btn.play .media-btn-ic {
   font-size: 20px;
-  color: $surface;
+  color: $on-primary;
 }
 
 // Capability the player lacks: quiet, no plate, dimmed glyph.

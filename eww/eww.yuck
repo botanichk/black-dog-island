@@ -2,6 +2,9 @@
 ;; Только чтение информации и переключение рабочих столов. Без трея и без резервирования места.
 
 (defpoll clock :interval "1s" "date +%H:%M")
+;; Текущая схема темы (theme/current). Нужна кнопке переключения: она
+;; показывает глиф той темы, на которую переключит.
+(defpoll theme-now :interval "10s" "cat $HOME/eww-island/theme/current")
 
 ;; Событийно: xprop -spy печатает индекс рабочего стола при каждом изменении.
 (deflisten cur_ws :initial "0" "xprop -spy -root _NET_CURRENT_DESKTOP | sed -u -n 's/.*= //p'")
@@ -290,6 +293,7 @@
 
 ;; Левая колонка вкладок хаба (~56 px). Кнопка медиа - сразу после
 ;; «Главной» (по спеке вкладки), её индекс в стеке 5.
+;; Внизу, отдельно от вкладок, - переключатель темы (глиф солнца).
 (defwidget hub-rail []
   (box :orientation "vertical" :space-evenly false :class "hub-rail"
     (hub-tab-btn :idx 0 :glyph "")
@@ -297,7 +301,16 @@
     (hub-tab-btn :idx 1 :glyph "")
     (hub-tab-btn :idx 2 :glyph "")
     (hub-tab-btn :idx 3 :glyph "")
-    (hub-tab-btn :idx 4 :glyph "")))
+    (hub-tab-btn :idx 4 :glyph "")
+    ;; Растяжка: тема уезжает к низу колонки, вкладки остаются сверху.
+    (box :class "hub-rail-gap" :vexpand true)
+    ;; Переключатель темы (шаг 2 тем). switch.sh помнит выбор в theme/current
+    ;; и сам переоткрывает хаб на этой вкладке: reload закрывает окно и
+    ;; сбрасывает hub_tab на 0.
+    (button :class "hub-theme-btn" :timeout "8s"
+            :tooltip {theme-now == "light" ? "Тема: light -> default" : "Тема: default -> light"}
+            :onclick "$HOME/eww-island/theme/switch.sh"
+      (label :class "hub-ic" :text {theme-now == "light" ? "" : ""}))))
 
 ;; Общая рамка панели: верх прямой (панель продолжает остров), низ скруглён.
 ;; Растяжка на обоих уровнях: содержимое панели занимает всё окно по высоте.
