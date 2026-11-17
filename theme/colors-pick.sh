@@ -186,23 +186,32 @@ if wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub'; then
   esac
 fi
 
-# --- 4. применить ---------------------------------------------------------
-"$THEME/apply.sh" "$SCHEME" --reload || true
-
-# --- 5. вернуть хаб на прежнюю вкладку ------------------------------------
+# --- 4. закрыть хаб ДО reload ---------------------------------------------
+# Почему до, а не после: reload пересоздаёт окно и оставляет старые
+# экземпляры (проверено - после reload висело по два окна panel-hub, wmctrl
+# правил только одно). Если закрыть заранее, reload нечего дублировать,
+# и panel.sh открывает единственное окно. На клик выходит ~3 с вместо ~6.4:
+# раньше 5.3 с из них уходило на закрытие уже пересозданного окна и ожидание.
 if [ "$was_open" = true ]; then
   "$EWW" --config "$ROOT/eww" close panel-hub >/dev/null 2>&1 || true
   i=0
-  while wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 30 ]; do
-    sleep 0.1; i=$((i + 1))
+  while wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 20 ]; do
+    sleep 0.05; i=$((i + 1))
   done
+fi
+
+# --- 5. применить ---------------------------------------------------------
+"$THEME/apply.sh" "$SCHEME" --reload || true
+
+# --- 6. открыть хаб на прежней вкладке ------------------------------------
+if [ "$was_open" = true ]; then
   "$PANEL" panel-hub "$tab" >/dev/null 2>&1 || true
   i=0
   while ! wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 40 ]; do
-    sleep 0.1; i=$((i + 1))
+    sleep 0.05; i=$((i + 1))
   done
   # panel.sh держит позицию ~1.5 с; не спорим с ним
-  sleep 0.4
+  sleep 0.3
 fi
 
 echo "цвет: $SCHEME (режим $(read_mode))"
