@@ -1430,6 +1430,13 @@ window.panel-hub {
   padding: 6px 0 0 0;
 }
 
+// Имя обоев рядом с «С обоев»: приглушённое, чтобы не спорило с чипами.
+.colors-wall-name {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  padding: 0 6px 0 6px;
+}
+
 .colors-chip {
   min-height: 26px;
   margin-left: 4px;

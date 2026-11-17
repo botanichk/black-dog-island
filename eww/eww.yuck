@@ -16,6 +16,11 @@
 ;; кнопке, которую нажали, а не всегда на «Спокойной».
 (defpoll colors-wall :interval "3s" :initial "m3-tonal-spot"
   "cat $HOME/eww-island/theme/wallpaper-scheme 2>/dev/null || echo m3-tonal-spot")
+;; Имя обоев текущего рабочего стола: показывается в ряду «С обоев», чтобы
+;; было видно, с какой картинки снимается палитра. Опрос 5 с - человек
+;; переключает столы сам, а лишний процесс на каждый тик ни к чему.
+(defpoll colors-wall-name :interval "5s" :initial ""
+  "$HOME/eww-island/theme/from-wallpaper.sh --name 2>/dev/null || true")
 
 ;; Событийно: xprop -spy печатает индекс рабочего стола при каждом изменении.
 (deflisten cur_ws :initial "0" "xprop -spy -root _NET_CURRENT_DESKTOP | sed -u -n 's/.*= //p'")
@@ -670,7 +675,9 @@
                             :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 165))))))
     ;; Низ вкладки: цвета из обоев текущего рабочего стола.
     (box :orientation "horizontal" :space-evenly false :class "colors-wall" :halign "fill"
-      (label :class "colors-sec" :xalign 0 :hexpand true :text "С обоев")
+      (label :class "colors-sec" :xalign 0 :text "С обоев")
+      (label :class "colors-wall-name" :xalign 0 :hexpand true
+             :text colors-wall-name)
       ;; 4 схемы из 10: все десять не влезают в 509 px, а разница между
       ;; m3-content и m3-monochrome для острова неощутима.
       (button :class {colors-now == "wallpaper" && colors-wall == "m3-tonal-spot" ? "colors-chip active" : "colors-chip"}

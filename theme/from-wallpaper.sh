@@ -24,9 +24,14 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 SCHEME="m3-tonal-spot"
 MODE=""
 RELOAD=0
+NAME_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     --reload) RELOAD=1 ;;
+    # --name печатает имя обоев текущего стола и выходит: вкладка «Цвета»
+    # показывает его рядом с «С обоев», иначе непонятно, с каких обоев
+    # считается палитра (владелец спросил «не видел работу с обоев»).
+    --name) NAME_ONLY=1 ;;
     -*) echo "неизвестный аргумент: $arg" >&2; exit 2 ;;
     *)
       if [ -z "$MODE" ] && { [ "$arg" = "dark" ] || [ "$arg" = "light" ]; }; then
@@ -81,6 +86,11 @@ if [ -z "$WALL" ] && [ "$ws" != "0" ]; then
 fi
 [ -n "$WALL" ] || {
   echo "у этого рабочего стола нет обоев в настройках XFCE" >&2; exit 3; }
+
+if [ "$NAME_ONLY" -eq 1 ]; then
+  printf '%s\n' "$(basename -- "$WALL")"
+  exit 0
+fi
 
 # --- 2. палитра от noctalia ----------------------------------------------
 TMP=$(mktemp "${TMPDIR:-/tmp}/eww-island-wall.XXXXXX.json")
