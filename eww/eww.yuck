@@ -12,6 +12,10 @@
 ;; Действующие режим и схема - для подсветки выбранного.
 (defpoll colors-mode :interval "3s" :initial "dark" "cat $HOME/eww-island/theme/mode")
 (defpoll colors-now :interval "3s" :initial "default" "cat $HOME/eww-island/theme/current")
+;; Какая m3-схема выбрана для обоев: нужно, чтобы подсветка стояла на той
+;; кнопке, которую нажали, а не всегда на «Спокойной».
+(defpoll colors-wall :interval "3s" :initial "m3-tonal-spot"
+  "cat $HOME/eww-island/theme/wallpaper-scheme 2>/dev/null || echo m3-tonal-spot")
 
 ;; Событийно: xprop -spy печатает индекс рабочего стола при каждом изменении.
 (deflisten cur_ws :initial "0" "xprop -spy -root _NET_CURRENT_DESKTOP | sed -u -n 's/.*= //p'")
@@ -664,17 +668,20 @@
       (label :class "colors-sec" :xalign 0 :hexpand true :text "С обоев")
       ;; 4 схемы из 10: все десять не влезают в 509 px, а разница между
       ;; m3-content и m3-monochrome для острова неощутима.
-      (button :class {colors-now == "wallpaper" ? "colors-chip active" : "colors-chip"}
+      (button :class {colors-now == "wallpaper" && colors-wall == "m3-tonal-spot" ? "colors-chip active" : "colors-chip"}
               :timeout "10s"
               :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper m3-tonal-spot"
         (label :text "Спокойная"))
-      (button :class "colors-chip" :timeout "10s"
+      (button :class {colors-now == "wallpaper" && colors-wall == "vibrant" ? "colors-chip active" : "colors-chip"}
+              :timeout "10s"
               :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper vibrant"
         (label :text "Яркая"))
-      (button :class "colors-chip" :timeout "10s"
+      (button :class {colors-now == "wallpaper" && colors-wall == "soft" ? "colors-chip active" : "colors-chip"}
+              :timeout "10s"
               :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper soft"
         (label :text "Мягкая"))
-      (button :class "colors-chip" :timeout "10s"
+      (button :class {colors-now == "wallpaper" && colors-wall == "muted" ? "colors-chip active" : "colors-chip"}
+              :timeout "10s"
               :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper muted"
         (label :text "Тихая")))))
 

@@ -108,6 +108,9 @@ else
   "$ROOT/theme/apply.sh" wallpaper
 fi
 printf '%s\n' "$MODE" > "$ROOT/theme/mode"
+# Какая m3-схема выбрана: без этого смена режима пересобирала обои со
+# «Спокойной», затирая «Яркую»/«Мягкую»/«Тихую» (проверено).
+printf '%s\n' "$SCHEME" > "$ROOT/theme/wallpaper-scheme"
 
 echo "обои: $WALL"
 echo "схема: $SCHEME, режим: $MODE"

@@ -46,6 +46,13 @@ read_current() {
   tr -d ' \t\r\n' < "$THEME/current" 2>/dev/null || echo default
 }
 
+# Какая m3-схема выбрана для обоев (theme/wallpaper-scheme). Нужна при смене
+# режима: иначе обои пересобираются со «Спокойной», затирая выбор.
+read_wall_scheme() {
+  s=$(tr -d ' \t\r\n' < "$THEME/wallpaper-scheme" 2>/dev/null || true)
+  printf '%s\n' "${s:-m3-tonal-spot}"
+}
+
 # Путь к файлу палитры по id схемы: p-<слаг> -> theme/palettes, u-<слаг> ->
 # ~/.config/noctalia/palettes. Нужен при смене режима: theme/current хранит
 # id схемы, а неисходный файл, и без этого «перекрасить в светлую» не знает,
@@ -157,7 +164,8 @@ if [ -n "$NEED_BUILD" ]; then
     wallpaper)
       # from-wallpaper.sh с явным режимом уже применяет схему и пишет mode;
       # сюда попадаем при смене режима у действующих обоев - пересобрать
-      "$THEME/from-wallpaper.sh" m3-tonal-spot "$(read_mode)" >/dev/null ;;
+      # ТУ ЖЕ m3-схему, что выбрана (theme/wallpaper-scheme), а не «Спокойную».
+      "$THEME/from-wallpaper.sh" "$(read_wall_scheme)" "$(read_mode)" >/dev/null ;;
     palette:*)
       src=${NEED_BUILD#palette:}
       python3 "$THEME/palette2scheme.py" "$src" --mode "$(read_mode)" \
