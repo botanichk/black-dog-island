@@ -22,9 +22,14 @@
 (defpoll w-feels :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh feels")
 (defpoll w-desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh desc")
 (defpoll w-icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh icon")
-;; SVG-фон верхней карточки (имя файла assets/wx-bg-<bg>.svg).
-;; :initial - чтобы до первого опроса не было пустого URL wx-bg-.svg.
-(defpoll w-bg :interval "30m" :initial "cloud" "$HOME/eww-island/adapters/weather/forecast.sh bg")
+;; JPEG-фон верхней карточки: assets/wx-bg-<bg>.jpg, 16 видов
+;; (ясно/переменно/облачно/морось/дождь/снег/туман/гроза, день и ночь).
+;; Файлы делает scripts/build-weather-bg.sh из eww/assets/weather-src/.
+;; :initial - чтобы до первого опроса не было пустого URL wx-bg-.jpg.
+(defpoll w-bg :interval "30m" :initial "cloud-day" "$HOME/eww-island/adapters/weather/forecast.sh bg")
+;; Затемнение фона под текстом: alpha 0.30-0.65, своё для каждого вида
+;; (светлые сцены темнее, ночные почти без затемнения). См. shade_for в forecast.sh.
+(defpoll w-shade :interval "30m" :initial "0.45" "$HOME/eww-island/adapters/weather/forecast.sh shade")
 ;; Вид фона верхней карточки (ясно/облачно/дождь/снег/туман/гроза + день/ночь).
 ;; Это запасной вариант: inline-стиль ниже перекрывает background-image класса.
 ;; Если inline-стиль убрать, градиент снова станет фоном карточки.
@@ -347,15 +352,16 @@
     ;; только по содержимому (:vexpand false + valign end).
     (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :vexpand true :width 330
       (label :class "wx-city" :xalign 0 :text w-city)
-      ;; SVG-фон прижат вправо: узоры нарисованы в правой части canvas 330x100,
-      ;; а cover масштабирует по высоте карточки - без этого левый край срезал бы
-      ;; весь рисунок. Затемнение - верхний слой, оно перекрывает и картинку.
+      ;; JPEG-фон сцены, герои (фонарь, Жулик) - в правой части кадра, поэтому
+      ;; background-position 75% 50%: при обрезке cover правый край держится,
+      ;; а лишнее уходит из левого. Затемнение - верхний слой, alpha из w-shade.
       (box :orientation "horizontal" :space-evenly false :class "wx-cur ${wx-kind}" :halign "fill" :vexpand true
-        :style "background-image: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.35)), url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.svg'); background-size: 100% 100%, cover; background-position: right top;"
+        :style "background-image: linear-gradient(rgba(0,0,0,${w-shade}), rgba(0,0,0,${w-shade})), url('file://${EWW_CONFIG_DIR}/assets/wx-bg-${w-bg}.jpg'); background-size: 100% 100%, cover; background-position: left top, 75% 50%;"
         ;; Иконка, температура и описание - один блок по центру высоты карточки;
         ;; диапазон дня остаётся отдельно справа внизу.
         (box :orientation "horizontal" :space-evenly false :class "wx-cur-main" :halign "start" :valign "center" :hexpand true
-          (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 64 :image-height 64)
+          (box :orientation "horizontal" :space-evenly false :class "wx-icon-back" :valign "center" :halign "center"
+            (image :class "wx-cur-icon" :path "${EWW_CONFIG_DIR}/assets/cond-${w-icon}.svg" :image-width 64 :image-height 64))
           (box :orientation "vertical" :space-evenly false :halign "start" :valign "center"
             (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
             (label :class "wx-cur-desc" :xalign 0 :text w-desc)))

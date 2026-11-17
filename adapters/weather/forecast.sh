@@ -5,7 +5,8 @@
 #
 # usage: forecast.sh <ключ>
 #   city | temp | feels | desc | wind | hum
-#   icon | bg | kind | d<N>name | d<N>desc | d<N>temp | d<N>icon   (N = 0..3, прогноз по дням)
+#   icon | bg | kind | shade
+#   d<N>name | d<N>desc | d<N>temp | d<N>icon   (N = 0..3, прогноз по дням)
 #   d<N>sun | d<N>set
 set -eu
 
@@ -95,36 +96,83 @@ icon_for() {
   esac
 }
 
-# --- Сводная таблица: SVG-фон (bg_for) <-> градиентный запас (kind_for) ---
-#   файл wx-bg-*   когда bg_for (WMO, день/ночь)     kind_for
-#   sun            0, день                           clear-day
-#   stars          0, ночь                            clear-night
-#   partly         1|2, день                          clear-day (1) / cloudy-day (2)
-#   partly-night   1|2, ночь                          clear-night (1) / cloudy-night (2)
-#   cloud          3, день и ночь                     cloudy-day / cloudy-night
-#   fog            45|48                              fog
-#   drizzle        51|53|55|56|57 (морось)            rain
-#   rain           61..67, 80|81|82                   rain
-#   snow           71..77, 85|86                      snow
-#   storm          95|96|99                           storm
-# Наборы не совпадают один-в-один: у SVG 10 имён (1 и 2 делят partly, 3 - cloud),
-# у градиентов 8 видов. Оба набора рабочие: SVG рисует inline-стиль карточки,
-# класс wx-kind остаётся запасным градиентом (виден, только если inline-стиль
-# убрать: :style перекрывает background-image класса целиком).
-# --- Фон карточки: имя файла assets/wx-bg-<name>.svg ---
-# Соответствует описанию погоды: ясно - солнце (днём) или звёзды (ночью),
-# облачно - облака, морось/дождь - капли, снег - снежинки, гроза - молния.
+# --- Сводная таблица: JPEG-фон (bg_for) <-> градиентный запас (kind_for) ---
+#   файл wx-bg-*.jpg   когда bg_for (WMO, день/ночь)   kind_for
+#   clear-day          0, день                         clear-day
+#   clear-night        0, ночь                         clear-night
+#   partly-day         1|2, день                       clear-day (1) / cloudy-day (2)
+#   partly-night       1|2, ночь                       clear-night (1) / cloudy-night (2)
+#   cloud-day/night    3                               cloudy-day / cloudy-night
+#   fog-day/night      45|48                           fog
+#   drizzle-day/night  51|53|55|56|57 (морось)         rain
+#   rain-day/night     61..67, 80|81|82                rain
+#   snow-day/night     71..77, 85|86                   snow
+#   storm-day/night    95|96|99                        storm
+# Фонов 16 (вид x день/ночь): их делает scripts/build-weather-bg.sh из
+# eww/assets/weather-src/. У градиентов по-прежнему 8 видов: день/ночь нужен
+# только фонам, класс wx-kind остаётся запасным градиентом (виден, только если
+# inline-стиль убрать: :style перекрывает background-image класса целиком).
+# --- Фон карточки: имя файла assets/wx-bg-<name>.jpg ---
 bg_for() {
   case "$1" in
-    0)   if [ "${2:-1}" = 0 ]; then printf 'stars'; else printf 'sun'; fi ;;
-    1|2) if [ "${2:-1}" = 0 ]; then printf 'partly-night'; else printf 'partly'; fi ;;
-    3)              printf 'cloud' ;;
-    45|48)          printf 'fog' ;;
-    51|53|55|56|57) printf 'drizzle' ;;
-    61|63|65|66|67|80|81|82) printf 'rain' ;;
-    71|73|75|77|85|86) printf 'snow' ;;
-    95|96|99)       printf 'storm' ;;
-    *)              printf 'cloud' ;;
+    0)   if [ "${2:-1}" = 0 ]; then printf 'clear-night'; else printf 'clear-day'; fi ;;
+    1|2) if [ "${2:-1}" = 0 ]; then printf 'partly-night'; else printf 'partly-day'; fi ;;
+    3)   if [ "${2:-1}" = 0 ]; then printf 'cloud-night'; else printf 'cloud-day'; fi ;;
+    45|48)          if [ "${2:-1}" = 0 ]; then printf 'fog-night'; else printf 'fog-day'; fi ;;
+    51|53|55|56|57) if [ "${2:-1}" = 0 ]; then printf 'drizzle-night'; else printf 'drizzle-day'; fi ;;
+    61|63|65|66|67|80|81|82)
+                    if [ "${2:-1}" = 0 ]; then printf 'rain-night'; else printf 'rain-day'; fi ;;
+    71|73|75|77|85|86)
+                    if [ "${2:-1}" = 0 ]; then printf 'snow-night'; else printf 'snow-day'; fi ;;
+    95|96|99)       if [ "${2:-1}" = 0 ]; then printf 'storm-night'; else printf 'storm-day'; fi ;;
+    *)              if [ "${2:-1}" = 0 ]; then printf 'cloud-night'; else printf 'cloud-day'; fi ;;
+  esac
+}
+
+# --- Затемнение фона под текстом: alpha для rgba(0,0,0,<alpha>) в :style ---
+# Яркость у сцен разная (левый край от 21% до 70%), поэтому и затемнение
+# разное. Alpha подобрана по замеру средней яркости левых 55% каждой картинки
+# после обрезки и ресайза: alpha = 1 - 21/яркость, то есть под текстом
+# остаётся не больше 21% серого - белый текст держит контраст. Пределы
+# 0.30-0.65 из задания: ночные и так тёмные (20-31%) упираются в 0.30,
+# самые светлые (fog-day 70%, partly/snow/clear около 60-65%) - в 0.65.
+# Пересчитывать после замены картинок: scripts/build-weather-bg.sh.
+#   вид            яркость до  alpha  яркость после
+#   clear-day         59.9      0.65      21.0
+#   clear-night       20.9      0.30      14.6
+#   cloud-day         57.0      0.63      21.1
+#   cloud-night       21.7      0.30      15.2
+#   drizzle-day       53.8      0.61      21.0
+#   drizzle-night     23.8      0.30      16.6
+#   fog-day           70.3      0.65      24.6
+#   fog-night         42.7      0.51      20.9
+#   partly-day        65.0      0.65      22.7
+#   partly-night      31.2      0.33      20.9
+#   rain-day          55.8      0.62      21.2
+#   rain-night        26.2      0.30      18.4
+#   snow-day          65.0      0.65      22.7
+#   snow-night        24.2      0.30      16.9
+#   storm-day         34.3      0.39      20.9
+#   storm-night       30.0      0.30      21.0
+shade_for() {
+  case "$1" in
+    clear-day)     printf '0.65' ;;
+    clear-night)   printf '0.30' ;;
+    cloud-day)     printf '0.63' ;;
+    cloud-night)   printf '0.30' ;;
+    drizzle-day)   printf '0.61' ;;
+    drizzle-night) printf '0.30' ;;
+    fog-day)       printf '0.65' ;;
+    fog-night)     printf '0.51' ;;
+    partly-day)    printf '0.65' ;;
+    partly-night)  printf '0.33' ;;
+    rain-day)      printf '0.62' ;;
+    rain-night)    printf '0.30' ;;
+    snow-day)      printf '0.65' ;;
+    snow-night)    printf '0.30' ;;
+    storm-day)     printf '0.39' ;;
+    storm-night)   printf '0.30' ;;
+    *)             printf '0.45' ;;
   esac
 }
 
@@ -179,6 +227,7 @@ case "$key" in
   isday) jq -r '.current.is_day // 1' "$SNAP" ;;
   icon)  icon_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")" ;;
   bg)    bg_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")" ;;
+  shade) shade_for "$(bg_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")")" ;;
   kind)  kind_for "$(jq -r '.current.weather_code' "$SNAP")" "$(jq -r '.current.is_day // 1' "$SNAP")" ;;
   wind)  jq -r '.current.wind_speed_10m' "$SNAP" ;;
   hum)   jq -r '.current.relative_humidity_2m' "$SNAP" ;;
