@@ -907,15 +907,25 @@ window.panel-hub {
 
 // GtkScale: thin trough, accent fill, round knob. GTK3 draws the fill from the
 // "highlight" node, so both the trough and the highlight get the radius.
+//
+// background-image: none is required, not cosmetic. The GTK theme (adw-gtk3,
+// Tokyonight, ...) styles `scale highlight` and `progressbar progress` with
+// `background-image: image(#...)/radial-gradient(...)`, and an image is painted
+// ON TOP of background-color. Our colour was silently overridden and the
+// sliders stayed the theme's teal accent under every palette (measured:
+// #27a1b9 instead of Ayu #e6b450). Same reset for trough and slider so a theme
+// with a gradient trough cannot leak through either.
 .home-scale trough {
   min-height: 4px;
   border-radius: 999px;
   background-color: $surface-highest;
+  background-image: none;
 }
 
 .home-scale highlight {
   border-radius: 999px;
   background-color: $primary;
+  background-image: none;
 }
 
 .home-scale slider {
@@ -924,6 +934,7 @@ window.panel-hub {
   margin: -5px 0;
   border-radius: 999px;
   background-color: $on-surface;
+  background-image: none;
   border: none;
   box-shadow: none;
 }
@@ -964,12 +975,14 @@ window.panel-hub {
   min-width: 60px;
   border-radius: 999px;
   background-color: $surface-highest;
+  background-image: none;
 }
 
 .home-bar progress {
   min-height: 6px;
   border-radius: 999px;
   background-color: $primary;
+  background-image: none;
 }
 
 // --- hub: screenshot tab (step 3) ---
@@ -1179,11 +1192,13 @@ window.panel-hub {
   min-height: 4px;
   border-radius: 999px;
   background-color: $surface-highest;
+  background-image: none;
 }
 
 .media-scale highlight {
   border-radius: 999px;
   background-color: $primary;
+  background-image: none;
 }
 
 .media-scale slider {
@@ -1192,6 +1207,7 @@ window.panel-hub {
   margin: -5px 0;
   border-radius: 999px;
   background-color: $on-surface;
+  background-image: none;
   border: none;
   box-shadow: none;
 }
@@ -1201,12 +1217,14 @@ window.panel-hub {
   min-height: 4px;
   border-radius: 999px;
   background-color: $surface-highest;
+  background-image: none;
 }
 
 .media-bar progress {
   min-height: 4px;
   border-radius: 999px;
   background-color: $primary;
+  background-image: none;
 }
 
 // Transport controls: round chips, play/pause is the accent plate.
@@ -1330,6 +1348,13 @@ window.panel-hub {
 
 .colors-body {
   padding: 8px 0 0 0;
+}
+
+// Empty state for the "Свои" section: one wrapped line with the folder path.
+.colors-hint {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  padding: 0 0 6px 0;
 }
 
 // Section captions ("Наша схема", "Встроенные", "Свои").

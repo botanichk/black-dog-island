@@ -649,20 +649,25 @@
           (palette-card :id {colors-list.native.id} :label {colors-list.native.label}
                         :c1 {colors-list.native.c1} :c2 {colors-list.native.c2}
                         :c3 {colors-list.native.c3} :cur {colors-list.native.cur} :w 165))
+        ;; Блок «Свои» стоит ВТОРЫМ, сразу после нашей схемы, а не в конце:
+        ;; в конце он уходил за границу прокрутки и его никто не видел
+        ;; (проверено замерами - секция начиналась ниже y=350).
+        ;; Пустой список не прячем: иначе человек не знает, что свои палитры
+        ;; вообще поддерживаются, и спрашивает «а где пользовательские?».
+        (label :class "colors-sec" :xalign 0 :text "Свои")
+        (label :class "colors-hint" :xalign 0
+               :text "Положите файл палитры в папку настроек")
+        (for row in {colors-list.user}
+          (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
+            (for p in {row}
+              (palette-card :id {p.id} :label {p.label} :c1 {p.c1}
+                            :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 251))))
         (label :class "colors-sec" :xalign 0 :text "Встроенные")
         (for row in {colors-list.builtin}
           (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
             (for p in {row}
               (palette-card :id {p.id} :label {p.label} :c1 {p.c1}
-                            :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 165))))
-        ;; Блок «Свои» рисуется только если свои палитры есть.
-        (for z in {length(colors-list.user) > 0 ? "[1]" : "[]"}
-          (label :class "colors-sec" :xalign 0 :text "Свои"))
-        (for row in {colors-list.user}
-          (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
-            (for p in {row}
-              (palette-card :id {p.id} :label {p.label} :c1 {p.c1}
-                            :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 251))))))
+                            :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 165))))))
     ;; Низ вкладки: цвета из обоев текущего рабочего стола.
     (box :orientation "horizontal" :space-evenly false :class "colors-wall" :halign "fill"
       (label :class "colors-sec" :xalign 0 :hexpand true :text "С обоев")
