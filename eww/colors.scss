@@ -1,21 +1,21 @@
 // GENERATED FILE - do not edit. Source: theme/templates/colors.scss.tpl
-// Scheme: default
+// Scheme: p-ayu
 // Regenerate: theme/apply.sh <scheme> [--reload]
 // Keep this file ASCII-only: the SCSS compiler emits "@charset" for non-ASCII
 // input and GTK rejects that rule, dropping the whole stylesheet.
 
 // --- palette roles ---
-$surface: #141414;
-$surface-container: #1c1e22;
-$surface-container-high: #25282e;
-$surface-highest: #2b2f36;
-$outline: #2e3138;
-$on-surface: #e6e8ec;
-$on-surface-variant: #9aa0a6;
-$primary: #4fc3f7;
-$primary-dim: #2a6e8f;
-$error: #f2b8b5;
-$on-primary: #141414;
+$surface: #0b0e14;
+$surface-container: #1e222a;
+$surface-container-high: #272c36;
+$surface-highest: #2f3542;
+$outline: #565b66;
+$on-surface: #d1d1c7;
+$on-surface-variant: #8e959e;
+$primary: #e6b450;
+$primary-dim: #836935;
+$error: #d95757;
+$on-primary: #000000;
 // Text on the muted accent plate ($primary-dim): dark in the dark scheme
 // on light-blue, white in the light scheme on dark-blue.
 $on-primary-dim: #ffffff;
@@ -28,9 +28,9 @@ $weather-snow: #b0bec5;
 // --- transparent roles (colour + alpha, assembled by apply.sh) ---
 $state-hover: rgba(255, 255, 255, 0.08);
 $state-press: rgba(255, 255, 255, 0.12);
-$state-selected: rgba(79, 195, 247, 0.14);
+$state-selected: rgba(230, 180, 80, 0.14);
 $divider: rgba(255, 255, 255, 0.08);
-$on-surface-dim: rgba(230, 232, 236, 0.32);
+$on-surface-dim: rgba(209, 209, 199, 0.32);
 $text-shadow: rgba(0, 0, 0, 0.75);
 $wx-shade: rgba(0, 0, 0, 0.35);
 $wx-scrim: rgba(0, 0, 0, 0.45);
