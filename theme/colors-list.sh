@@ -25,7 +25,11 @@
 # Источники:
 #   n-island          - наши схемы default.json / light.json (вид до шага 11);
 #   p-<слаг>          - theme/palettes/*.json (встроенные палитры Noctalia);
-#   u-<слаг>          - ~/.config/noctalia/palettes/*.json (свои палитры).
+#   u-<слаг>          - ~/.config/noctalia/palettes/*.json (свои палитры);
+#   c-<слаг>          - ~/.local/state/noctalia/community-palettes/*.json
+#                       (каталог сообщества, 41 палитра). В репозиторий не
+#                       копируется: список строится из каталога при каждом
+#                       запуске. Каталога нет - раздела нет, вкладка цела.
 #
 # Список должен быть устойчив: один битый файл пропускается с сообщением в
 # stderr, остальные остаются. Иначе кривая палитра убила бы всю вкладку.
@@ -130,6 +134,21 @@ if user_dir.is_dir():
              "acc": [[r, v] for r, v in lib.accents_for(pal, mode)]})
 
 
+# --- 4. каталог сообщества (c-*) -----------------------------------------
+# Палитры сообщества лежат отдельно от своих и от встроенных. Читаем общим
+# кодом (lib.read_community): формат тот же, конвертер не дублируем.
+for cid, pal, _path in lib.read_community():
+    try:
+        scheme = lib.scheme_for_mode(pal, mode, theme, accent=accent)
+    except ValueError as exc:
+        print("пропуск палитры сообщества: %s" % exc, file=sys.stderr)
+        continue
+    c = scheme["colors"]
+    add({"id": cid, "label": pal["label"],
+         "c1": c["surface"], "c2": c["surface_container"], "c3": c["primary"],
+         "acc": [[r, v] for r, v in lib.accents_for(pal, mode)]})
+
+
 def chunk(seq, size):
     return [seq[i:i + size] for i in range(0, len(seq), size)]
 
@@ -138,9 +157,16 @@ def chunk(seq, size):
 head = items[:1]
 rest = items[1:]
 user = [x for x in rest if x["id"].startswith("u-")]
-builtin = [x for x in rest if not x["id"].startswith("u-")]
+community = [x for x in rest if x["id"].startswith("c-")]
+builtin = [x for x in rest
+           if not x["id"].startswith(("u-", "c-"))]
 
 out = {"builtin": chunk(builtin, 3), "user": chunk(user, 2)}
+# Раздел сообщества показываем только когда каталог реально есть: пустой
+# ряд из ничего не отличить от сломанного.
+if community:
+    out["community"] = chunk(community, 3)
+    out["community_n"] = len(community)
 if head:
     out["native"] = head[0]
 # JSON в одну строку: Eww читает его целиком, переносы ему не нужны.

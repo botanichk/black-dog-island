@@ -20,9 +20,11 @@
 
 import hashlib
 import json
+import os
 import pathlib
 import re
 import sys
+import urllib.parse
 
 # --- роли Noctalia (v5.4.1), 16 штук, в порядке файла ---------------------
 NOTCALIA_ROLES = [
@@ -208,6 +210,53 @@ def read_palette(path):
     return {"name": name, "label": label, "roles": roles}
 
 
+# --- каталог сообщества ---------------------------------------------------
+# `noctalia` кладёт скачанные палитры в ~/.local/state/noctalia, а не в
+# ~/.config: это состояние, а не настройки, при обновлении каталога файлы
+# перезаписываются. Формат тот же, что у своих (mPrimary/...), поэтому
+# читаем тем же read_palette - отдельного конвертера не нужно.
+COMMUNITY_DIR = "~/.local/state/noctalia/community-palettes"
+
+
+def community_dir():
+    return pathlib.Path(os.path.expanduser(COMMUNITY_DIR))
+
+
+def read_community(limit=None):
+    """Палитры каталога сообщества: [(id, палитра, файл)].
+
+    id - c-<слаг>. Слаг считается от имени БЕЗ %20: в каталоге имена
+    закодированы («Catppuccin%20Mocha%20Green.json»), и без раскодирования
+    id получился бы «catppuccin-20mocha-20green». Битый файл не роняет
+    список: пропускаем и говорим в stderr.
+    """
+    directory = community_dir()
+    if not directory.is_dir():
+        return []
+    out = []
+    used = {}
+    for path in sorted(directory.glob("*.json")):
+        name = urllib.parse.unquote(path.stem)
+        try:
+            palette = read_palette(path)
+        except ValueError as exc:
+            print("пропуск палитры сообщества: %s" % exc, file=sys.stderr)
+            continue
+        # подпись: имя файла, а не path.stem - иначе в карточке «%20»
+        palette["label"] = urllib.parse.unquote(palette["label"])
+        slug_name = slug_unique(name)
+        # два разных файла могут дать один слаг («Ayu Blue» и «Ayu_Blue»)
+        if slug_name in used:
+            used[slug_name] += 1
+            slug_name = "%s-%d" % (slug_name, used[slug_name])
+        else:
+            used[slug_name] = 1
+        out.append(("c-" + slug_name, palette, path))
+        if limit is not None and len(out) >= limit:
+            break
+    return out
+
+
 def slug(text):
     """ASCII-slug: имя схемы попадает в theme/current и в комментарий
     eww/colors.scss, а тот обязан быть ASCII (иначе SCSS вставляет @charset
@@ -332,7 +381,16 @@ def build_scheme(palette, mode, base_colors, base_alphas, base_gradients,
         if value:
             accents[role] = value
 
-    accent = accent if accent in accents else "primary"
+    # Акцент проверяем тем же фильтром, что и вкладка (accents_for): если
+    # выбранная роль серая или дублирует другую, предлагать её нельзя, иначе
+    # схема применит цвет, которого в ряду кружков нет (проверено на ADW
+    # light: secondary #2e3436 - серый, primary стал им, а ряд показывал
+    # активным primary).
+    allowed = [role for role, _ in accents_for(palette, mode)]
+    if accent not in allowed:
+        accent = allowed[0] if allowed else "primary"
+    if accent not in accents:
+        accent = "primary"
     chosen = accents[accent]
 
     # контраст акцента: 8 из 10 светлых палитр Noctalia не проходят 4.5

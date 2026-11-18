@@ -6,3 +6,4 @@ theme/schemes/wallpaper.json
 __pycache__/
 theme/wallpaper-scheme
 theme/accent
+theme/schemes/c-*.json

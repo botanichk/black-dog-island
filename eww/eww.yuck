@@ -705,6 +705,21 @@
           (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
             (for p in {row}
               (palette-card :id {p.id} :label {p.label} :c1 {p.c1}
+                            :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 165))))
+        ;; Каталог сообщества (~/.local/state/noctalia/community-palettes):
+        ;; 41 палитра, в репозиторий не копируется. Раздел рисуется только
+        ;; если каталог есть - colors-list тогда отдаёт ключ community.
+        ;; Ряды по три: карточка 165 px, как у встроенных.
+        ;; Без счётчика в подписи: toString в этой сборке нет (в simplexpr
+        ;; только strlength/arraylength/objectlength), а склейка числа со
+        ;; строкой молча даёт пустой label.
+        (label :class "colors-sec" :xalign 0
+               :visible {colors-list.community_n > 0}
+               :text "Сообщество")
+        (for row in {colors-list.community}
+          (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
+            (for p in {row}
+              (palette-card :id {p.id} :label {p.label} :c1 {p.c1}
                             :c2 {p.c2} :c3 {p.c3} :cur {p.cur} :w 165))))))
     ;; Низ вкладки: цвета из обоев текущего рабочего стола.
     (box :orientation "horizontal" :space-evenly false :class "colors-wall" :halign "fill"

@@ -111,6 +111,10 @@ else:
                 palette = lib.read_palette(path)
             except ValueError as exc:
                 print("пропуск палитры: %s" % exc, file=sys.stderr)
+    elif current.startswith("c-"):
+        # каталог сообщества: id строит та же read_community, что и список
+        palette = next((p for cid, p, _f in lib.read_community()
+                        if cid == current), None)
     else:
         user_dir = pathlib.Path(os.path.expanduser("~/.config/noctalia/palettes"))
         if user_dir.is_dir():

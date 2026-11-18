@@ -87,6 +87,16 @@ resolve_source() {
           return 0
         fi
       done ;;
+    c-*)
+      # Каталог сообщества: id -> файл через ту же read_community, что строит
+      # список для вкладки. Через slug_unique(stem) нельзя: имена файлов
+      # закодированы (Catppuccin%20Mocha%20Green.json), и слаг вышел бы
+      # «catppuccin-20mocha-20green» вместо «catppuccin-mocha-green».
+      src=$(python3 -c "import sys; sys.path.insert(0,'$THEME'); import palette_lib as p; print(next((str(f) for cid, _, f in p.read_community() if cid == sys.argv[1]), ''))" "$1")
+      if [ -n "$src" ]; then
+        printf '%s\n' "$src"
+        return 0
+      fi ;;
   esac
   return 1
 }
@@ -189,15 +199,15 @@ case "$ACTION" in
         SCHEME="p-$id"
         NEED_BUILD="palette:$src"
         ;;
-      u-*)
-        # свои палитры: ищем файл, чей slug совпадает с хвостом id
+      u-*|c-*)
+        # свои палитры и каталог сообщества: ищем файл по id
         found=$(resolve_source "$ARG") || found=""
-        [ -n "$found" ] || { echo "нет своей палитры: $ARG" >&2; exit 2; }
+        [ -n "$found" ] || { echo "нет палитры: $ARG" >&2; exit 2; }
         SCHEME="$ARG"
         NEED_BUILD="palette:$found"
         ;;
       *)
-        echo "неизвестный id: $ARG (ожидалось n-island, p-*, u-*)" >&2; exit 2 ;;
+        echo "неизвестный id: $ARG (ожидалось n-island, p-*, u-*, c-*)" >&2; exit 2 ;;
     esac
     ;;
 
