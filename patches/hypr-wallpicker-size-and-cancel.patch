@@ -1,0 +1,202 @@
+diff --git a/include/app.h b/include/app.h
+index c97ed9c..fb3af06 100644
+--- a/include/app.h
++++ b/include/app.h
+@@ -9,7 +9,9 @@
+ #define PATH_MAX 4096
+ #endif
+ 
+-#define HEX_RADIUS 200.0f
++#define DEFAULT_HEX_RADIUS 200.0f
++#define MIN_HEX_RADIUS 24.0f
++#define MAX_HEX_RADIUS 600.0f
+ #define DEFAULT_COLS 5
+ #define DEFAULT_SPACING 15.0f
+ #define DEFAULT_WINDOW_WIDTH 1920
+@@ -47,6 +49,7 @@ typedef struct {
+   int cols;
+   float spacing;
+   float angle;
++  float radius;
+ } RendererConfig;
+ 
+ typedef struct {
+@@ -67,6 +70,7 @@ typedef struct {
+ 
+   Image hex_mask;
+   int img_size;
++  float hex_radius;
+ 
+   float angle;
+ } App;
+diff --git a/src/app.c b/src/app.c
+index dc573be..a53b21c 100644
+--- a/src/app.c
++++ b/src/app.c
+@@ -71,12 +71,14 @@ AppConfig AppConfigFromArgs(int argc, char **argv) {
+   config.window_height = DEFAULT_WINDOW_HEIGHT;
+   config.renderer.cols = DEFAULT_COLS;
+   config.renderer.spacing = DEFAULT_SPACING;
++  config.renderer.radius = DEFAULT_HEX_RADIUS;
+   config.renderer.angle = 0.0f; // vertical by default
+   config.backend = DetectSessionBackend();
+ 
+   static struct option long_options[] = {{"cols", required_argument, 0, 'c'},
+                                          {"spacing", required_argument, 0, 's'},
+                                          {"angle", required_argument, 0, 'a'},
++                                         {"radius", required_argument, 0, 'r'},
+                                          {0, 0, 0, 0}};
+ 
+   int opt;
+@@ -85,7 +87,7 @@ AppConfig AppConfigFromArgs(int argc, char **argv) {
+ 
+   opterr = 0;
+ 
+-  while ((opt = getopt_long(argc, argv, "c:s:a:", long_options,
++  while ((opt = getopt_long(argc, argv, "c:s:a:r:", long_options,
+                             &option_index)) != -1) {
+     switch (opt) {
+     case 'c': {
+@@ -124,6 +126,21 @@ AppConfig AppConfigFromArgs(int argc, char **argv) {
+       }
+       break;
+     }
++    case 'r': {
++      errno = 0;
++      float val = strtof(optarg, &endptr);
++      if (errno == 0 && *endptr == '\0' && val >= MIN_HEX_RADIUS) {
++        if (val > MAX_HEX_RADIUS) {
++          val = MAX_HEX_RADIUS;
++        }
++        config.renderer.radius = val;
++      } else {
++        fprintf(stderr,
++                "Warning: Invalid radius '%s', falling back to default %.1f\n",
++                optarg, DEFAULT_HEX_RADIUS);
++      }
++      break;
++    }
+     case '?':
+       fprintf(stderr, "Warning: Ignored unknown or incomplete option.\n");
+       break;
+@@ -169,6 +186,7 @@ int AppRun(const AppConfig *config) {
+   InitWindow(config->window_width, config->window_height, "wallpicker");
+ 
+   app.angle = config->renderer.angle;
++  app.hex_radius = config->renderer.radius;
+   if (!InitWallpaperResources(&app)) {
+     fprintf(stderr, "Error: failed to initialize wallpaper resources\n");
+     AppShutdown(&app);
+diff --git a/src/render.c b/src/render.c
+index 4ff8e77..ced693c 100644
+--- a/src/render.c
++++ b/src/render.c
+@@ -50,7 +50,7 @@ void RenderWallpapers(const App *app, int hoveredIndex, float angle_deg) {
+     DrawTexturePro(app->wallpapers[hoveredIndex].tex, sourceRec, destRec,
+                    origin, 0.0f, tint);
+ 
+-    DrawPolyLinesEx(currentCenter, 6, HEX_RADIUS * scale, 30.0f + angle_deg,
++    DrawPolyLinesEx(currentCenter, 6, app->hex_radius * scale, 30.0f + angle_deg,
+                     8.0f, WHITE);
+   }
+ 
+diff --git a/src/ui.c b/src/ui.c
+index 64df902..6b9aeb4 100644
+--- a/src/ui.c
++++ b/src/ui.c
+@@ -14,6 +14,7 @@ typedef struct {
+   float inradius;
+   float cos_angle;
+   float sin_angle;
++  float radius;
+   int cols;
+   float step_x;
+   float step_y;
+@@ -29,13 +30,14 @@ static GridLayout BuildGridLayout(const App *app,
+   float total_height;
+   float rad;
+ 
+-  layout.inradius = HEX_RADIUS * 0.866025f;
++  layout.radius = renderer->radius;
++  layout.inradius = layout.radius * 0.866025f;
+   layout.cols = renderer->cols < 1 ? 1 : renderer->cols;
+-  layout.step_x = 1.73205f * HEX_RADIUS + renderer->spacing;
+-  layout.step_y = 1.5f * HEX_RADIUS + renderer->spacing;
++  layout.step_x = 1.73205f * layout.radius + renderer->spacing;
++  layout.step_y = 1.5f * layout.radius + renderer->spacing;
+ 
+   total_rows = (app->wp_count + layout.cols - 1) / layout.cols;
+-  total_height = (2.0f * HEX_RADIUS) + (total_rows - 1) * layout.step_y;
++  total_height = (2.0f * layout.radius) + (total_rows - 1) * layout.step_y;
+ 
+   layout.center_x =
+       ((layout.cols - 1) * layout.step_x + layout.step_x / 2.0f) / 2.0f;
+@@ -54,6 +56,7 @@ SelectionResult RunUI(App *app, const AppConfig *config) {
+   const RendererConfig *renderer = &config->renderer;
+   const GridLayout layout = BuildGridLayout(app, renderer);
+   UiState ui = {0};
++  bool press_on_empty = false;
+ 
+   result.valid = false;
+ 
+@@ -102,10 +105,10 @@ SelectionResult RunUI(App *app, const AppConfig *config) {
+       float dy_abs = fabsf(dy);
+ 
+       float horiz_radius = layout.inradius;
+-      float vert_radius = HEX_RADIUS;
++      float vert_radius = layout.radius;
+ 
+       if (dx_abs <= horiz_radius && dy_abs <= vert_radius) {
+-        if (1.73205f * dy_abs + dx_abs <= 1.73205f * HEX_RADIUS) {
++        if (1.73205f * dy_abs + dx_abs <= 1.73205f * layout.radius) {
+           if (hoveredIndex == -1) {
+             hoveredIndex = i;
+           }
+@@ -123,6 +126,14 @@ SelectionResult RunUI(App *app, const AppConfig *config) {
+ 
+     RenderWallpapers(app, hoveredIndex, renderer->angle);
+ 
++    // Клик мимо миниатюр отменяет выбор: человек передумал менять обои, и
++    // рабочий стол должен вернуться как был. Считаем «мимо» только если и
++    // нажали, и отпустили вне шестиугольников: иначе протяжка мышью с
++    // миниатюры на пустое место закрывала бы окно вместо выбора.
++    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
++      press_on_empty = (hoveredIndex == -1);
++    }
++
+     if (hoveredIndex != -1 && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+       result.valid = true;
+       result.full_target_path =
+@@ -139,6 +150,17 @@ SelectionResult RunUI(App *app, const AppConfig *config) {
+       break;
+     }
+ 
++    // Отпустили левую кнопку на пустом месте - отмена.
++    if (hoveredIndex == -1 && press_on_empty &&
++        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
++      break;
++    }
++
++    // Правая кнопка - отмена из любого места, привычно для окон выбора.
++    if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
++      break;
++    }
++
+     if (IsKeyPressed(KEY_ESCAPE)) {
+       break;
+     }
+diff --git a/src/wallpaper.c b/src/wallpaper.c
+index cf2d949..3cb76e4 100644
+--- a/src/wallpaper.c
++++ b/src/wallpaper.c
+@@ -22,8 +22,8 @@ bool InitWallpaperResources(App *app) {
+     return false;
+   }
+ 
+-  app->img_size = (int)(HEX_RADIUS * 2.0f);
+-  app->hex_mask = GenerateHexMask(app->img_size, HEX_RADIUS, app->angle);
++  app->img_size = (int)(app->hex_radius * 2.0f);
++  app->hex_mask = GenerateHexMask(app->img_size, app->hex_radius, app->angle);
+ 
+   return true;
+ }
