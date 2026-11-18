@@ -804,12 +804,6 @@ window.panel-hub {
   color: $on-primary;
 }
 
-// Rail spacer: pushes the theme switch to the bottom of the column, so the
-// tab buttons stay grouped at the top and their positions do not shift.
-.hub-rail-gap {
-  min-height: 8px;
-}
-
 // Root box of every hub tab (calendar/weather/wifi): one class, equal padding
 // on all sides, so tabs look uniform. The box itself fills the tab area
 // (hexpand/vexpand are set in yuck).
