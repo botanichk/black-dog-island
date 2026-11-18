@@ -180,3 +180,13 @@ if [ -x "$ROOT/theme/plank.sh" ]; then
     echo "рамка Plank: не применилась (см. ~/.cache/eww-island/plank.log)" >&2
   fi
 fi
+
+# --- 6. тема Ulauncher в те же цвета --------------------------------------
+# Ulauncher перечитывает тему по SIGHUP, поэтому окно не мигает и ввод не
+# теряется (в отличие от Plank, которому нужен перезапуск). Ошибку не
+# пробрасываем: без Ulauncher остров работает. Подробности - theme/ulauncher.sh.
+if [ -x "$ROOT/theme/ulauncher.sh" ]; then
+  if ! "$ROOT/theme/ulauncher.sh" apply; then
+    echo "тема Ulauncher: не применилась (см. ~/.cache/eww-island/ulauncher.log)" >&2
+  fi
+fi
