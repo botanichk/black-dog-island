@@ -4,6 +4,8 @@
 # usage: theme/from-wallpaper.sh [m3-схема] [dark|light] [--reload]
 #        theme/from-wallpaper.sh                      # m3-tonal-spot, режим из theme/mode
 #        theme/from-wallpaper.sh vibrant light        # конкретная схема и режим
+#        theme/from-wallpaper.sh --name               # имя обоев, без обработки
+#        theme/from-wallpaper.sh --path               # полный путь обоев
 #
 # Почему это работает без Noctalia-демона: `noctalia theme <картинка>` умеет
 # считать палитру отдельным вызовом, Wayland и демон ему не нужны (проверено,
@@ -33,6 +35,7 @@ SCHEME="m3-tonal-spot"
 MODE=""
 RELOAD=0
 NAME_ONLY=0
+PATH_ONLY=0
 for arg in "$@"; do
   case "$arg" in
     --reload) RELOAD=1 ;;
@@ -40,6 +43,9 @@ for arg in "$@"; do
     # показывает его рядом с «С обоев», иначе непонятно, с каких обоев
     # считается палитра (владелец спросил «не видел работу с обоев»).
     --name) NAME_ONLY=1 ;;
+    # --path печатает полный путь обоев: по нему wall-schemes.sh считает
+    # хэш для кэша. Иначе поиск обоев пришлось бы дублировать вторым кодом.
+    --path) PATH_ONLY=1 ;;
     -*) echo "неизвестный аргумент: $arg" >&2; exit 2 ;;
     *)
       if [ -z "$MODE" ] && { [ "$arg" = "dark" ] || [ "$arg" = "light" ]; }; then
@@ -104,6 +110,10 @@ fi
 
 if [ "$NAME_ONLY" -eq 1 ]; then
   printf '%s\n' "$(basename -- "$WALL")"
+  exit 0
+fi
+if [ "$PATH_ONLY" -eq 1 ]; then
+  printf '%s\n' "$WALL"
   exit 0
 fi
 
