@@ -1,37 +1,58 @@
 #!/bin/sh
-# Кнопка обоев на острове (этап 6, шаг 4).
-# Открывает настройщик обоев XFCE. Пакеты не нужны: xfdesktop рисует рабочий
-# стол и читает настройки из xfconf, а xfdesktop-settings - его родной GUI.
+# wallpaper.sh - кнопка обоев на острове (этап 6, шаг 4; задание 13).
 #
-# Если окно настройщика уже открыто - не плодим копию, а поднимаем его.
-# Вызов отвязанный (setsid -f) - окно должно пережить таймаут команды кнопки.
+# Сначала пробует выбор обоев шестиугольниками (hypr-wallpicker). Если он не
+# собран или упал - открывает родной настройщик XFCE (xfdesktop-settings),
+# чтобы кнопка никогда не оставалась «мёртвой».
+#
+# Почему обе ветки в одном файле: команда кнопки должна жить в одном месте
+# (значение :onclick задаёт только имя скрипта), и запасной вариант проще
+# держать рядом с основным, чем в yuck.
+#
+# Зависимости: sh, wmctrl. Сам wallpicker - отдельная программа, см.
+# docs/WALLPICKER.md.
 set -eu
 
-CLASS="xfdesktop-settings.Xfdesktop-settings"
-BIN="xfdesktop-settings"
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+LOG="$LOG_DIR/wallpicker.log"
 
-command -v "$BIN" >/dev/null 2>&1 || {
-  echo "ошибка: $BIN не найден" >&2
-  exit 1
+XFCE_CLASS="xfdesktop-settings.Xfdesktop-settings"
+XFCE_BIN="xfdesktop-settings"
+
+mkdir -p "$LOG_DIR" 2>/dev/null || true
+log() {
+  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG" 2>/dev/null || true
 }
 
-# Окно уже открыто: поднять и выйти.
-if wmctrl -lx 2>/dev/null | grep -q " $CLASS "; then
-  id=$(wmctrl -lx 2>/dev/null | awk -v c="$CLASS" '$3 == c {print $1; exit}')
-  [ -n "$id" ] && wmctrl -i -a "$id" 2>/dev/null || true
+# Запасной вариант: родной настройщик. Уже открыт - поднимаем, копию не плодим.
+xfce_fallback() {
+  command -v "$XFCE_BIN" >/dev/null 2>&1 || {
+    log "ошибка: нет $XFCE_BIN"
+    echo "ошибка: $XFCE_BIN не найден" >&2
+    exit 1
+  }
+  if wmctrl -lx 2>/dev/null | grep -q " $XFCE_CLASS "; then
+    id=$(wmctrl -lx 2>/dev/null | awk -v c="$XFCE_CLASS" '$3 == c {print $1; exit}')
+    [ -n "$id" ] && wmctrl -i -a "$id" 2>/dev/null || true
+    exit 0
+  fi
+  setsid -f "$XFCE_BIN" >/dev/null 2>&1
+  i=0
+  while [ "$i" -lt 20 ]; do
+    wmctrl -lx 2>/dev/null | grep -q " $XFCE_CLASS " && exit 0
+    sleep 0.1
+    i=$((i + 1))
+  done
+  log "предупреждение: окно $XFCE_CLASS не появилось за 2 с"
+  exit 0
+}
+
+# Основной вариант: выбор шестиугольниками. run.sh сам решает, можно ли его
+# запускать (нет бинарника или папки - код 1/2), поэтому проверка здесь одна.
+if "$ROOT/adapters/wallpicker/run.sh"; then
   exit 0
 fi
 
-setsid -f "$BIN" >/dev/null 2>&1
-
-# Ждём появления окна (до 2 с): так повторный клик сразу поднимет его,
-# а не запустит второй процесс.
-i=0
-while [ "$i" -lt 20 ]; do
-  wmctrl -lx 2>/dev/null | grep -q " $CLASS " && exit 0
-  sleep 0.1
-  i=$((i + 1))
-done
-
-echo "предупреждение: окно $CLASS не появилось за 2 с" >&2
-exit 0
+log "wallpicker не запустился - открываю xfdesktop-settings"
+xfce_fallback

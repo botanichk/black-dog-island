@@ -178,8 +178,9 @@
         (button :class "layout" :onclick "$HOME/eww-island/adapters/x11/layout.sh next" layout)
         ;; Обои: глиф Meslo Nerd Font (картинка, U+F03E), как у остальных
         ;; кнопок острова. Команда запуска живёт в adapters/x11/wallpaper.sh:
-        ;; уже открытое окно настройщика поднимается, копии не плодятся.
-        (button :class "wall" :timeout "3s"
+        ;; она пробует выбор шестиугольниками (hypr-wallpicker), а если тот
+        ;; не собран или упал - открывает родной настройщик XFCE.
+        (button :class "wall" :timeout "5s"
           :onclick "$HOME/eww-island/adapters/x11/wallpaper.sh"
           (label :class "wall-ic" :text ""))
         ;; Клик по Wi-Fi открывает список сетей. Иконка - свой SVG: веер из дуг,
