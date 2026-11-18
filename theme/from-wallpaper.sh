@@ -77,34 +77,13 @@ command -v xfconf-query >/dev/null 2>&1 || {
   echo "нет xfconf-query (пакет xfconf)" >&2; exit 4; }
 
 # --- 1. обои, которые реально на экране -----------------------------------
-# Номер стола, чьи обои показываются: при single-workspace-mode=true это
-# single-workspace-number, иначе текущий стол.
-single_mode=$(xfconf-query -c xfce4-desktop -p /backdrop/single-workspace-mode 2>/dev/null || true)
-ws=$(xprop -root _NET_CURRENT_DESKTOP 2>/dev/null | sed -n 's/.*= *//p')
-ws=${ws:-0}
-if [ "$single_mode" = "true" ]; then
-  single_num=$(xfconf-query -c xfce4-desktop -p /backdrop/single-workspace-number 2>/dev/null || true)
-  [ -n "$single_num" ] && ws=$single_num
-fi
+# Правило single-workspace-mode и перебор ключей живут в theme/desktop.sh:
+# тот же файл использует хук выбора обоев (adapters/wallpicker/apply.sh),
+# иначе две копии правила разъезжаются (уже разъехались: скрипт читал
+# «бурю» со стола 0, а xfdesktop показывал обои стола 2).
+. "$ROOT/theme/desktop.sh"
 
-wallpaper_of() {
-  # $1 - номер стола; печатает первый непустой путь
-  xfconf-query -c xfce4-desktop -l 2>/dev/null \
-    | grep "/workspace$1/last-image$" \
-    | while read -r prop; do
-        value=$(xfconf-query -c xfce4-desktop -p "$prop" 2>/dev/null || true)
-        if [ -n "$value" ] && [ -f "$value" ]; then
-          printf '%s\n' "$value"
-          break
-        fi
-      done
-}
-
-WALL=$(wallpaper_of "$ws")
-if [ -z "$WALL" ] && [ "$ws" != "0" ]; then
-  # у стола может не быть своих обоев - берём общие с первого
-  WALL=$(wallpaper_of 0)
-fi
+WALL=$(xfce_current_wallpaper)
 [ -n "$WALL" ] || {
   echo "у этого рабочего стола нет обоев в настройках XFCE" >&2; exit 3; }
 
