@@ -59,9 +59,22 @@ fi
 
 if ! "$GEOM" xid >/dev/null 2>&1; then
   echo "окна острова нет, открываю"
+  # Позицию задаём сразу при открытии: открыть в 0x0 и потом перенести - это
+  # кадр, в котором остров виден слева, а потом прыжок в центр. Ширину берём
+  # из того же кэша, что и автоскрытие (файл island-width), чтобы оба пути
+  # открывали окно одинаково; нет кэша - открываем в 0x0 и центрируем ниже.
+  WIDTHFILE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/island-width"
+  OPEN_X=0
+  if [ -r "$WIDTHFILE" ]; then
+    W=$(tr -cd '0-9' < "$WIDTHFILE")
+    SW=$(xrandr --current | awk '/\*/{print $1; exit}' | cut -d x -f1)
+    if [ -n "$W" ] && [ -n "$SW" ] && [ "$W" -gt 0 ] && [ "$W" -lt "$SW" ]; then
+      OPEN_X=$(( (SW - W) / 2 ))
+    fi
+  fi
   # --no-daemonize: демон только что запущен выше; если клиент не достучался -
   # ошибка и повтор, а не второй демон со своим окном-клоном.
-  timeout 10 "$EWW" --config "$CONF" --no-daemonize open island --pos "0x0" >/dev/null 2>&1 || true
+  timeout 10 "$EWW" --config "$CONF" --no-daemonize open island --pos "${OPEN_X}x0" >/dev/null 2>&1 || true
   i=0
   until "$GEOM" xid >/dev/null 2>&1; do
     i=$((i + 1))
@@ -83,6 +96,13 @@ iy=$(echo "$geom" | awk '{print $3}')
 iw=$(echo "$geom" | awk '{print $4}')
 ih=$(echo "$geom" | awk '{print $5}')
 [ "$iw" -gt 0 ] || err "не удалось измерить ширину окна острова"
+
+# Ширина нужна автоскрытию, чтобы открывать остров сразу по центру, а не
+# открывать в 0x0 и переносить (это видимый прыжок слева). Ширина острова от
+# содержимого не зависит, поэтому кэш безопасен; оба пути пишут один файл.
+WIDTHFILE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/island-width"
+mkdir -p "$(dirname "$WIDTHFILE")" 2>/dev/null || true
+printf '%s\n' "$iw" > "$WIDTHFILE" 2>/dev/null || true
 
 # --- 4. Центрирование относительно монитора острова ---
 # Монитор определяем по координатам окна, а не по первому разрешению из xrandr:

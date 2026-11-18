@@ -51,6 +51,17 @@ PIDFILE = os.path.join(CACHE, "autohide.pid")
 LOGFILE = os.path.join(CACHE, "autohide.log")
 OFFFILE = os.path.join(CACHE, "autohide-off")
 HIDDENFILE = os.path.join(CACHE, "autohide-hidden")
+# Ширина окна острова, запомненная при последнем показе. Нужна, чтобы открыть
+# остров СРАЗУ по центру: позицию задаёт eww open --pos, и если открыть в 0x0,
+# а потом перенести, окно на кадр родится слева и прыгает (владелец это видел
+# после выхода из полноэкранного ютуба). Ширина острова от содержимого не
+# зависит (619 px, закреплено в AGENTS.md), поэтому кэш безопасен; после
+# открытия ширина всё равно проверяется и кэш поправляется.
+WIDTHFILE = os.path.join(CACHE, "island-width")
+# Запасная ширина на самый первый запуск, когда кэша ещё нет: остров 619 px,
+# это константа проекта (AGENTS.md: ширина не зависит от содержимого). Иначе
+# первый показ после kill -9 открывался бы в 0x0 и прыгал в центр вправо.
+DEFAULT_WIDTH = 619
 DEBUG = bool(os.environ.get("ISLAND_AUTOHIDE_DEBUG"))
 
 TICK = 0.5        # контрольный опрос состояния, с
@@ -352,6 +363,32 @@ def log(msg):
         pass
 
 
+# --- Ширина острова: чтобы открывать сразу по центру ---
+def saved_width():
+    """Ширина для предварительной позиции. Недоверчиво: только правдоподобные
+    значения (0 < w < ширина экрана), иначе - константа DEFAULT_WIDTH. Иначе
+    испорченный кэш открыл бы окно у левого края и оно бы прыгало."""
+    try:
+        with open(WIDTHFILE) as f:
+            w = int(f.read().strip() or 0)
+        sw = screen_w()
+        if 0 < w < sw:
+            return w
+    except (OSError, ValueError):
+        pass
+    return DEFAULT_WIDTH
+
+
+def save_width(w):
+    if w and w > 0:
+        try:
+            os.makedirs(CACHE, exist_ok=True)
+            with open(WIDTHFILE, "w") as f:
+                f.write(str(int(w)))
+        except OSError:
+            pass
+
+
 # --- Закрытие/открытие острова через eww ---
 def run_eww(*args):
     cmd = [EWW, "--config", CONF, "--no-daemonize"] + list(args)
@@ -403,7 +440,17 @@ def show_island(st):
         log("демон Eww не запущен, остров откроет run-island.sh")
         return
     st.pid = pid
-    rc = run_eww("open", "island", "--pos", "0x0")
+
+    # Позицию задаём в САМОМ вызове open, а не вторым вызовом после замера.
+    # Раньше было: open --pos 0x0 -> замер ширины -> open --pos центр. Окно
+    # при этом честно рождалось слева (0x0) и через кадр прыгало в центр;
+    # владелец видел этот прыжок после полноэкранного ютуба и после выбора
+    # обоев. Ширина острова от содержимого не зависит (619 px, см. AGENTS.md),
+    # поэтому берём её из кэша и открываем сразу там, где надо.
+    w0 = saved_width()
+    want_x = max(0, (screen_w() - w0) // 2)
+
+    rc = run_eww("open", "island", "--pos", "%dx0" % want_x)
     w = wait_island(pid, 3.0)
     if not w:
         st.retry_after = time.monotonic() + 2.0
@@ -416,7 +463,11 @@ def show_island(st):
         st.retry_after = time.monotonic() + 2.0
         log("ошибка: геометрия острова не прочиталась")
         return
+
+    # Ширина подтвердилась - держим кэш свежим. Если она разошлась с кэшем
+    # (первый запуск, правка конфига), доводим позицию и запоминаем новую.
     want_x = max(0, (screen_w() - g[2]) // 2)
+    save_width(g[2])
     if g[0] != want_x:
         run_eww("open", "island", "--pos", "%dx0" % want_x)
         # Eww пересоздаёт окно при смене позиции: XID меняется, поэтому
