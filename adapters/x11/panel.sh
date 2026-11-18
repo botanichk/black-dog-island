@@ -54,8 +54,35 @@ if [ -n "$(win_geo "$TITLE")" ]; then
       exit 0
     fi
   fi
+  # Закрытие: углы острова возвращаются круглыми сразу. panel_open придёт в
+  # false от panel-open.sh через ~0.5-1 с, но hub_opening держит прямые углы
+  # только пока идёт ОТКРЫТИЕ - здесь его снимаем, иначе остров остался бы
+  # с прямыми углами до следующего события.
+  "$EWW" --config "$CONF" update hub_opening=false 2>/dev/null || true
   "$EWW" --config "$CONF" close "$NAME"
   exit 0
+fi
+
+# --- открытие ---
+# Нижние углы острова становятся прямыми СРАЗУ при клике, а не когда
+# panel-open.sh увидит новое окно в _NET_CLIENT_LIST (это до 1 с, а вместе с
+# расстановкой окна xfwm4 выходило до 3 с). hub_opening=true ставим ДО open.
+# Сбрасываем его в любом исходе - и в успешном, и в аварийном (trap EXIT):
+# если скрипт упадёт между "true" и "false", остров навсегда останется с
+# прямыми углами. Сброс delay'ится на 0.5 с ПОСЛЕ появления окна, чтобы
+# panel-open.sh успел выставить panel_open=true и между двумя сигналами не
+# было вспышки круглых углов.
+HUB_OPENING_SET=0
+reset_hub_opening() {
+  [ "$HUB_OPENING_SET" -eq 1 ] || return 0
+  HUB_OPENING_SET=0
+  "$EWW" --config "$CONF" update hub_opening=false 2>/dev/null || true
+}
+trap reset_hub_opening EXIT INT TERM HUP
+
+if [ "$NAME" = "panel-hub" ]; then
+  "$EWW" --config "$CONF" update hub_opening=true 2>/dev/null || true
+  HUB_OPENING_SET=1
 fi
 
 # Хаб открываем на запрошенной вкладке.
@@ -131,4 +158,15 @@ if [ "$#" -eq 4 ]; then
   if [ "$1" -ne "$X" ] || [ "$2" -ne "$Y" ]; then
     echo "предупреждение: позиция панели $NAME не устоялась (фактически: ${final_x}x${final_y}, ожидалось: ${X}x${Y})" >&2
   fi
+fi
+
+# Окно на месте. Снимаем hub_opening: остров снова слушает только panel_open.
+# 0.5 с - запас на то, чтобы panel-open.sh (xprop -spy на _NET_CLIENT_LIST)
+# успел выставить panel_open=true. Без этой паузы между "hub_opening=false" и
+# "panel_open=true" был бы момент, когда оба false, и нижние углы острова
+# мигнули бы круглыми. Если panel_open не успел - остров останется с прямыми
+# углами ещё на мгновение, это лучше вспышки.
+if [ "$HUB_OPENING_SET" -eq 1 ]; then
+  sleep 0.5
+  reset_hub_opening
 fi

@@ -47,6 +47,14 @@
 ;; Раскладка событийно: адаптер слушает XkbStateNotify через собственный X11-хелпер.
 (deflisten panel_open :initial "false" "$HOME/eww-island/adapters/x11/panel-open.sh")
 
+;; "Хаб открывается прямо сейчас" - ставит adapters/x11/panel.sh до eww open,
+;; снимает после того, как окно хаба реально появилось. Нужен, чтобы нижние
+;; углы острова становились прямыми В МОМЕНТ клика, а не через 3 с, когда
+;; panel-open.sh заметит окно (он ждёт _NET_CLIENT_LIST и до 1 с отстаёт).
+;; Только интерфейсное состояние: в файл не пишется, при reload сбрасывается
+;; в false, и это правильно - зависшее true держало бы углы прямыми навсегда.
+(defvar hub_opening "false")
+
 (deflisten layout :initial "" "$HOME/eww-island/adapters/x11/layout.sh")
 
 ;; Погода для выпадающей панели: Open-Meteo + координаты из Noctalia.
@@ -156,7 +164,7 @@
 (defwidget island-root []
   (overlay
     (box :orientation "horizontal" :space-evenly false :vexpand true
-      :class {panel_open == "true" ? "island-root open" : "island-root"}
+      :class {panel_open == "true" || hub_opening == "true" ? "island-root open" : "island-root"}
       ;; Колесо над точками листает столы. onscroll живёт только на eventbox,
       ;; аргумент приходит из патча eww-0001 ("up"/"down").
       (eventbox :onscroll "$HOME/eww-island/adapters/x11/ws-scroll.sh {}"
@@ -178,9 +186,14 @@
         ;; «Главная»: открывает хаб на вкладке home. panel.sh сам решает -
         ;; открыть, переключить или закрыть. Кнопка подсвечена, пока хаб
         ;; открыт именно на главной (panel_open + hub_tab), как активная
-        ;; вкладка в колонке. :timeout 3s - окно панели появляется не сразу.
+        ;; вкладка в колонке.
+        ;; :timeout 8s - окно панели появляется не сразу, а panel.sh ещё и
+        ;; держит позицию, пока xfwm4 её не перестанет сбивать (до ~4 с).
+        ;; Меньший таймаут убивал скрипт на середине: open идёт с
+        ;; --no-daemonize, окно принадлежит процессу клиента, и вместе с
+        ;; убитым скриптом исчезал сам хаб.
         (button :class {panel_open == "true" && hub_tab == 0 ? "home-btn active" : "home-btn"}
-          :timeout "3s"
+          :timeout "8s"
           :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-hub home"
           (label :class "home-btn-ic" :text ""))
         (button :class "layout" :onclick "$HOME/eww-island/adapters/x11/layout.sh next" layout)
@@ -194,9 +207,9 @@
         ;; Клик по Wi-Fi открывает список сетей. Иконка - свой SVG: веер из дуг,
         ;; уровень задаётся количеством дуг и цветом.
         ;; Клик по часам открывает хаб на вкладке календаря.
-        ;; :timeout 3s - окно панели появляется не мгновенно, а команда кнопки
-        ;; по умолчанию убивается через 200 мс.
-        (button :class "clock" :timeout "3s"
+        ;; :timeout 8s - по той же причине, что у «Главной»: команда кнопки по
+        ;; умолчанию убивается через 200 мс, а panel.sh живёт до ~4 с.
+        (button :class "clock" :timeout "8s"
           :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-hub calendar"
           (label :text clock))
         ;; onscroll живёт только на eventbox: у button он удалён в Eww 0.6.
