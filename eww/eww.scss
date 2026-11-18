@@ -49,17 +49,18 @@ window.island {
   background: transparent;
 }
 
-.island-shell {
+// Вогнутые углы (второй слой overlay). Полоса между ними больше не нужна:
+// её цвет - тот же $surface, что у тела, а отдельным слоем она закрывала бы
+// верх плашек. Остались только сами картинки по краям.
+.flare-row {
   background: transparent;
 }
 
-// Top band with concave corners: the 12x12 corners stick out 12 px past the
-// body. The body gets a 0 12px margin, so the band is exactly two corners wider.
-.flare-band {
-  min-height: 12px;
-  background-color: $surface;
-}
-
+// Тело острова тянется на всю высоту окна (50 px): содержимое центрируется
+// по y=25, то есть по центру окна. Раньше над телом стояла полоса вогнутых
+// углов 12 px, тело получало 38 px и центр уезжал на 30.5 - плашки кнопок
+// были прижаты книзу (в светлой схеме видно). Углы теперь отдельный слой,
+// а место под них - это margin 0 12px по бокам.
 .island-root {
   min-width: $island-w - 52px;
   background-color: $surface;
