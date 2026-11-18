@@ -3,12 +3,25 @@
 #
 # usage: power.sh logout|reboot|poweroff|status
 #
-# Почему через loginctl и systemctl, а не через `poweroff`/`reboot` напрямую:
-# обе команды есть в системе и обе идут через systemd-logind, но loginctl
-# умеет ещё и завершить сессию, не трогая машину (`loginctl terminate-session`),
-# а systemctl - именно то, что делает кнопка выключения в любом DE.
-# Проверено: polkit-агент (polkit-gnome, pid 826) работает, поэтому запрос
-# прав проходит без ввода пароля из терминала.
+# Выключение и перезагрузка - через systemctl: это ровно то, что делает кнопка
+# в любом DE, и polkit для org.freedesktop.login1.power-off / .reboot разрешает
+# активной сессии действовать без пароля (allow_active=yes). Проверено:
+# pkcheck --action-id org.freedesktop.login1.power-off --process $$ -> код 0.
+#
+# Выход из сессии - НЕ через loginctl terminate-session. Тот требует polkit
+# org.freedesktop.login1.manage, а у него allow_active=auth_admin_keep, то есть
+# пароль admin каждый раз: pkcheck --action-id org.freedesktop.login1.manage
+# --process $$ -> "Authorization requires authentication", код 2. Агент
+# polkit-gnome в XFCE показывал бы окно с паролем, а из кнопки меню его никто
+# не заполнит - поэтому кнопка «Выйти» молча ничего не делала.
+#
+# Вместо этого зовём родной менеджер сессии XFCE: он завершает сессию сам,
+# изнутри, без polkit (права уже есть - процесс наш). Два равнозначных пути:
+#   * xfce4-session-logout --logout - утилита XFCE, шлёт Logout в менеджер;
+#   * dbus-send ... org.xfce.Session.Manager.Logout false true - то же самое,
+#     но без промежуточного бинарника (первый аргумент - не показывать диалог,
+#     второй - разрешить сохранение сессии).
+# Пробуем утилиту, а если её нет - dbus. Ошибку не глотаем: пишем в лог.
 #
 # Ничего не выключается при вызове без аргумента или с незнакомым аргументом:
 # скрипт сначала печатает, что собирается сделать, и только потом действует.
@@ -30,16 +43,41 @@ session_id() {
     | awk -v u="${USER:-$(id -un)}" '$3 == u {print $1; exit}'
 }
 
+# Выход из сессии через менеджер XFCE. Возвращает 0, если команда ушла.
+logout_xfce() {
+  if command -v xfce4-session-logout >/dev/null 2>&1; then
+    log "logout: xfce4-session-logout --logout"
+    xfce4-session-logout --logout >/dev/null 2>&1
+    return $?
+  fi
+  if command -v dbus-send >/dev/null 2>&1; then
+    # Имя интерфейса именно org.xfce.Session.Manager (с точками), не
+    # org.xfce.SessionManager: последнее - это имя службы на шине.
+    log "logout: dbus Logout(false, true) в org.xfce.Session.Manager"
+    dbus-send --session --type=method_call \
+      --dest=org.xfce.SessionManager /org/xfce/SessionManager \
+      org.xfce.Session.Manager.Logout boolean:false boolean:true >/dev/null 2>&1
+    return $?
+  fi
+  log "logout: нет ни xfce4-session-logout, ни dbus-send"
+  return 1
+}
+
 case "${1:-}" in
   logout)
-    SID=$(session_id)
-    if [ -z "$SID" ]; then
-      log "logout: сессия не найдена"
-      echo "не нашёл сессию пользователя" >&2
-      exit 1
+    if logout_xfce; then
+      exit 0
     fi
-    log "logout: loginctl terminate-session $SID"
-    exec loginctl terminate-session "$SID"
+    # Запасной путь для не-XFCE сессий: выйти из сессии средствами logind.
+    # Тут polkit может спросить пароль - это лучше, чем не сделать ничего.
+    SID=$(session_id)
+    if [ -n "$SID" ]; then
+      log "logout: запасной путь, loginctl terminate-session $SID"
+      exec loginctl terminate-session "$SID"
+    fi
+    log "logout: сессия не найдена"
+    echo "не смог выйти из сессии" >&2
+    exit 1
     ;;
   reboot)
     log "reboot: systemctl reboot"
@@ -55,6 +93,18 @@ case "${1:-}" in
     echo "polkit:   $(pgrep -f 'polkit.*agent' >/dev/null 2>&1 && echo работает || echo 'не найден')"
     echo "systemctl: $(command -v systemctl || echo нет)"
     echo "loginctl:  $(command -v loginctl || echo нет)"
+    echo "logout:    $(command -v xfce4-session-logout || echo 'нет утилиты, будет dbus-send')"
+    echo
+    # Права polkit: у выключения/перезагрузки без пароля, у terminate-session -
+    # только с паролем. Поэтому выход идёт через менеджер сессии, не через logind.
+    echo "права без пароля:"
+    for act in power-off reboot manage; do
+      if pkcheck --action-id "org.freedesktop.login1.$act" --process $$ >/dev/null 2>&1; then
+        echo "  $act: да"
+      else
+        echo "  $act: нет (для manage это нормально, см. комментарий в скрипте)"
+      fi
+    done
     exit 0
     ;;
   *)
