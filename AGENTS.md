@@ -75,9 +75,11 @@ docs/ (спеки и отчёты). Пакет eww из репозитория �
 
 ## Обои
 Кнопка обоев на острове запускает выбор шестиугольниками (hypr-wallpicker
-из `~/src/hypr-wallpicker`), хук `adapters/wallpicker/apply.sh` ставит обои
-через xfconf; `xfdesktop-settings` остался запасным путём. Правило выбора
-стола (single-workspace-mode) живёт в `theme/desktop.sh` - одно на всех.
+из `~/src/hypr-wallpicker`), под сеткой лежат те же обои, размытые и
+затемнённые на 40 % (`-b`, `--blur 16`, `--scrim 40`). Хук
+`adapters/wallpicker/apply.sh` ставит обои через xfconf;
+`xfdesktop-settings` остался запасным путём. Правило выбора стола
+(single-workspace-mode) живёт в `theme/desktop.sh` - одно на всех.
 См. docs/WALLPICKER.md.
 
 ## Plank

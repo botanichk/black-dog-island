@@ -1,0 +1,357 @@
+diff --git a/include/app.h b/include/app.h
+index fb3af06..dac1f60 100644
+--- a/include/app.h
++++ b/include/app.h
+@@ -16,6 +16,10 @@
+ #define DEFAULT_SPACING 15.0f
+ #define DEFAULT_WINDOW_WIDTH 1920
+ #define DEFAULT_WINDOW_HEIGHT 1080
++// Фон под миниатюрами: обои, размытые в downscale раз и затемнённые на
++// scrim_percent процентов. 0 в scrim - не затемнять, 0/1 в blur - не размывать.
++#define DEFAULT_BLUR_DOWNSCALE 16
++#define DEFAULT_SCRIM_PERCENT 40
+ 
+ typedef struct {
+   Texture2D tex;
+@@ -58,6 +62,11 @@ typedef struct {
+   int window_height;
+   RendererConfig renderer;
+   SessionBackend backend;
++  // Обои для фона (обычно те, что сейчас на рабочем столе). NULL или пусто -
++  // фона нет, окно остаётся прозрачным, как в апстриме.
++  const char *backdrop_path;
++  int blur_downscale;
++  int scrim_percent;
+ } AppConfig;
+ 
+ typedef struct {
+@@ -72,6 +81,9 @@ typedef struct {
+   int img_size;
+   float hex_radius;
+ 
++  // Фон: размытые обои на весь экран + затемнение. tex.id == 0 - фона нет.
++  Texture2D backdrop_tex;
++
+   float angle;
+ } App;
+ 
+diff --git a/include/wallpaper.h b/include/wallpaper.h
+index 241361e..6e3bbfe 100644
+--- a/include/wallpaper.h
++++ b/include/wallpaper.h
+@@ -8,4 +8,10 @@ bool InitWallpaperResources(App *app);
+ bool LoadWallpapers(App *app);
+ void UnloadWallpapers(App *app);
+ 
++// Фон под миниатюрами: обои, размытые и затемнённые на весь экран.
++// Возвращает false, если обои не загрузились - тогда фон просто не рисуется.
++// scrim_percent: сколько процентов яркости снять (0 - не затемнять).
++bool LoadBackdrop(App *app, const char *path, int downscale, int scrim_percent);
++void UnloadBackdrop(App *app);
++
+ #endif
+diff --git a/include/render.h b/include/render.h
+index 587e5f4..6695ad9 100644
+--- a/include/render.h
++++ b/include/render.h
+@@ -3,5 +3,8 @@
+ 
+ #include "app.h"
+ 
++// Фон под миниатюрами: размытые обои на весь экран + затемнение.
++// Ничего не рисует, если фона нет (app->backdrop_tex.id == 0).
++void RenderBackdrop(const App *app);
+ void RenderWallpapers(const App *app, int hoveredIndex, float angle_deg);
+ #endif
+diff --git a/src/app.c b/src/app.c
+index a53b21c..2cbee85 100644
+--- a/src/app.c
++++ b/src/app.c
+@@ -74,11 +74,21 @@ AppConfig AppConfigFromArgs(int argc, char **argv) {
+   config.renderer.radius = DEFAULT_HEX_RADIUS;
+   config.renderer.angle = 0.0f; // vertical by default
+   config.backend = DetectSessionBackend();
++  config.backdrop_path = NULL;
++  config.blur_downscale = DEFAULT_BLUR_DOWNSCALE;
++  config.scrim_percent = DEFAULT_SCRIM_PERCENT;
++
++  // Числовые коды для опций без короткой формы (BLUR, SCRIM): getopt_long
++  // возвращает их как есть, case ловит по числу.
++  enum { OPT_BLUR = 1000, OPT_SCRIM };
+ 
+   static struct option long_options[] = {{"cols", required_argument, 0, 'c'},
+                                          {"spacing", required_argument, 0, 's'},
+                                          {"angle", required_argument, 0, 'a'},
+                                          {"radius", required_argument, 0, 'r'},
++                                         {"backdrop", required_argument, 0, 'b'},
++                                         {"blur", required_argument, 0, OPT_BLUR},
++                                         {"scrim", required_argument, 0, OPT_SCRIM},
+                                          {0, 0, 0, 0}};
+ 
+   int opt;
+@@ -87,7 +97,7 @@ AppConfig AppConfigFromArgs(int argc, char **argv) {
+ 
+   opterr = 0;
+ 
+-  while ((opt = getopt_long(argc, argv, "c:s:a:r:", long_options,
++  while ((opt = getopt_long(argc, argv, "c:s:a:r:b:", long_options,
+                             &option_index)) != -1) {
+     switch (opt) {
+     case 'c': {
+@@ -144,6 +154,41 @@ AppConfig AppConfigFromArgs(int argc, char **argv) {
+     case '?':
+       fprintf(stderr, "Warning: Ignored unknown or incomplete option.\n");
+       break;
++    case 'b': {
++      // Обои для фона. Проверяем только наличие файла: если он битый,
++      // LoadBackdrop вернёт false и окно просто останется прозрачным.
++      if (optarg[0] != '\0' && FileExists(optarg)) {
++        config.backdrop_path = optarg;
++      } else {
++        fprintf(stderr, "Warning: backdrop '%s' not found, using transparent "
++                        "background\n", optarg);
++      }
++      break;
++    }
++    case OPT_BLUR: {
++      errno = 0;
++      long val = strtol(optarg, &endptr, 10);
++      if (errno == 0 && *endptr == '\0' && val >= 0 && val <= 256) {
++        config.blur_downscale = (int)val;
++      } else {
++        fprintf(stderr,
++                "Warning: Invalid blur '%s', falling back to default %d\n",
++                optarg, DEFAULT_BLUR_DOWNSCALE);
++      }
++      break;
++    }
++    case OPT_SCRIM: {
++      errno = 0;
++      long val = strtol(optarg, &endptr, 10);
++      if (errno == 0 && *endptr == '\0' && val >= 0 && val <= 100) {
++        config.scrim_percent = (int)val;
++      } else {
++        fprintf(stderr,
++                "Warning: Invalid scrim '%s', falling back to default %d\n",
++                optarg, DEFAULT_SCRIM_PERCENT);
++      }
++      break;
++    }
+     default:
+       break;
+     }
+@@ -193,6 +238,15 @@ int AppRun(const AppConfig *config) {
+     return 1;
+   }
+ 
++  // Фон грузим до миниатюр: он нужен и на экране «Loading». Ошибку не
++  // считаем фатальной - без фона окно прозрачное, как в апстриме.
++  if (config->backdrop_path != NULL &&
++      !LoadBackdrop(&app, config->backdrop_path, config->blur_downscale,
++                    config->scrim_percent)) {
++    fprintf(stderr, "Warning: failed to load backdrop '%s'\n",
++            config->backdrop_path);
++  }
++
+   if (!LoadWallpapers(&app)) {
+     AppShutdown(&app);
+     return 1;
+@@ -225,6 +279,7 @@ static void AppShutdown(App *app) {
+   }
+ 
+   UnloadWallpapers(app);
++  UnloadBackdrop(app);
+ 
+   if (app->wp_dir != NULL) {
+     free(app->wp_dir);
+diff --git a/src/wallpaper.c b/src/wallpaper.c
+index 3cb76e4..0a8a599 100644
+--- a/src/wallpaper.c
++++ b/src/wallpaper.c
+@@ -3,6 +3,7 @@
+ #include "wallpaper.h"
+ #include "fs.h"
+ #include "raylib.h"
++#include "render.h"
+ 
+ #include <dirent.h>
+ #include <errno.h>
+@@ -16,6 +17,7 @@ static Image GenerateHexMask(int size, float radius, float angle_deg);
+ static int CountWallpapers(const char *dir_path);
+ static bool LoadSingleWallpaper(App *app, const char *filename);
+ static bool ExportThumbnail(Image image, const char *cache_path);
++static Image BlurImage(Image img, int downscale);
+ 
+ bool InitWallpaperResources(App *app) {
+   if (app == NULL) {
+@@ -79,6 +81,7 @@ bool LoadWallpapers(App *app) {
+ 
+     BeginDrawing();
+     ClearBackground(BLANK);
++    RenderBackdrop(app);
+     DrawText("Loading & Caching Wallpapers...", GetScreenWidth() / 2 - 250,
+              GetScreenHeight() / 2, 30, WHITE);
+     DrawText(ent->d_name, GetScreenWidth() / 2 - 250,
+@@ -246,6 +249,124 @@ cleanup:
+ }
+ 
+ 
++// --- фон под миниатюрами --------------------------------------------------
++// Зачем: окно выбора прозрачное, и 32 яркие миниатюры поверх пёстрых обоев
++// дают цветовую кашу. Размытые и притемнённые обои узнаются, но перестают
++// спорить с миниатюрами.
++//
++// Как размываем: без шейдеров и без снятия экрана. Берём сам файл обоев,
++// уменьшаем в downscale раз, потом растягиваем обратно до размера экрана.
++// Уменьшение усредняет соседние пиксели (stb_image_resize, линейный фильтр),
++// растягивание сглаживает - вместе это ровное размытие. Стоимость: один
++// проход по картинке при открытии окна, на Intel HD 4000 незаметно.
++static Image BlurImage(Image img, int downscale) {
++  int w = img.width;
++  int h = img.height;
++  int small_w = w / downscale;
++  int small_h = h / downscale;
++
++  if (downscale < 2 || small_w < 1 || small_h < 1) {
++    return img;
++  }
++
++  ImageResize(&img, small_w, small_h);
++  ImageResize(&img, w, h);
++  return img;
++}
++
++bool LoadBackdrop(App *app, const char *path, int downscale, int scrim_percent) {
++  Image img;
++  int win_w;
++  int win_h;
++  float src_aspect;
++  float win_aspect;
++  Rectangle crop;
++  float keep;
++
++  if (app == NULL || path == NULL) {
++    return false;
++  }
++
++  img = LoadImage(path);
++  if (img.data == NULL) {
++    return false;
++  }
++
++  // Приводим к RGB(8)A: ImageResize и текстура работают с известным форматом.
++  ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
++
++  win_w = GetScreenWidth();
++  win_h = GetScreenHeight();
++  if (win_w < 1 || win_h < 1) {
++    UnloadImage(img);
++    return false;
++  }
++
++  // Кадрируем по пропорциям экрана, как xfdesktop в режиме zoom: иначе
++  // растянутая на весь экран картинка была бы сплющена.
++  src_aspect = (float)img.width / (float)img.height;
++  win_aspect = (float)win_w / (float)win_h;
++  if (src_aspect > win_aspect) {
++    keep = (float)img.height * win_aspect;
++    crop = (Rectangle){((float)img.width - keep) / 2.0f, 0.0f, keep,
++                       (float)img.height};
++  } else {
++    keep = (float)img.width / win_aspect;
++    crop = (Rectangle){0.0f, ((float)img.height - keep) / 2.0f,
++                       (float)img.width, keep};
++  }
++  ImageCrop(&img, crop);
++
++  // Уменьшаем и растягиваем обратно до размеров экрана.
++  ImageResize(&img, win_w, win_h);
++  img = BlurImage(img, downscale);
++
++  // Затемнение делаем в САМИХ пикселях, а не полупрозрачным прямоугольником
++  // поверх. Полупрозрачный прямоугольник на прозрачном окне не затемняет, а
++  // делает всё окно полупрозрачным: рабочий стол просвечивает, и вместо
++  // затемнения получается разбавление (проверено: просили 40%, на экране
++  // вышло посветление на 40%).
++  //
++  // Правку делаем прямо в img.data, а не через LoadImageColors: тот отдаёт
++  // КОПИЮ пикселей (проверено - изменения в ней до текстуры не доходят).
++  // Формат уже R8G8B8A8, поэтому байты идут подряд: R,G,B,A на пиксель.
++  if (scrim_percent > 0) {
++    float k = 1.0f - (float)scrim_percent / 100.0f;
++    unsigned char *px = (unsigned char *)img.data;
++    int bytes = img.width * img.height * 4;
++    for (int i = 0; i < bytes; i += 4) {
++      px[i + 0] = (unsigned char)((float)px[i + 0] * k + 0.5f);
++      px[i + 1] = (unsigned char)((float)px[i + 1] * k + 0.5f);
++      px[i + 2] = (unsigned char)((float)px[i + 2] * k + 0.5f);
++      px[i + 3] = 255; // фон непрозрачный: под ним не должно быть стола
++    }
++  }
++
++  app->backdrop_tex = LoadTextureFromImage(img);
++  UnloadImage(img);
++
++  if (app->backdrop_tex.id == 0) {
++    return false;
++  }
++
++  // Билинейная фильтрация: текстура почти всегда рисуется не в масштабе 1:1
++  // (экран и размер окна могут разойтись), и без неё были бы пиксельные
++  // ступеньки на градиентах.
++  SetTextureFilter(app->backdrop_tex, TEXTURE_FILTER_BILINEAR);
++  return true;
++}
++
++void UnloadBackdrop(App *app) {
++  if (app == NULL) {
++    return;
++  }
++
++  if (app->backdrop_tex.id != 0) {
++    UnloadTexture(app->backdrop_tex);
++    app->backdrop_tex = (Texture2D){0};
++  }
++}
++
+ static bool ExportThumbnail(Image image, const char *cache_path) {
+   int needed;
+   char *temp_path;
+diff --git a/src/render.c b/src/render.c
+index ced693c..9d87125 100644
+--- a/src/render.c
++++ b/src/render.c
+@@ -2,6 +2,25 @@
+ #include "raylib.h"
+ #include <stddef.h>
+ 
++// Фон: обои на весь экран + затемнение. Рисует только если фон загружен,
++// иначе окно прозрачное (как в апстриме).
++void RenderBackdrop(const App *app) {
++  Rectangle dest;
++  Rectangle source;
++
++  if (app == NULL || app->backdrop_tex.id == 0) {
++    return;
++  }
++
++  dest = (Rectangle){0.0f, 0.0f, (float)GetScreenWidth(),
++                     (float)GetScreenHeight()};
++  source = (Rectangle){0.0f, 0.0f, (float)app->backdrop_tex.width,
++                       (float)app->backdrop_tex.height};
++
++  DrawTexturePro(app->backdrop_tex, source, dest, (Vector2){0.0f, 0.0f}, 0.0f,
++                 WHITE);
++}
++
+ void RenderWallpapers(const App *app, int hoveredIndex, float angle_deg) {
+ 
+   if (app == NULL || app->wallpapers == NULL || app->wp_count <= 0)
+@@ -9,6 +28,7 @@ void RenderWallpapers(const App *app, int hoveredIndex, float angle_deg) {
+ 
+   BeginDrawing();
+   ClearBackground(BLANK);
++  RenderBackdrop(app);
+ 
+   for (int i = 0; i < app->wp_count; i++) {
+     if (i == hoveredIndex)
