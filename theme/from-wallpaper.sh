@@ -12,9 +12,17 @@
 # Список схем - из текста ошибки самого noctalia, других значений он не
 # принимает: m3-fidelity, m3-neutral, m3-vibrant, m3-expressive НЕ существуют.
 #
-# Обои берём у ТЕКУЩЕГО рабочего стола: у каждого стола в XFCE свой
-# last-image. Монитор в ключе не хардкодим (monitorLVDS-1 может смениться) -
-# перебираем ключи и сверяем номер стола.
+# Обои: у каждого стола в XFCE свой last-image, но есть режим
+# /backdrop/single-workspace-mode - «одни обои на все столы». Когда он
+# включён, xfdesktop рисует на всех столах обои стола
+# /backdrop/single-workspace-number, а ключи остальных столов остаются
+# старыми и на экран не влияют. Раньше мы читали ТЕКУЩИЙ стол и на столе 0
+# отдавали «бурю», которой на экране не было (проверено замером: на экране
+# был «Чёрный пёс на острове.png», Δ=3 по полосе y=4..46, а скрипт печатал
+# «буря.jpeg»). Теперь режим учитываем.
+#
+# Монитор в ключе не хардкодим (monitorLVDS-1 может смениться) - перебираем
+# ключи и сверяем номер стола.
 #
 # Зависимости только из системы: sh, python3, xfconf-query, xprop, noctalia.
 set -eu
@@ -62,9 +70,16 @@ command -v noctalia >/dev/null 2>&1 || {
 command -v xfconf-query >/dev/null 2>&1 || {
   echo "нет xfconf-query (пакет xfconf)" >&2; exit 4; }
 
-# --- 1. обои текущего стола -----------------------------------------------
+# --- 1. обои, которые реально на экране -----------------------------------
+# Номер стола, чьи обои показываются: при single-workspace-mode=true это
+# single-workspace-number, иначе текущий стол.
+single_mode=$(xfconf-query -c xfce4-desktop -p /backdrop/single-workspace-mode 2>/dev/null || true)
 ws=$(xprop -root _NET_CURRENT_DESKTOP 2>/dev/null | sed -n 's/.*= *//p')
 ws=${ws:-0}
+if [ "$single_mode" = "true" ]; then
+  single_num=$(xfconf-query -c xfce4-desktop -p /backdrop/single-workspace-number 2>/dev/null || true)
+  [ -n "$single_num" ] && ws=$single_num
+fi
 
 wallpaper_of() {
   # $1 - номер стола; печатает первый непустой путь
