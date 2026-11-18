@@ -143,3 +143,13 @@ fi
 # apply.sh без аргумента возьмёт схему отсюда.
 printf '%s\n' "$SCHEME" > "$ROOT/theme/current"
 echo "схема: $SCHEME (theme/current)"
+
+# --- 5. рамка Plank в цвет $primary ---------------------------------------
+# Plank не перечитывает тему на лету, поэтому его надо перезапустить (~1 с).
+# Ошибку здесь не пробрасываем: без Plank остров работает, а падать из-за
+# дока не должен. Подробности - в theme/plank.sh и docs/PLANK.md.
+if [ -x "$ROOT/theme/plank.sh" ]; then
+  if ! "$ROOT/theme/plank.sh" apply; then
+    echo "рамка Plank: не применилась (см. ~/.cache/eww-island/plank.log)" >&2
+  fi
+fi

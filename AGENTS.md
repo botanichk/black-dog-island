@@ -79,3 +79,10 @@ docs/ (спеки и отчёты). Пакет eww из репозитория �
 через xfconf; `xfdesktop-settings` остался запасным путём. Правило выбора
 стола (single-workspace-mode) живёт в `theme/desktop.sh` - одно на всех.
 См. docs/WALLPICKER.md.
+
+## Plank
+Рамка дока берёт цвет из `$primary` острова: `theme/plank.sh` собирает тему
+`EwwIsland` (копия исходной с одной изменённой строкой OuterStrokeColor) и
+перезапускает Plank, потому что тот не перечитывает тему на лету. Вызов -
+последний шаг `theme/apply.sh`. Правку заливки и остального не делаем.
+См. docs/PLANK.md.
