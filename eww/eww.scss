@@ -1570,7 +1570,7 @@ window.panel-hub {
   color: $on-primary;
 }
 
-// Power menu under the island: dark plate, accent frame, three equal buttons.
+// Power menu under the island: plain surface plate, three equal buttons.
 // The window is as wide as the island (619 px), but the plate is inset by the
 // same 12 px as the island body - so the seam has no step, exactly like the
 // hub panels do it.
@@ -1579,14 +1579,17 @@ window.panel-hub {
   padding: 0 12px;
 }
 
+// No accent frame: the owner asked to drop it. The 2 px it used to add on each
+// side went into the padding, so the plate keeps the same outer size and the
+// buttons stay 193x122 as measured and approved on the mockup.
 .pwr-menu {
   background-color: $surface;
-  border: 2px solid $primary;
+  border: none;
   // Top is straight: the menu sits flush under the island (y=50), so rounded
   // top corners would leave two notches of wallpaper on the seam. Same rule as
   // the hub panels - straight top, rounded bottom.
   border-radius: 0 0 $r-card $r-card;
-  padding: 8px;
+  padding: 10px;
 }
 
 .pwr-btn {
