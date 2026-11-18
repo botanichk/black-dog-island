@@ -41,7 +41,34 @@ if [ -z "$SCHEME" ]; then
 fi
 
 JSON="$ROOT/theme/schemes/$SCHEME.json"
-[ -f "$JSON" ] || { echo "нет схемы: $JSON" >&2; echo "есть: $(ls "$ROOT/theme/schemes" | sed 's/\.json$//' | tr '\n' ' ')" >&2; exit 2; }
+
+# Схема из палитры (p-*) или из каталога (c-*) в git не лежит: она
+# выводится из theme/palettes/<id>.json и попадает в .gitignore. На чистом
+# клоне theme/current может указывать на такую схему, а файла ещё нет -
+# это не ошибка, а «палитра выбрана, но не отрендерена». Собираем её тем же
+# скриптом, что и вкладка «Цвета», и только потом ругаемся.
+# Без этого свежий клон падал с «нет схемы: p-ayu.json».
+if [ ! -f "$JSON" ]; then
+  case "$SCHEME" in
+    p-*)
+      if [ -f "$ROOT/theme/palettes/${SCHEME#p-}.json" ]; then
+        echo "схема $SCHEME не отрендерена - собираю из палитры"
+        sh "$ROOT/theme/colors-pick.sh" palette "$SCHEME" \
+          "$(tr -d ' \t\r\n' < "$ROOT/theme/mode" 2>/dev/null || echo dark)" \
+          >/dev/null 2>&1 || true
+      fi ;;
+  esac
+fi
+
+# Всё равно нет (чужой id, битая палитра) - не валим запуск: берём default,
+# он в git. Иначе после клонирования не применилась бы даже тема, а ошибка
+# «нет схемы» уводила бы в сторону.
+if [ ! -f "$JSON" ]; then
+  echo "нет схемы $SCHEME - беру default" >&2
+  SCHEME=default
+  JSON="$ROOT/theme/schemes/default.json"
+  printf '%s\n' "$SCHEME" > "$ROOT/theme/current"
+fi
 
 python3 - "$ROOT" "$JSON" "$SCHEME" <<'PY'
 import json, sys, pathlib, re
