@@ -123,7 +123,12 @@ rm -f "$TMP.err"
 [ -s "$TMP" ] || { echo "noctalia вернула пустой ответ для $WALL" >&2; exit 1; }
 
 # --- 3. схема -------------------------------------------------------------
+# Выбранный акцент (theme/accent) действует и для обоев: у M3-схемы есть все
+# три роли, и человек вправе взять secondary вместо primary.
+ACCENT=$(tr -d ' \t\r\n' < "$ROOT/theme/accent" 2>/dev/null || true)
+case "$ACCENT" in secondary|tertiary) ;; *) ACCENT=primary ;; esac
 python3 "$ROOT/theme/palette2scheme.py" --theme-json "$TMP" --mode "$MODE" \
+  --accent "$ACCENT" \
   --out "$ROOT/theme/schemes/wallpaper.json" >/dev/null
 
 # --- 4. применить ---------------------------------------------------------

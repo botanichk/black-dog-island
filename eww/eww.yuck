@@ -12,6 +12,13 @@
 ;; Действующие режим и схема - для подсветки выбранного.
 (defpoll colors-mode :interval "3s" :initial "dark" "cat $HOME/eww-island/theme/mode")
 (defpoll colors-now :interval "3s" :initial "default" "cat $HOME/eww-island/theme/current")
+;; Акценты действующей палитры: до трёх образцов под шапкой вкладки, плоскими
+;; полями (n/r1..r3/h1..h3) - массивы внутри (for) в этой сборке не читаются
+;; через индексы, ряд получался пустым. Опрос 3 с: акцент меняется кликом,
+;; который сам пересобирает схему и делает reload.
+(defpoll colors-accents :interval "3s"
+  :initial "{\"id\":\"n-island\",\"n\":0,\"active\":\"primary\",\"r1\":\"\",\"h1\":\"#00000000\",\"r2\":\"\",\"h2\":\"#00000000\",\"r3\":\"\",\"h3\":\"#00000000\"}"
+  "$HOME/eww-island/theme/accents.sh 2>/dev/null || true")
 ;; Какая m3-схема выбрана для обоев: нужно, чтобы подсветка стояла на той
 ;; кнопке, которую нажали, а не всегда на «Спокойной».
 (defpoll colors-wall :interval "3s" :initial "m3-tonal-spot"
@@ -642,6 +649,32 @@
                 :timeout "8s"
                 :onclick "$HOME/eww-island/theme/colors-pick.sh mode light"
           (label :text "Светлая"))))
+    ;; Ряд акцентов: до трёх кружков палитры (primary/secondary/tertiary).
+    ;; Клик делает выбранный акцент ролью primary острова; сама палитра не
+    ;; меняется, поэтому выбор переживает смену палитры и режима.
+    ;; Три слота жёстко, а не (for): индексы массива в выражениях Eww не
+    ;; читаются, вложенный for давал пустой ряд (проверено замером - ни
+    ;; одного пикселя цвета акцента на вкладке). Пустой слот прячется
+    ;; через :visible, при n < 2 прячется весь ряд.
+    (box :orientation "horizontal" :space-evenly false :class "acc-row"
+         :halign "fill" :visible {colors-accents.n > 1}
+      (label :class "acc-cap" :xalign 0 :text "Акцент")
+      ;; Роль в onclick берём из данных (r1..r3), а не пишем жёстко: у схемы
+      ;; от обоев primary может оказаться серым и выпасть из списка - тогда
+      ;; первым слотом идёт secondary, и жёсткое «accent primary» нажало бы
+      ;; не на тот акцент.
+      (button :class {colors-accents.active == colors-accents.r1 ? "acc-dot active" : "acc-dot"}
+              :visible {colors-accents.n > 0} :timeout "8s"
+              :onclick "$HOME/eww-island/theme/colors-pick.sh accent ${colors-accents.r1}"
+        (box :class "acc-fill" :style "background-color: ${colors-accents.h1}"))
+      (button :class {colors-accents.active == colors-accents.r2 ? "acc-dot active" : "acc-dot"}
+              :visible {colors-accents.n > 1} :timeout "8s"
+              :onclick "$HOME/eww-island/theme/colors-pick.sh accent ${colors-accents.r2}"
+        (box :class "acc-fill" :style "background-color: ${colors-accents.h2}"))
+      (button :class {colors-accents.active == colors-accents.r3 ? "acc-dot active" : "acc-dot"}
+              :visible {colors-accents.n > 2} :timeout "8s"
+              :onclick "$HOME/eww-island/theme/colors-pick.sh accent ${colors-accents.r3}"
+        (box :class "acc-fill" :style "background-color: ${colors-accents.h3}")))
     ;; Прокрутка: встроенных 10 карточек + свои, которые могут быть любые.
     ;; Высота вьюпорта 246 px - из расчёта docs/tasks/11-colors.md; при большем
     ;; числе палитр вкладка прокручивается, низ с «С обоев» не съезжает.

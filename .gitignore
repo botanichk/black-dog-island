@@ -5,3 +5,4 @@ theme/schemes/u-*.json
 theme/schemes/wallpaper.json
 __pycache__/
 theme/wallpaper-scheme
+theme/accent

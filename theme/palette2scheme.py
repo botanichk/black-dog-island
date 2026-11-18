@@ -31,6 +31,11 @@ def main(argv):
     ap.add_argument("--theme-json",
                     help="JSON от `noctalia theme --both` (ветки dark/light)")
     ap.add_argument("--mode", choices=("dark", "light"), default="dark")
+    ap.add_argument("--accent", choices=("primary", "secondary", "tertiary"),
+                    default="primary",
+                    help="какой из трёх акцентов палитры станет primary острова")
+    ap.add_argument("--list-accent", action="store_true",
+                    help="перечислить доступные акценты палитры и выйти")
     ap.add_argument("--out", help="куда писать схему (иначе stdout)")
     ap.add_argument("--list", action="store_true",
                     help="перечислить палитры theme/palettes и выйти")
@@ -63,8 +68,22 @@ def main(argv):
         ap.print_help()
         return 2
 
+    if args.list_accent:
+        if not args.palette:
+            print("--list-accent требует файл палитры", file=sys.stderr)
+            return 2
+        try:
+            pal = lib.read_palette(args.palette)
+        except ValueError as exc:
+            print("плохая палитра: %s" % exc, file=sys.stderr)
+            return 2
+        for role, value in lib.accents_for(pal, args.mode):
+            print("%s\t%s" % (role, value))
+        return 0
+
     try:
-        scheme = lib.scheme_for_mode(palette, args.mode, THEME_DIR)
+        scheme = lib.scheme_for_mode(palette, args.mode, THEME_DIR,
+                                     accent=args.accent)
     except ValueError as exc:
         print("не собралась схема: %s" % exc, file=sys.stderr)
         return 2

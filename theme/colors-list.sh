@@ -60,6 +60,15 @@ try:
 except OSError:
     current = "default"
 
+# Выбранный акцент (theme/accent, вне git). Пусто = primary, как до шага 1:
+# без выбора внешний вид не меняется.
+try:
+    accent = (theme / "accent").read_text(encoding="utf-8").strip() or "primary"
+except OSError:
+    accent = "primary"
+if accent not in ("primary", "secondary", "tertiary"):
+    accent = "primary"
+
 # Схема -> её карточка в списке. Наша схема живёт под общим id «n-island»:
 # default - её тёмный вид, light - светлый, поэтому при смене режима
 # подсветка остаётся на той же карточке.
@@ -85,19 +94,22 @@ def colors_of_scheme(path):
 native = theme / "schemes" / ("light.json" if mode == "light" else "default.json")
 if native.exists():
     c1, c2, c3 = colors_of_scheme(native)
-    add({"id": "n-island", "label": "Остров", "c1": c1, "c2": c2, "c3": c3})
+    # У нашей схемы один акцент: secondary/tertiary в ней нет, выбирать не из чего.
+    add({"id": "n-island", "label": "Остров", "c1": c1, "c2": c2, "c3": c3,
+         "acc": [["primary", c3]]})
 
 # --- 2. встроенные палитры Noctalia ---
 for path in sorted((theme / "palettes").glob("*.json")):
     try:
         pal = lib.read_palette(path)
-        scheme = lib.scheme_for_mode(pal, mode, theme)
+        scheme = lib.scheme_for_mode(pal, mode, theme, accent=accent)
     except ValueError as exc:
         print("пропуск палитры: %s" % exc, file=sys.stderr)
         continue
     c = scheme["colors"]
     add({"id": "p-" + path.stem, "label": pal["label"],
-         "c1": c["surface"], "c2": c["surface_container"], "c3": c["primary"]})
+         "c1": c["surface"], "c2": c["surface_container"], "c3": c["primary"],
+         "acc": [[r, v] for r, v in lib.accents_for(pal, mode)]})
 
 # --- 3. свои палитры пользователя (тот же каталог и формат, что у Noctalia) ---
 user_dir = pathlib.Path(os.path.expanduser("~/.config/noctalia/palettes"))
@@ -105,7 +117,7 @@ if user_dir.is_dir():
     for path in sorted(user_dir.glob("*.json")):
         try:
             pal = lib.read_palette(path)
-            scheme = lib.scheme_for_mode(pal, mode, theme)
+            scheme = lib.scheme_for_mode(pal, mode, theme, accent=accent)
         except ValueError as exc:
             print("пропуск своей палитры: %s" % exc, file=sys.stderr)
             continue
@@ -114,7 +126,8 @@ if user_dir.is_dir():
         label = path.stem.replace("%20", " ").replace("_", " ").strip()
         add({"id": "u-" + lib.slug_unique(path.stem),
              "label": pal["label"] if pal.get("label") != path.stem else label,
-             "c1": c["surface"], "c2": c["surface_container"], "c3": c["primary"]})
+             "c1": c["surface"], "c2": c["surface_container"], "c3": c["primary"],
+             "acc": [[r, v] for r, v in lib.accents_for(pal, mode)]})
 
 
 def chunk(seq, size):

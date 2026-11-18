@@ -233,12 +233,52 @@ def slug_unique(text):
 
 # --- схема нашего формата -------------------------------------------------
 
-def build_scheme(palette, mode, base_colors, base_alphas, base_gradients):
+def accents_for(palette, mode):
+    """Акценты палитры, которые есть смысл предлагать на выбор.
+
+    Убираем:
+      - дубли: у GitHub Dark secondary == tertiary, у Mine тоже - два
+        одинаковых кружка выглядят как ошибка;
+      - серые: насыщенность < 0.12 (m3-content/m3-rainbow/monochrome дают
+        c6c6c6), иначе «выбор акцента» между двумя оттенками серого.
+    Если после фильтра не осталось ничего, возвращаем primary: без акцента
+    интерфейс существовать не может.
+    """
+    roles = palette["roles"][mode]
+    if not roles:
+        alt = "light" if mode == "dark" else "dark"
+        roles = palette["roles"].get(alt) or {}
+    out = []
+    seen = set()
+    for role in ("primary", "secondary", "tertiary"):
+        value = roles.get(role)
+        if not value:
+            continue
+        norm = value.lower()
+        if norm in seen:
+            continue
+        if rgb_to_hsl(value)[1] < 0.12:
+            continue
+        seen.add(norm)
+        out.append((role, value))
+    if not out:
+        fallback = roles.get("primary")
+        if fallback:
+            out = [("primary", fallback)]
+    return out
+
+
+def build_scheme(palette, mode, base_colors, base_alphas, base_gradients,
+                 accent="primary"):
     """Палитра + режим -> схема в формате theme/schemes/*.json.
 
     base_colors / base_alphas / base_gradients - из theme/schemes/default.json
     и light.json: оттуда берутся роли, которых у палитры нет (цвета иллюстраций
     погоды), alpha-слои и градиенты.
+
+    accent - какая из трёх ролей (primary/secondary/tertiary) становится
+    акцентом острова. В схему попадают все три как образцы выбора, а в
+    цвета - только выбранная, уже подогнанная по контрасту.
     """
     roles = palette["roles"][mode]
     if not roles:
@@ -282,8 +322,21 @@ def build_scheme(palette, mode, base_colors, base_alphas, base_gradients):
     surface = roles["surface"]
     variant = roles["surfaceVariant"]
 
+    # Три акцента палитры. Нужны все: вкладка показывает их образцами, и
+    # клик по образцу меняет роль primary острова. Дубли и серые не
+    # предлагаем (см. accents_for) - здесь просто переносим как есть.
+    accents = {}
+    for role, label in (("primary", "Основной"), ("secondary", "Второй"),
+                        ("tertiary", "Третий")):
+        value = roles.get(role)
+        if value:
+            accents[role] = value
+
+    accent = accent if accent in accents else "primary"
+    chosen = accents[accent]
+
     # контраст акцента: 8 из 10 светлых палитр Noctalia не проходят 4.5
-    primary, _ = ensure_contrast(roles["primary"], surface, 4.5)
+    primary, _ = ensure_contrast(chosen, surface, 4.5)
     on_primary = best_ink(primary)
 
     # primary_dim работает и как текст, и как плашка под текстом - держим оба
@@ -323,6 +376,12 @@ def build_scheme(palette, mode, base_colors, base_alphas, base_gradients):
         "error": error,
         "on_primary": on_primary,
         "on_primary_dim": on_primary_dim,
+        # Образцы акцентов палитры (до подгонки контраста - в интерфейсе они
+        # только кружки выбора, текст на них не пишется). Схема-потребитель
+        # может их не использовать: шаблоны берут лишь {{primary}}.
+        "accent_primary": accents.get("primary", chosen),
+        "accent_secondary": accents.get("secondary", chosen),
+        "accent_tertiary": accents.get("tertiary", chosen),
         # текст поверх фотографий всегда светлый: картинка под ним тёмная
         "on_media": "#ffffff",
         # цвета иллюстраций погоды от палитры не зависят
@@ -343,7 +402,7 @@ def load_bases(theme_dir):
     return default, light
 
 
-def scheme_for_mode(palette, mode, theme_dir):
+def scheme_for_mode(palette, mode, theme_dir, accent="primary"):
     """Собрать схему с правильной базой alpha/градиентов под режим."""
     default, light = load_bases(theme_dir)
     base = light if mode == "light" else default
@@ -352,6 +411,7 @@ def scheme_for_mode(palette, mode, theme_dir):
         base_colors=base["colors"],
         base_alphas=base["alphas"],
         base_gradients=base.get("weather_gradients", {}),
+        accent=accent,
     )
     scheme["_comment"] = (
         "Схема сгенерирована из палитры «%s» (%s) скриптом "

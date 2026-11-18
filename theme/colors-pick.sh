@@ -24,7 +24,7 @@ THEME="$ROOT/theme"
 # --- разбор аргументов ----------------------------------------------------
 ACTION=${1:-}
 [ -n "$ACTION" ] || {
-  echo "usage: colors-pick.sh palette <id> [dark|light] | mode <dark|light> | wallpaper [схема] | reset" >&2
+  echo "usage: colors-pick.sh palette <id> [dark|light] | accent <primary|secondary|tertiary> | mode <dark|light> | wallpaper [схема] | reset" >&2
   exit 2
 }
 shift || true
@@ -41,6 +41,15 @@ read_mode() {
 }
 
 write_mode() { printf '%s\n' "$1" > "$THEME/mode"; }
+
+# Какой акцент выбран (theme/accent, вне git). Пусто = primary: без выбора
+# внешний вид не меняется, как было до шага 1.
+read_accent() {
+  a=$(tr -d ' \t\r\n' < "$THEME/accent" 2>/dev/null || true)
+  case "$a" in secondary|tertiary) echo "$a" ;; *) echo primary ;; esac
+}
+
+write_accent() { printf '%s\n' "$1" > "$THEME/accent"; }
 
 read_current() {
   tr -d ' \t\r\n' < "$THEME/current" 2>/dev/null || echo default
@@ -61,7 +70,14 @@ resolve_source() {
   case "$1" in
     p-*)
       src="$THEME/palettes/${1#p-}.json"
-      [ -f "$src" ] && printf '%s\n' "$src" ;;
+      # return 0 обязателен: без него функция доходит до return 1 в конце и
+      # вызывающий считает, что палитры нет. Из-за этого «акцент» и «режим»
+      # молча не пересобирали схему у встроенных палитр (проверено sh -x:
+      # путь печатался, следом шёл return 1).
+      if [ -f "$src" ]; then
+        printf '%s\n' "$src"
+        return 0
+      fi ;;
     u-*)
       for path in "$HOME"/.config/noctalia/palettes/*.json; do
         [ -f "$path" ] || continue
@@ -83,6 +99,38 @@ case "$ACTION" in
   reset)
     SCHEME="default"
     write_mode dark
+    write_accent primary
+    ;;
+
+  # Сменить акцент у действующей палитры. Палитра та же, меняется только
+  # роль primary острова - поэтому схема пересобирается из того же файла.
+  accent)
+    case "$ARG" in
+      primary|secondary|tertiary) ;;
+      *) echo "accent: ожидалось primary, secondary или tertiary, получено '$ARG'" >&2; exit 2 ;;
+    esac
+    write_accent "$ARG"
+
+    cur=$(read_current)
+    case "$cur" in
+      default|light)
+        # у нашей схемы акцент один: перекрашивать нечего, честно скажем.
+        # SCHEME всё равно заполняем - иначе ниже печатается «цвет:  (…)»
+        # и apply.sh получает пустое имя.
+        echo "у схемы «Остров» один акцент, менять не из чего" >&2
+        SCHEME="$cur"
+        ;;
+      wallpaper)
+        SCHEME="wallpaper"; NEED_BUILD="wallpaper" ;;
+      *)
+        if src=$(resolve_source "$cur"); then
+          NEED_BUILD="palette:$src"
+          SCHEME="$cur"
+        else
+          echo "схема '$cur' есть, а палитры для неё не найти - оставляю как есть" >&2
+          SCHEME="$cur"
+        fi ;;
+    esac
     ;;
 
   mode)
@@ -169,6 +217,7 @@ if [ -n "$NEED_BUILD" ]; then
     palette:*)
       src=${NEED_BUILD#palette:}
       python3 "$THEME/palette2scheme.py" "$src" --mode "$(read_mode)" \
+        --accent "$(read_accent)" \
         --out "$THEME/schemes/$SCHEME.json" >/dev/null ;;
   esac
 fi
