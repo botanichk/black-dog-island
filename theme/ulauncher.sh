@@ -230,6 +230,7 @@ def role(name):
 surface   = role("surface")
 surf_c    = role("surface-container")
 surf_ch   = role("surface-container-high")
+surf_hi   = role("surface-highest")
 on_surf   = role("on-surface")
 on_surf_v = role("on-surface-variant")
 primary   = role("primary")
@@ -241,9 +242,14 @@ on_prim   = role("on-primary")
 # В светлой схеме это темнее фона, в тёмной - светлее, и в обоих случаях
 # активная строка выделяется. $surface-container оставлен для наведения.
 
+# Полупрозрачность окна: 0.86 достаточно, чтобы обои читались сквозь поверхность,
+# но текст остаётся контрастным. GTK3 понимает alpha() в @define-color (проверено
+# на CssProvider: alpha(#eff1f5, 0.86) -> rgba(239,241,245,0.860)).
+WIN_ALPHA = "0.86"
+
 palette = [
     ("bg_color", surface),
-    ("window_bg", surface),
+    ("window_bg", "alpha(%s, %s)" % (surface, WIN_ALPHA)),
     ("window_border_color", primary),      # рамка, как у Plank
     ("prefs_backgroud", surf_c),
     ("selected_bg_color", surf_ch),        # выделение в поле ввода
@@ -252,7 +258,7 @@ palette = [
     ("caret_color", primary),
     ("item_name", on_surf),
     ("item_text", on_surf_v),
-    ("item_box_selected", surf_ch),        # активная строка
+    ("item_box_selected", surf_hi),        # активная строка: заметно темнее фона
     ("item_text_selected", on_surf_v),
     ("item_name_selected", on_surf),
     ("item_shortcut_color", on_surf_v),
@@ -289,12 +295,31 @@ extra = """
     border-radius: 16px;
 }
 
-/* Внутри рамки не должно быть второго прямоугольника с чужим цветом. */
+/* Контейнер прозрачный: фон окна рисует только .app. */
 .input-box {
     background-color: transparent;
 }
 
+/**
+ * Поле ввода намеренно НЕ прозрачное (просьба владельца): запрос должен
+ * читаться всегда, даже поверх пёстрых обоев. Берётся @bg_color - это $surface
+ * без альфы, тот же цвет, что у окна, но плотный. background-image: none -
+ * чтобы не проступил градиент исходной темы.
+ */
+.input {
+    background-color: @bg_color;
+    background-image: none;
+    border-radius: 10px;
+}
+
+/**
+ * Невыбранная строка: лёгкая прозрачная плёнка акцентного цвета, а не сплошная
+ * плашка. Берётся $on-surface с альфой: он контрастен фону в любой схеме, так
+ * что в светлой это едва заметное затемнение, в тёмной - осветление.
+ * 0.06 - предел, после которого строки начинают путаться с выбранной.
+ */
 .item-box {
+    background-color: alpha(@item_name, 0.06);
     border-radius: 10px;
 }
 
@@ -305,6 +330,10 @@ extra = """
     border-radius: 10px;
 }
 
+/**
+ * Внутри окна всё прозрачное: фон рисует только .app. Иначе тёмная полоса
+ * под результатами (item-container) перекрыла бы полупрозрачность окна.
+ */
 .result-box {
     background-color: transparent;
 }
