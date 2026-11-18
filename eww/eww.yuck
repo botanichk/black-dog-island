@@ -55,6 +55,13 @@
 ;; в false, и это правильно - зависшее true держало бы углы прямыми навсегда.
 (defvar hub_opening "false")
 
+;; "Меню питания открыто" - кнопка на острове подсвечивается акцентом, нижние
+;; углы острова становятся прямыми. Источник правды - реальное окно
+;; panel-power: deflisten следит за _NET_CLIENT_LIST, поэтому состояние
+;; снимается и тогда, когда меню закрыли кликом по рабочему столу
+;; (unfocus-close), а panel.sh при этом не вызывался.
+(deflisten power_open :initial "false" "$HOME/eww-island/adapters/x11/power-open.sh")
+
 (deflisten layout :initial "" "$HOME/eww-island/adapters/x11/layout.sh")
 
 ;; Погода для выпадающей панели: Open-Meteo + координаты из Noctalia.
@@ -164,7 +171,7 @@
 (defwidget island-root []
   (overlay
     (box :orientation "horizontal" :space-evenly false :vexpand true
-      :class {panel_open == "true" || hub_opening == "true" ? "island-root open" : "island-root"}
+      :class {panel_open == "true" || hub_opening == "true" || power_open == "true" ? "island-root open" : "island-root"}
       ;; Колесо над точками листает столы. onscroll живёт только на eventbox,
       ;; аргумент приходит из патча eww-0001 ("up"/"down").
       (eventbox :onscroll "$HOME/eww-island/adapters/x11/ws-scroll.sh {}"
@@ -215,7 +222,13 @@
         ;; onscroll живёт только на eventbox: у button он удалён в Eww 0.6.
         (eventbox :onscroll "$HOME/eww-island/adapters/audio/volume.sh {}"
           (button :class "vol" :onclick "$HOME/eww-island/adapters/audio/volume.sh mute"
-            (label :text volume)))))
+            (label :text volume)))
+        ;; Питание: крайняя правая кнопка. Открывает меню под островом
+        ;; (panel-power), повторный клик закрывает - логика в panel.sh.
+        ;; Глиф U+23FB (символ питания), как у остальных кнопок - Nerd Font.
+        (button :class {power_open == "true" ? "power active" : "power"} :timeout "8s"
+          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-power"
+          (label :class "power-ic" :text "⏻"))))
     ;; Второй слой overlay: вогнутые углы. Прижаты к верху и растянуты по ширине,
     ;; левый и правый - по краям окна. Через этот слой клики проходят (Eww ставит
     ;; overlay children pass-through), поэтому он не перехватывает кнопки.
@@ -886,3 +899,36 @@
                 :class "hub-tab-body"
           (box :orientation "vertical" :class "hub-tab" :hexpand true :vexpand true
             (colors-content)))))))
+
+;; --- Меню питания ---------------------------------------------------------
+;; Три большие кнопки в ряд под островом: выйти, перезагрузить, выключить.
+;; Подписей нет - только крупные значки, ширина с остров.
+;;
+;; :windowtype utility - xfwm4 не центрирует такие окна и ставит их сразу по
+;; --pos, поэтому меню появляется под островом без прыжка из центра экрана.
+;; :unfocus-close true - клик по пустому месту рабочего стола закрывает меню.
+;; Фокус окно получает, поэтому закрытие срабатывает.
+;;
+;; Стрелки и Tab листают кнопки: это штатная навигация GTK3 внутри контейнера,
+;; патч Eww не нужен (проверено на макете через XTest: Right/Left/Tab двигают
+;; фокус, Enter/Space жмут именно выбранную кнопку, мышь работает параллельно).
+;;
+;; Первая кнопка получает фокус при открытии - это "Выйти". Так и задумано:
+;; владелец сказал, что это нормально.
+(defwidget power-btn [ic cmd]
+  (button :class "pwr-btn" :hexpand true :timeout "10s" :onclick cmd
+    (label :class "pwr-ic" :text ic)))
+
+(defwindow panel-power [w]
+  :monitor 0
+  :geometry (geometry :x "0px" :y "50px" :width w :anchor "top left")
+  :stacking "fg"
+  :windowtype "utility"
+  :unfocus-close true
+  (box :orientation "horizontal" :space-evenly false :class "pwr-frame"
+       :hexpand true :vexpand true
+    (box :orientation "horizontal" :space-evenly false :class "pwr-menu"
+         :hexpand true :vexpand true
+      (power-btn :ic "󰍃" :cmd "$HOME/eww-island/adapters/x11/power.sh logout")
+      (power-btn :ic "󰜉" :cmd "$HOME/eww-island/adapters/x11/power.sh reboot")
+      (power-btn :ic "󰐥" :cmd "$HOME/eww-island/adapters/x11/power.sh poweroff"))))

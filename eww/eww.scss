@@ -232,6 +232,35 @@ menu separator {
   background-color: $surface-container-high;
 }
 
+// Power button (island, right edge): same tonal chip as volume next to it,
+// but a glyph in Nerd Font. While the power menu is open the chip switches to
+// the accent plate, the same "active" look as the Home button.
+.power {
+  min-width: 24px;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+}
+
+.power:hover {
+  background-color: $surface-container-high;
+}
+
+.power.active {
+  background-color: $primary;
+}
+
+.power-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 15px;
+  color: $on-surface-variant;
+}
+
+.power.active .power-ic {
+  color: $on-primary;
+}
+
 // Wallpaper button (island, step 4): Nerd Font glyph in a label, styled like
 // the layout chip next to it - tonal container, 8 px radius, hover layer.
 .wall {
@@ -1539,4 +1568,67 @@ window.panel-hub {
 .colors-chip.active {
   background-color: $primary;
   color: $on-primary;
+}
+
+// Power menu under the island: dark plate, accent frame, three equal buttons.
+// The window is as wide as the island (619 px), but the plate is inset by the
+// same 12 px as the island body - so the seam has no step, exactly like the
+// hub panels do it.
+.pwr-frame {
+  background: transparent;
+  padding: 0 12px;
+}
+
+.pwr-menu {
+  background-color: $surface;
+  border: 2px solid $primary;
+  // Top is straight: the menu sits flush under the island (y=50), so rounded
+  // top corners would leave two notches of wallpaper on the seam. Same rule as
+  // the hub panels - straight top, rounded bottom.
+  border-radius: 0 0 $r-card $r-card;
+  padding: 8px;
+}
+
+.pwr-btn {
+  min-height: 120px;
+  min-width: 0;
+  padding: 0;
+  margin-right: 10px;
+  border-radius: 12px;
+  background-color: $surface-container;
+}
+
+.pwr-btn:last-child {
+  margin-right: 0;
+}
+
+// Selected (hover, keyboard focus or GTK default focus) is always the accent
+// plate: the owner asked for "selected button is primary before the click".
+.pwr-btn:hover,
+.pwr-btn:focus,
+.pwr-btn:focus-visible {
+  background-color: $primary;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.pwr-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 84px;
+  color: $on-surface;
+}
+
+.pwr-btn:hover .pwr-ic,
+.pwr-btn:focus .pwr-ic,
+.pwr-btn:focus-visible .pwr-ic {
+  color: $on-primary;
+}
+
+// Power window itself is transparent: the frame draws shape and color.
+window.panel-power {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
