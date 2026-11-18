@@ -73,6 +73,15 @@ except OSError:
 if accent not in ("primary", "secondary", "tertiary"):
     accent = "primary"
 
+# Фильтр оттенка для каталога сообщества. Состояние в theme/hue-filter
+# (вне git): all / green / blue / warm / gray. Нет файла - all.
+try:
+    hue = (theme / "hue-filter").read_text(encoding="utf-8").strip() or "all"
+except OSError:
+    hue = "all"
+if hue not in ("all", "green", "blue", "warm", "gray"):
+    hue = "all"
+
 # Схема -> её карточка в списке. Наша схема живёт под общим id «n-island»:
 # default - её тёмный вид, light - светлый, поэтому при смене режима
 # подсветка остаётся на той же карточке.
@@ -146,7 +155,9 @@ for cid, pal, _path in lib.read_community():
     c = scheme["colors"]
     add({"id": cid, "label": pal["label"],
          "c1": c["surface"], "c2": c["surface_container"], "c3": c["primary"],
-         "acc": [[r, v] for r, v in lib.accents_for(pal, mode)]})
+         "acc": [[r, v] for r, v in lib.accents_for(pal, mode)],
+         # фильтр по оттенку: green / blue / warm / gray (palette_lib.hue_bucket)
+         "hue": lib.palette_hue(pal, mode)})
 
 
 def chunk(seq, size):
@@ -158,15 +169,24 @@ head = items[:1]
 rest = items[1:]
 user = [x for x in rest if x["id"].startswith("u-")]
 community = [x for x in rest if x["id"].startswith("c-")]
+community_all = len(community)
+# «Зелёные» первыми: в списке фильтров это первый чип, а внутри категории
+# порядок алфавитный - он уже такой после sorted() при чтении каталога.
+if hue != "all":
+    community = [x for x in community if x.get("hue") == hue]
 builtin = [x for x in rest
            if not x["id"].startswith(("u-", "c-"))]
 
 out = {"builtin": chunk(builtin, 3), "user": chunk(user, 2)}
 # Раздел сообщества показываем только когда каталог реально есть: пустой
 # ряд из ничего не отличить от сломанного.
-if community:
+# Раздел показываем, если каталог есть - даже когда фильтр отсёк всё:
+# иначе человек не поймёт, куда делись палитры.
+if community_all:
     out["community"] = chunk(community, 3)
     out["community_n"] = len(community)
+    out["community_all"] = community_all
+    out["hue"] = hue
 if head:
     out["native"] = head[0]
 # JSON в одну строку: Eww читает его целиком, переносы ему не нужны.

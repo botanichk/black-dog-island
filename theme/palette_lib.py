@@ -282,6 +282,52 @@ def slug_unique(text):
 
 # --- схема нашего формата -------------------------------------------------
 
+# --- оттенок акцента ------------------------------------------------------
+# Владелец просил «зелёные» первыми. Порог 0.2 по насыщенности отделяет
+# цветной акцент от серого (#c6c6c6 s=0, #ffffff s=0), тот же смысл, что
+# у фильтра акцентов (0.12), только строже: при s<0.2 «зелёный» уже не
+# отличить от серого.
+HUE_BUCKETS = (
+    ("green", 75.0, 165.0),
+    ("blue", 165.0, 300.0),
+    ("warm", 300.0, 435.0),      # 300..360 и 0..75 - это warm, см. hue_bucket
+)
+
+
+def hue_bucket(color):
+    """Категория оттенка: green / blue / warm / gray.
+
+    green - 75..165 (от салатового до мятного), blue - 165..300,
+    warm - остальное цветное (300..360 и 0..75). Серое (насыщенность
+    <= 0.2) в отдельную категорию: у него hue случайный.
+    """
+    if not color:
+        return "gray"
+    hue, sat, _light = rgb_to_hsl(color)
+    if sat <= 0.2:
+        return "gray"
+    if 75.0 <= hue <= 165.0:
+        return "green"
+    if 165.0 < hue <= 300.0:
+        return "blue"
+    return "warm"
+
+
+def palette_hue(palette, mode):
+    """Оттенок ПАЛИТРЫ: по её акцентам, а не по одному primary.
+
+    Владелец выбирает не только primary: у Aura зелёный - secondary, у
+    Noctalia мятный - tertiary. Поэтому категория берётся по всем
+    доступным акцентам, и «зелёная» палитра - та, у которой хоть один
+    акцент зелёный. Порядок важности: green, blue, warm, gray.
+    """
+    buckets = {hue_bucket(value) for _role, value in accents_for(palette, mode)}
+    for name in ("green", "blue", "warm"):
+        if name in buckets:
+            return name
+    return "gray"
+
+
 def accents_for(palette, mode):
     """Акценты палитры, которые есть смысл предлагать на выбор.
 

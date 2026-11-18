@@ -714,8 +714,28 @@
         ;; только strlength/arraylength/objectlength), а склейка числа со
         ;; строкой молча даёт пустой label.
         (label :class "colors-sec" :xalign 0
-               :visible {colors-list.community_n > 0}
+               :visible {colors-list.community_all > 0}
                :text "Сообщество")
+        ;; Фильтр по оттенку. «Зелёные» первыми - владелец просил их.
+        ;; Клик пишет theme/hue-filter и делает eww poll colors-list:
+        ;; reload не нужен, вкладка не пересоздаётся, позиция прокрутки цела.
+        (box :orientation "horizontal" :space-evenly false :class "colors-hue"
+             :halign "fill" :visible {colors-list.community_all > 0}
+          (button :class {colors-list.hue == "green" ? "colors-chip active" : "colors-chip"}
+                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue green"
+            (label :text "Зелёные"))
+          (button :class {colors-list.hue == "blue" ? "colors-chip active" : "colors-chip"}
+                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue blue"
+            (label :text "Синие"))
+          (button :class {colors-list.hue == "warm" ? "colors-chip active" : "colors-chip"}
+                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue warm"
+            (label :text "Тёплые"))
+          (button :class {colors-list.hue == "gray" ? "colors-chip active" : "colors-chip"}
+                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue gray"
+            (label :text "Серые"))
+          (button :class {colors-list.hue == "all" ? "colors-chip active" : "colors-chip"}
+                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue all"
+            (label :text "Все")))
         (for row in {colors-list.community}
           (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
             (for p in {row}

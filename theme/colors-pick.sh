@@ -24,7 +24,7 @@ THEME="$ROOT/theme"
 # --- разбор аргументов ----------------------------------------------------
 ACTION=${1:-}
 [ -n "$ACTION" ] || {
-  echo "usage: colors-pick.sh palette <id> [dark|light] | accent <primary|secondary|tertiary> | mode <dark|light> | wallpaper [схема] | reset" >&2
+  echo "usage: colors-pick.sh palette <id> [dark|light] | accent <primary|secondary|tertiary> | hue <all|green|blue|warm|gray> | mode <dark|light> | wallpaper [схема] | reset" >&2
   exit 2
 }
 shift || true
@@ -141,6 +141,20 @@ case "$ACTION" in
           SCHEME="$cur"
         fi ;;
     esac
+    ;;
+
+  # Фильтр оттенка каталога сообщества. Схему не трогает: пишет только
+  # theme/hue-filter и перечитывает список - reload не нужен (проверено,
+  # eww poll colors-list обновляет ряды за 0.04 с).
+  hue)
+    case "$ARG" in
+      all|green|blue|warm|gray) ;;
+      *) echo "hue: ожидалось all, green, blue, warm или gray, получено '$ARG'" >&2; exit 2 ;;
+    esac
+    printf '%s\n' "$ARG" > "$THEME/hue-filter"
+    "$EWW" --config "$ROOT/eww" poll colors-list >/dev/null 2>&1 || true
+    echo "оттенок: $ARG"
+    exit 0
     ;;
 
   mode)

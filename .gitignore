@@ -7,3 +7,4 @@ __pycache__/
 theme/wallpaper-scheme
 theme/accent
 theme/schemes/c-*.json
+theme/hue-filter

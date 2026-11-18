@@ -1468,6 +1468,17 @@ window.panel-hub {
   padding: 0 6px 0 6px;
 }
 
+// Ряд фильтра оттенка в разделе «Сообщество». Чипы те же .colors-chip,
+// но им нужен отступ сверху и перенос, если слов не хватит по ширине.
+.colors-hue {
+  padding: 2px 0 6px 0;
+}
+
+.colors-hue .colors-chip {
+  margin-left: 0;
+  margin-right: 4px;
+}
+
 .colors-chip {
   min-height: 26px;
   margin-left: 4px;
