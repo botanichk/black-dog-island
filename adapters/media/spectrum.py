@@ -6,20 +6,25 @@
 # не ставим), поэтому FFT считаем сами: numpy (пакет python-numpy уже стоит),
 # окно Ханна, BANDS полос с геометрическим шагом 40 Гц .. 16 кГц.
 #
-# Что печатаем: одну строку JSON на кадр - массив из BANDS чисел 0..1.
-# Каждое число - уровень своей полосы после сглаживания (вверх быстро,
-# вниз медленно, как в Noctalia: столбики не дёргаются).
+# Что печатаем: одну строку JSON на кадр - объект {"v":[...], "p":[...]}.
+# v - уровень полосы 0..1 после сглаживания (вверх быстро, вниз медленно),
+# p - точка пика над столбиком (как в radiofm/radio/viz/spectrum.py: вверх
+# мгновенно, вниз с разгоном).
+#
+# Как выглядит (вид взят у radiofm/radio/viz/spectrum.py, но ось вертикальная):
+# 24 тонкие полосы лежат друг под другом и растут от общей вертикальной оси
+# влево и вправо, на каждом конце висит точка пика, которая мгновенно
+# подскакивает и медленно падает с разгоном.
 #
 # Почему числа, а не глифы: в GTK3 нельзя задать нулевой интерлиньяж, и
 # строки из блоков ▁▂▃ шли бы с щелями. Вкладка рисует полосы обычными box
-# (две плашки на полосу по :width, растут от вертикальной оси влево и вправо,
-# как setMirrored + setCentered у Noctalia); progress не подошёл - GTK3
-# заливает его не от края, и полоса выходила не той формы.
+# с :width (толщину и зазор задаёт SCSS), пики - отдельные точки по тем же
+# значениям.
 #
 # Пока плеер на паузе, parec не держим: раз в секунду спрашиваем MPRIS,
 # не началось ли воспроизведение, и печатаем гаснущий до нуля кадр.
 #
-# usage: spectrum.py    (печатает кадр ~20 раз в секунду)
+# usage: spectrum.py    (печатает кадр ~55-60 раз в секунду)
 
 import json
 import os
@@ -35,16 +40,20 @@ except ImportError:  # без numpy визуализатор просто не �
     sys.exit(1)
 
 RATE = 44100
-# Кусок 1470 сэмплов = 33 мс. Это не косметика: раньше стояло 4096 (93 мс),
-# и кадр физически не мог выйти чаще ~11 раз в секунду - столбики дёргались.
-# При 33 мс выходит ~30 кадров в секунду, а FFT одного кадра стоит 0.5 мс,
-# поэтому CPU остаётся почти нулевым. 30 fps - ровный шаг, делит 44.1 кГц.
-CHUNK = 1470
+# HOP - сколько новых сэмплов берём за кадр. 735 при 44.1 кГц = 16.7 мс, то есть
+# до ~60 кадров в секунду: ровно то, что просит плавность. Раньше читали 4096
+# (93 мс) и кадр физически не мог выйти чаще 11 раз в секунду - отсюда "тормоза".
+HOP = 735
+# WIN - окно для FFT: 2048 сэмплов (46 мс). Окно БОЛЬШЕ шага: кадры считаются
+# по перекрывающимся кускам, поэтому бас не проваливается, как было бы при
+# окне в 735 сэмплов (16 мс - меньше периода 40 Гц).
+WIN = 2048
 NFFT = 8192                     # нули добираем: бин 5.4 Гц, низкие полосы не пустеют
-BANDS = 16
+BANDS = 24                      # 24 полосы, как узкие столбики radiofm
 LO_HZ, HI_HZ = 40.0, 16000.0
 DB_MIN, DB_MAX = -66.0, -10.0   # диапазон громкости, растянутый на всю высоту
 RISE, FALL = 0.62, 0.14         # сглаживание: вверх быстро, вниз медленно
+PEAK_ACCEL = 1.8                # разгон падающей точки пика (как в radiofm)
 IDLE_EVERY = 1.0                # пауза между попытками, когда звука нет
 
 _proc = None
@@ -63,9 +72,15 @@ def _cleanup(*_):
     sys.exit(0)
 
 
-def _emit(levels):
+def _emit(levels, peaks=None):
     """Один кадр. Закрытый pipe (Eww закрыл хаб) - штатный выход, не трейсбек."""
-    frame = json.dumps([round(float(v), 3) for v in levels], separators=(",", ":"))
+    frame = json.dumps(
+        {
+            "v": [round(float(v), 3) for v in levels],
+            "p": [round(float(v), 3) for v in (levels if peaks is None else peaks)],
+        },
+        separators=(",", ":"),
+    )
     try:
         sys.stdout.write(frame + "\n")
         sys.stdout.flush()
@@ -135,13 +150,17 @@ def main():
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(sig, _cleanup)
 
-    window = np.hanning(CHUNK).astype(np.float32)
+    window = np.hanning(WIN).astype(np.float32)
     # Нормировка на сумму окна: дБ считаются относительно полной шкалы,
-    # поэтому уровень не зависит от длины куска.
+    # поэтому уровень не зависит от длины окна.
     spec_norm = 2.0 / float(window.sum())
     bins = _band_bins()
     levels = np.zeros(BANDS, dtype=np.float32)
-    size = CHUNK * 4          # float32, моно
+    peaks = np.zeros(BANDS, dtype=np.float32)      # точки пика над столбиками
+    peak_vel = np.zeros(BANDS, dtype=np.float32)   # скорость их падения
+    buf = np.zeros(WIN, dtype=np.float32)          # скользящее окно
+    size = HOP * 4            # float32, моно
+    prev_t = time.monotonic()
 
     while True:
         # Пауза: parec не держим, столбики плавно гаснут до нуля.
@@ -149,7 +168,9 @@ def main():
             if not _playing():
                 levels *= 1.0 - FALL
                 levels[levels < 0.02] = 0.0
-                _emit(levels)
+                peaks = np.maximum(levels, peaks - 0.02)
+                peaks[peaks < 0.02] = 0.0
+                _emit(levels, peaks)
                 time.sleep(IDLE_EVERY)
                 continue
             try:
@@ -171,10 +192,17 @@ def main():
             continue
 
         samples = np.frombuffer(raw, dtype="<f4")
-        if samples.size < CHUNK:
+        if samples.size == 0:
             continue
 
-        spec = np.abs(np.fft.rfft(samples[:CHUNK] * window, n=NFFT)) * spec_norm
+        # Скользящее окно: старые сэмплы уходят, новые приходят с конца.
+        # Окно 2048 при шаге 735 даёт перекрытие ~64%, поэтому бас гладкий,
+        # а кадры идут по 16.7 мс.
+        buf = np.roll(buf, -samples.size)
+        buf[-samples.size:] = samples
+        n = samples.size
+
+        spec = np.abs(np.fft.rfft(buf * window, n=NFFT)) * spec_norm
         band = np.array([spec[idx].mean() for idx in bins], dtype=np.float32)
         db = 20.0 * np.log10(band + 1e-9)
         target = np.clip((db - DB_MIN) / (DB_MAX - DB_MIN), 0.0, 1.0)
@@ -182,7 +210,16 @@ def main():
         alpha = np.where(target > levels, RISE, FALL)
         levels += (target - levels) * alpha
 
-        _emit(levels)
+        # Точки пика, как в radiofm: мгновенно вверх, вниз с разгоном.
+        now_t = time.monotonic()
+        dt = min(0.1, max(1e-3, now_t - prev_t))
+        prev_t = now_t
+        faster = levels >= peaks
+        peaks = np.where(faster, levels, peaks)
+        peak_vel = np.where(faster, 0.0, peak_vel + PEAK_ACCEL * dt)
+        peaks = np.where(faster, peaks, np.maximum(levels, peaks - peak_vel * dt))
+
+        _emit(levels, peaks)
 
 
 if __name__ == "__main__":

@@ -1320,45 +1320,49 @@ window.panel-hub {
   color: $outline;
 }
 
-// Visualizer: bands stacked one under another (vertical axis), each band grows
-// left and right from the shared vertical centre line - the mirrored spectrum
-// Noctalia draws with setMirrored + setCentered. Halves are plain boxes with
-// :width from the yuck, so the result never depends on how GtkProgressBar
-// paints a fill.
+// Visualizer: 24 bands stacked one under another, each band grows left and
+// right from one shared vertical centre line, and every end carries a round
+// peak dot that lags behind and falls slowly - the look of
+// radiofm/radio/viz/spectrum.py, but mirrored around a vertical axis.
+// Bands are plain boxes with :width from the yuck, so nothing depends on how
+// GtkProgressBar paints a fill.
 .media-viz {
   min-width: 200px;
   // Отступы слева и справа одинаковые: общая вертикальная ось полос должна
   // приходиться ровно на середину колонки.
-  padding: 8px 16px;
+  padding: 10px 14px;
 }
 
+// Ряд одной полосы: высоту делит поровну с соседями (vexpand в yuck).
 .media-viz-band {
-  min-height: 8px;
-  padding: 1px 0;
+  min-height: 6px;
 }
 
-// Половина полосы: невидимая обёртка, внутри линия и шарик на конце.
+// Половина полосы: невидимая обёртка, внутри точка пика, линия и щель.
 .media-viz-half {
   background-color: transparent;
 }
 
-// Сама полоска: в два раза тоньше прежней (было 8 px на всю высоту полосы).
+// Сама линия: тонкая, в два раза тоньше прежней полосы. Отрицательный margin
+// в 1 px стягивает половинки в центре: без него между левой и правой линией
+// оставалась щель 2 px, и полоса выглядела разорванной.
 .media-viz-line {
   min-height: 3px;
+  margin: 0 -1px;
   border-radius: 999px;
   background-color: $primary;
 }
 
-// Круглый наконечник на конце каждой полоски.
+// Точка пика на внешнем конце линии.
 .media-viz-dot {
-  min-width: 12px;
-  min-height: 12px;
+  min-width: 6px;
+  min-height: 6px;
   border-radius: 999px;
   background-color: $primary;
 }
 
-// Тишина: полоса и шарик не рисуются совсем (иначе две точки висели бы
-// в центре колонки, потому что у шарика min-width 12 px).
+// Тишина: полоса, щель и точка не рисуются совсем (иначе 24 точки с
+// min-width 6 висели бы в центре колонки).
 .media-viz-half.zero,
 .media-viz-half.zero .media-viz-line,
 .media-viz-half.zero .media-viz-dot {
