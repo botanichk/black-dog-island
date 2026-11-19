@@ -1337,15 +1337,33 @@ window.panel-hub {
   padding: 1px 0;
 }
 
+// Половина полосы: невидимая обёртка, внутри линия и шарик на конце.
 .media-viz-half {
-  min-width: 2px;
+  background-color: transparent;
+}
+
+// Сама полоска: в два раза тоньше прежней (было 8 px на всю высоту полосы).
+.media-viz-line {
+  min-height: 3px;
   border-radius: 999px;
   background-color: $primary;
 }
 
-// Тишина: плашки не рисуются совсем, иначе 16 точек min-width сливаются
-// в сплошную вертикальную линию по центру колонки.
-.media-viz-half.zero {
+// Круглый наконечник на конце каждой полоски.
+.media-viz-dot {
+  min-width: 12px;
+  min-height: 12px;
+  border-radius: 999px;
+  background-color: $primary;
+}
+
+// Тишина: полоса и шарик не рисуются совсем (иначе две точки висели бы
+// в центре колонки, потому что у шарика min-width 12 px).
+.media-viz-half.zero,
+.media-viz-half.zero .media-viz-line,
+.media-viz-half.zero .media-viz-dot {
+  min-width: 0;
+  min-height: 0;
   background-color: transparent;
 }
 

@@ -622,17 +622,32 @@
 ;;
 ;; Почему обычные box с :width, а не progress: GtkProgressBar заливает не от
 ;; края, и полоса выходила не той формы.
-;; Значение - media-viz[i] (0..1) из adapters/media/spectrum.py, 95 px на
-;; половину при максимуме (колонка 200 px минус отступы); round нужен, потому
-;; что :width ждёт целое. На тишине плашки прозрачные (класс zero): иначе
-;; min-width 2px давал непрерывную линию по центру колонки.
+;; Половина полосы: тонкая линия от оси до наконечника и круглый шарик на
+;; конце (как у Noctalia - у полосы видно точку). Шарик всегда 12 px, поэтому
+;; половина = 12 + 86 * значение: 12 px резервируется под точку, остальное
+;; растёт с уровнем (при максимуме 98 px на половину). Значение 0..1 приходит
+;; из adapters/media/spectrum.py; round нужен, потому что :width ждёт целое.
+;; На тишине (<= 0.01) половина схлопывается в 0 и не рисуется вовсе.
+;; При тишине класс zero гасит и линию, и шарик: у шарика min-width 12, поэтому
+;; нулевая ширина обёртки всё равно оставляла бы две видимые точки в центре.
+(defwidget media-viz-half [v flip]
+  (box :orientation "horizontal" :space-evenly false
+       :class {v > 0.01 ? "media-viz-half" : "media-viz-half zero"} :valign "center"
+       :width {v > 0.01 ? round(v * 86 + 12, 0) : 0}
+    (for z in {flip ? "[]" : "[1]"} (box :class "media-viz-dot"))
+    (box :class "media-viz-line" :hexpand true :valign "center")
+    (for z in {flip ? "[1]" : "[]"} (box :class "media-viz-dot"))))
+
+;; Одна полоса визуализатора: полоса лежит горизонтально и растёт ОТ
+;; ВЕРТИКАЛЬНОЙ ОСИ - влево и вправо. Ось общая для всех полос и проходит по
+;; центру колонки: слева и справа распорки :hexpand, между ними две половины.
+;; Так у Noctalia выглядят setMirrored + setCentered: полосы стоят друг под
+;; другом, а зеркалятся вокруг вертикальной линии.
 (defwidget media-viz-band [i]
   (box :orientation "horizontal" :space-evenly false :class "media-viz-band" :hexpand true :vexpand true
     (box :hexpand true)
-    (box :class {media-viz[i] > 0.01 ? "media-viz-half" : "media-viz-half zero"}
-         :vexpand true :width {round(media-viz[i] * 95, 0)})
-    (box :class {media-viz[i] > 0.01 ? "media-viz-half" : "media-viz-half zero"}
-         :vexpand true :width {round(media-viz[i] * 95, 0)})
+    (media-viz-half :v {media-viz[i]} :flip false)
+    (media-viz-half :v {media-viz[i]} :flip true)
     (box :hexpand true)))
 
 ;; Два состояния, переключаются через "for" (не ":visible" - он в этой сборке
