@@ -77,6 +77,12 @@ remaining() {
   fi
 }
 
+# Короткий вид для кнопки на острове: минуты без часов, не длиннее 5 знаков
+# (3725 -> "62:05"). Панель показывает точный fmt, кнопке хватает минут.
+fmtshort() {
+  printf '%d:%02d' "$(( ${1:-0} / 60 ))" "$(( ${1:-0} % 60 ))"
+}
+
 # 3725 -> "1:02:05", 125 -> "2:05"
 fmt() {
   _v=${1:-0}
@@ -144,8 +150,8 @@ status() {
     [ "$_pct" -lt 0 ] && _pct=0
     [ "$_pct" -gt 100 ] && _pct=100
   fi
-  printf '{"state":"%s","left":%d,"total":%d,"pct":%d,"fmt":"%s"}\n' \
-    "$_state" "$_left" "$_total" "$_pct" "$(fmt "$_left")"
+  printf '{"state":"%s","left":%d,"total":%d,"pct":%d,"fmt":"%s","short":"%s"}\n' \
+    "$_state" "$_left" "$_total" "$_pct" "$(fmt "$_left")" "$(fmtshort "$_left")"
 }
 
 case "${1:-status}" in
@@ -227,6 +233,9 @@ case "${1:-status}" in
     ck "$(fmt 0)" "0:00" "fmt 0"
     ck "$(fmt 125)" "2:05" "fmt 125"
     ck "$(fmt 3725)" "1:02:05" "fmt 3725"
+  ck "$(fmtshort 0)" "0:00" "fmtshort 0"
+  ck "$(fmtshort 125)" "2:05" "fmtshort 125"
+  ck "$(fmtshort 3725)" "62:05" "fmtshort 3725"
     [ "$_bad" -eq 0 ] && echo "selftest ok"
     exit "$_bad" ;;
   *) echo "usage: timer.sh start <время> | pause | resume | reset | stop-sound | tick | status" >&2; exit 2 ;;

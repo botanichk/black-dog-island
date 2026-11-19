@@ -64,13 +64,12 @@
 
 (deflisten layout :initial "" "$HOME/eww-island/adapters/x11/layout.sh")
 
-;; Таймер: состояние (state/left/total/pct/fmt) одной JSON-строкой.
+;; Таймер: состояние (state/left/total/fmt/short) одной JSON-строкой.
 ;; tick раз в секунду двигает отсчёт и заводит будильник. Отсчёт живёт в
 ;; adapters/timer/timer.sh по метке конца, поэтому идёт и при закрытой панели,
-;; и при перезапуске Eww. На паузе или в покое опрос ничего не меняет, но
-;; оставлен постоянным: Eww запускает defpoll только при ссылке из дерева,
-;; а ссылка появляется лишь когда открыта панель таймера.
-(defpoll timer-state :interval "1s" :initial "{\"state\":\"idle\",\"left\":0,\"total\":0,\"pct\":0,\"fmt\":\"0:00\"}"
+;; и при перезапуске Eww. Опрос заводит кнопка на острове - она есть всегда,
+;; поэтому тик живёт всё время, пока открыт остров.
+(defpoll timer-state :interval "1s" :initial "{\"state\":\"idle\",\"left\":0,\"total\":0,\"pct\":0,\"fmt\":\"0:00\",\"short\":\"0:00\"}"
   "$HOME/eww-island/adapters/timer/timer.sh tick")
 
 ;; Погода для выпадающей панели: Open-Meteo + координаты из Noctalia.
@@ -237,13 +236,18 @@
         (button :class "clock" :timeout "8s"
           :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-hub calendar"
           (label :text clock))
-        ;; Таймер: кнопка между часами и громкостью, из неё растёт небольшая
-        ;; панель. На острове только глиф: цифры отсчёта раздували окно (619 ->
-        ;; 644), а ширина острова - константа. Время видно в панели.
+        ;; Таймер: кнопка между часами и громкостью, как у звука - тональная
+        ;; плашка с песочными часами и остатком в шрифте Bitcount (как в
+        ;; образце). Цифры видны всегда ("0:00" в покое), поэтому ширина
+        ;; плашки, а с ней и острова, не меняется.
+        ;; Клик: звенит - глушит будильник, иначе открывает/закрывает панель
+        ;; (решает adapters/timer/click.sh).
         (button :class {timer-state.state == "ring" ? "timer ringing" : (timer-state.state == "run" || timer-state.state == "pause") ? "timer active" : "timer"}
           :timeout "8s"
-          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-timer"
-          (label :class "timer-ic" :text "󰔛"))
+          :onclick "$HOME/eww-island/adapters/timer/click.sh"
+          (box :orientation "horizontal" :space-evenly false :class "timer-inner"
+            (label :class "timer-ic" :text "󰔟")
+            (label :class "timer-txt" :text {timer-state.short})))
         ;; onscroll живёт только на eventbox: у button он удалён в Eww 0.6.
         (eventbox :onscroll "$HOME/eww-island/adapters/audio/volume.sh {}"
           (button :class "vol" :onclick "$HOME/eww-island/adapters/audio/volume.sh mute"
@@ -988,11 +992,6 @@
 ;; ширину острова, а 280 px по центру: таймер - не хаб, места ему нужно мало.
 ;; Ввод: "10" (секунды), "6m", "90s", "1h30m", "1:30". Enter в поле запускает.
 ;; :focusable true - без него gtk.Entry в окне не получает клавиатуру.
-(defwidget tmr-preset [m lbl]
-  (button :class "tmr-preset" :hexpand true :timeout "8s"
-    :onclick "$HOME/eww-island/adapters/timer/timer.sh start ${m}m"
-    (label :class "tmr-preset-txt" :text lbl)))
-
 (defwindow panel-timer
   :monitor 0
   :geometry (geometry :x "0px" :y "50px" :width "280px" :anchor "top left")
@@ -1000,36 +999,39 @@
   :windowtype "utility"
   :unfocus-close true
   :focusable true
-  (box :orientation "horizontal" :space-evenly false :class "tmr-frame" :hexpand true
-    (box :orientation "vertical" :space-evenly false :class "tmr-menu" :hexpand true
-      ;; Крупный отсчёт. На покое показывает 0:00, пока идёт - остаток.
-      (label :class {timer-state.state == "ring" ? "tmr-time ring" : "tmr-time"}
-             :xalign 0.5 :text {timer-state.fmt})
-      (progress :class "tmr-bar" :hexpand true :height 6 :value {timer-state.pct})
-      ;; Готовые длительности: один клик вместо набора.
-      (box :orientation "horizontal" :space-evenly false :class "tmr-presets"
-        (tmr-preset :m "5" :lbl "5")
-        (tmr-preset :m "10" :lbl "10")
-        (tmr-preset :m "15" :lbl "15")
-        (tmr-preset :m "25" :lbl "25"))
-      (input :class "tmr-input" :hexpand true :placeholder "6m, 1:30 → Enter"
-             :onaccept "$HOME/eww-island/adapters/timer/timer.sh start {}")
-      (box :orientation "horizontal" :space-evenly false :class "tmr-actions"
-        (button :class "tmr-btn" :hexpand true :timeout "8s"
-          :onclick "$HOME/eww-island/adapters/timer/timer.sh reset"
-          (label :class "tmr-btn-txt" :text "Сброс"))
-        (for t in {timer-state.state == "run" ? "[1]" : "[]"}
-          (button :class "tmr-btn main" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh pause"
-            (label :class "tmr-btn-txt" :text "Пауза")))
-        (for t in {timer-state.state == "pause" ? "[1]" : "[]"}
-          (button :class "tmr-btn main" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh resume"
-            (label :class "tmr-btn-txt" :text "Продолжить")))
-        (for t in {timer-state.state == "ring" ? "[1]" : "[]"}
-          (button :class "tmr-btn stop" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh stop-sound"
-            (label :class "tmr-btn-txt" :text "Стоп")))))))
+  (overlay
+    (box :orientation "horizontal" :space-evenly false :class "tmr-frame" :hexpand true :vexpand true
+      (box :orientation "vertical" :space-evenly false :class "tmr-menu" :hexpand true :vexpand true
+        ;; Крупный отсчёт шрифтом Bitcount, как в образце Noctalia.
+        (label :class {timer-state.state == "ring" ? "tmr-time ring" : "tmr-time"}
+               :xalign 0.5 :text {timer-state.fmt})
+        (input :class "tmr-input" :hexpand true :placeholder "6m, 1:30 → Enter"
+               :onaccept "$HOME/eww-island/adapters/timer/timer.sh start {}")
+        (box :orientation "horizontal" :space-evenly false :class "tmr-actions"
+          (button :class "tmr-btn" :hexpand true :timeout "8s"
+            :onclick "$HOME/eww-island/adapters/timer/timer.sh reset"
+            (label :class "tmr-btn-txt" :text "Сброс"))
+          (for t in {timer-state.state == "run" ? "[1]" : "[]"}
+            (button :class "tmr-btn main" :hexpand true :timeout "8s"
+              :onclick "$HOME/eww-island/adapters/timer/timer.sh pause"
+              (label :class "tmr-btn-txt" :text "Пауза")))
+          (for t in {timer-state.state == "pause" ? "[1]" : "[]"}
+            (button :class "tmr-btn main" :hexpand true :timeout "8s"
+              :onclick "$HOME/eww-island/adapters/timer/timer.sh resume"
+              (label :class "tmr-btn-txt" :text "Продолжить")))
+          (for t in {timer-state.state == "ring" ? "[1]" : "[]"}
+            (button :class "tmr-btn stop" :hexpand true :timeout "8s"
+              :onclick "$HOME/eww-island/adapters/timer/timer.sh stop-sound"
+              (label :class "tmr-btn-txt" :text "Стоп"))))))
+    ;; Стык с островом: те же вогнутые углы, что у острова с верхом экрана.
+    ;; Слой лежит поверх плашки, клики проходят (как у island-root).
+    (box :orientation "horizontal" :space-evenly false :class "flare-row"
+      :hexpand true :halign "fill" :valign "start"
+      (image :class "flare-left" :path "${EWW_CONFIG_DIR}/assets/corner-left.svg"
+        :image-width 12 :image-height 12)
+      (box :hexpand true)
+      (image :class "flare-right" :path "${EWW_CONFIG_DIR}/assets/corner-right.svg"
+        :image-width 12 :image-height 12))))
 
 (defwindow panel-power [w]
   :monitor 0

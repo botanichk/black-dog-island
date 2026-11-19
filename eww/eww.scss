@@ -93,11 +93,11 @@ button {
   background-color: $state-hover;
 }
 
-// System tray: 16 px icons after the workspace dots. The min-width reserves
-// the space freed by the removed window title, so the island keeps its width
-// and the drop-down panels still line up without a step.
+// System tray: 16 px icons after the workspace dots. Без резерва: место
+// между точками и правой группой держит растяжка, поэтому иконки трея просто
+// занимают свободную середину, а ширина острова остаётся 619.
 .tray {
-  min-width: 140px;
+  min-width: 0px;
   margin-right: 10px;
   background: transparent;
 }
@@ -147,7 +147,7 @@ menu separator {
 // Layout indicator (US/RU): assist chip, tonal container, 8 px radius.
 .layout {
   min-width: 24px;
-  margin-right: 5px;
+  margin-right: 8px;
   padding: 3px 8px;
   border-radius: $r-control;
   background-color: $surface-container;
@@ -206,8 +206,8 @@ menu separator {
 
 // Clock: display size, medium weight.
 .clock {
-  margin-right: 2px;
-  padding: 2px 5px;
+  margin-right: 4px;
+  padding: 2px 8px;
   border-radius: $r-control;
   color: $on-surface;
   font-size: $t-display;
@@ -218,42 +218,54 @@ menu separator {
   background-color: $state-hover;
 }
 
-// Timer button (island, between clock and volume): a bare glyph when idle so it
-// costs almost no width, a tonal chip while counting, the error plate while the
-// alarm rings.
+// Timer button (island, between clock and volume): same tonal chip as the
+// volume next to it, but with an hourglass and the remaining time in the
+// Bitcount font (as in the Noctalia sample). The time always shows "0:00"
+// when idle, so the chip width - and with it the island width - never changes.
 .timer {
-  margin-right: 6px;
-  padding: 3px 5px;
+  margin-right: 8px;
+  padding: 3px 8px;
   border-radius: $r-control;
-  background-color: transparent;
+  background-color: $surface-container;
 }
 
 .timer:hover {
-  background-color: $state-hover;
-}
-
-.timer.active {
-  background-color: $surface-container;
+  background-color: $surface-container-high;
 }
 
 .timer.ringing {
   background-color: $error;
 }
 
-.timer-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
-  font-size: 15px;
-  color: $on-surface-variant;
+.timer-inner {
+  background: transparent;
 }
 
-.timer.ringing .timer-ic {
+.timer-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 13px;
+  color: $on-surface-variant;
+  margin-right: 4px;
+}
+
+.timer-txt {
+  font-family: "Bitcount Prop Single Roman", "Noto Sans";
+  font-size: 14px;
+  // Ширина под самое длинное "89:58" (замер Bitcount 14: 5 знаков = 43).
+  // Плашка не меняет ширину при смене цифр, поэтому остров не дёргается.
+  min-width: 54px;
+  color: $on-surface;
+}
+
+.timer.ringing .timer-ic,
+.timer.ringing .timer-txt {
   color: $on-primary;
 }
 
 // Volume: tonal chip.
 .vol {
   min-width: 34px;
-  padding: 3px 7px;
+  padding: 3px 8px;
   border-radius: $r-control;
   background-color: $surface-container;
   color: $on-surface-variant;
@@ -269,8 +281,8 @@ menu separator {
 // the accent plate, the same "active" look as the Home button.
 .power {
   min-width: 24px;
-  margin-left: 5px;
-  padding: 3px 7px;
+  margin-left: 6px;
+  padding: 3px 8px;
   border-radius: $r-control;
   background-color: $surface-container;
 }
@@ -297,7 +309,7 @@ menu separator {
 // the layout chip next to it - tonal container, 8 px radius, hover layer.
 .wall {
   min-width: 24px;
-  margin-right: 5px;
+  margin-right: 8px;
   padding: 3px 8px;
   border-radius: $r-control;
   background-color: $surface-container;
@@ -312,7 +324,7 @@ menu separator {
 // open on the home tab the chip switches to the accent plate (active tab look).
 .home-btn {
   min-width: 24px;
-  margin-right: 5px;
+  margin-right: 8px;
   padding: 3px 8px;
   border-radius: $r-control;
   background-color: $surface-container;
@@ -1716,57 +1728,18 @@ window.panel-power {
 }
 
 .tmr-time {
-  font-size: 34px;
-  font-weight: 500;
-  color: $on-surface;
-  padding: 2px 0 4px;
+  font-family: "Bitcount Prop Single Roman", "Noto Sans";
+  font-size: 44px;
+  color: $primary;
+  padding: 2px 0 6px;
 }
 
 .tmr-time.ring {
   color: $error;
 }
 
-.tmr-bar trough {
-  min-height: 4px;
-  border-radius: 999px;
-  background-color: $surface-highest;
-  background-image: none;
-}
-
-.tmr-bar progress {
-  min-height: 4px;
-  border-radius: 999px;
-  background-color: $primary;
-  background-image: none;
-}
-
-.tmr-presets {
-  margin: 10px 0 0;
-}
-
-.tmr-preset {
-  min-width: 0;
-  padding: 5px 0;
-  margin-right: 6px;
-  border-radius: $r-control;
-  background-color: $surface-container;
-}
-
-.tmr-preset:last-child {
-  margin-right: 0;
-}
-
-.tmr-preset:hover {
-  background-color: $surface-container-high;
-}
-
-.tmr-preset-txt {
-  font-size: $t-secondary;
-  color: $on-surface;
-}
-
 .tmr-input {
-  margin: 8px 0;
+  margin: 12px 0 10px;
   padding: 6px 8px;
   border: none;
   border-radius: $r-control;
