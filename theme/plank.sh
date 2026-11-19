@@ -1,16 +1,20 @@
 #!/bin/sh
-# plank.sh - рамка Plank в цвет акцента острова ($primary).
+# plank.sh - док Plank в стиль острова: заливка $surface, рамка $primary.
 #
-# usage: theme/plank.sh apply     # подтянуть рамку (вызывается из apply.sh)
+# usage: theme/plank.sh apply     # подтянуть тему (вызывается из apply.sh)
 #        theme/plank.sh restore   # вернуть исходную тему Plank
 #        theme/plank.sh status    # показать, что сейчас
 #
+# Раньше док красился одной строкой: OuterStrokeColor = $primary, а заливка
+# оставалась тёмной из чужой темы (Tokyonight-Storm-B и т.п.). На светлых
+# схемах острова это давало тёмное пятно под светлым островом. Теперь док -
+# это остров: заливка $surface с лёгкой прозрачностью (FILL_ALPHA), рамка
+# $primary, радиусы $r-surface (18 px), внутренняя обводка убрана.
+#
 # Почему копия темы, а не правка твоей: тема Plank - это файл dock.theme из
-# чужого набора (Tokyonight-Storm-B и т.п.), и правка в нём затрётся при
-# любом обновлении набора. Поэтому рядом кладётся своя тема EwwIsland:
-# полная копия исходной, в которой изменена ОДНА строка - OuterStrokeColor.
-# Всё остальное (заливка, скругления, отступы, толщина линии) остаётся как
-# в исходной теме.
+# чужого набора, и правка в нём затрётся при любом обновлении набора.
+# Поэтому рядом кладётся своя тема EwwIsland: полная копия исходной, в
+# которой заменены только строки вида и заливки, перечисленные в SET_KEYS.
 #
 # Почему перезапуск Plank: он не перечитывает dock.theme на лету.
 # Проверено: смена темы через dconf при живом процессе не меняет ни одного
@@ -109,6 +113,8 @@ if [ "${ACTION:-apply}" = "status" ]; then
   echo "исходная:  $(cat "$BASE_FILE" 2>/dev/null || echo '(не записана)')"
   if [ -f "$USER_THEMES/$THEME_NAME/dock.theme" ]; then
     echo "рамка:     $(grep -m1 '^OuterStrokeColor=' "$USER_THEMES/$THEME_NAME/dock.theme" | cut -d= -f2)"
+    echo "заливка:   $(grep -m1 '^FillStartColor=' "$USER_THEMES/$THEME_NAME/dock.theme" | cut -d= -f2)"
+    echo "радиусы:   $(grep -m1 '^TopRoundness=' "$USER_THEMES/$THEME_NAME/dock.theme" | cut -d= -f2) px"
   fi
   echo "процесс:   $(plank_running && echo работает || echo не запущен)"
   exit 0
@@ -159,60 +165,87 @@ CSS="$ROOT/eww/colors.scss"
 [ -f "$CSS" ] || { echo "нет $CSS - сначала theme/apply.sh" >&2; exit 1; }
 PRIMARY=$(sed -n 's/^\$primary: *\(#[0-9a-fA-F]\{6\}\).*/\1/p' "$CSS" | head -1)
 [ -n "$PRIMARY" ] || { echo "в $CSS нет \$primary" >&2; exit 1; }
+# Поверхность острова: заливка дока должна совпадать с телом острова, иначе
+# светлая схема острова и тёмный док спорят друг с другом.
+SURFACE=$(sed -n 's/^\$surface: *\(#[0-9a-fA-F]\{6\}\).*/\1/p' "$CSS" | head -1)
+[ -n "$SURFACE" ] || { echo "в $CSS нет \$surface" >&2; exit 1; }
 
 # --- 3. собрать тему EwwIsland --------------------------------------------
-# Одна изменённая строка: OuterStrokeColor. Прозрачность (4-е число) и всё
-# остальное берём из исходной темы, чтобы не менять чужой вид.
+# Док повторяет остров: заливка = $surface, рамка = $primary, радиусы = 18 px
+# (как $r-surface у острова). Отличается только прозрачность: заливка чуть
+# просвечивает (FILL_ALPHA), чтобы док не выглядел глухим пятном на светлых
+# обоях. Раньше менялась одна строка (OuterStrokeColor), теперь - весь набор.
 OUTDIR="$USER_THEMES/$THEME_NAME"
 mkdir -p "$OUTDIR"
 
-python3 - "$BASE_DIR/dock.theme" "$OUTDIR/dock.theme" "$PRIMARY" "$THEME_NAME" <<'PY'
+# Лёгкая прозрачность заливки: 255 - непрозрачно. 230 = ~90 %, обои под доком
+# угадываются, но текст и иконки не теряют контраст.
+FILL_ALPHA=230
+# Радиус углов дока = $r-surface острова (18 px), чтобы скругления совпадали.
+ROUND=18
+
+python3 - "$BASE_DIR/dock.theme" "$OUTDIR/dock.theme" "$PRIMARY" "$SURFACE" "$FILL_ALPHA" "$ROUND" <<'PY'
 import sys, re
 
-src, dst, primary, theme_name = sys.argv[1:5]
+src, dst, primary, surface, fill_alpha, round_px = sys.argv[1:7]
+
+def rgb(hexv):
+    hexv = hexv.lstrip("#")
+    return tuple(int(hexv[i:i + 2], 16) for i in (0, 2, 4))
+
+pr, pg, pb = rgb(primary)
+sr, sg, sb = rgb(surface)
+alpha_out = 200      # прозрачность рамки - как в исходной теме
+alpha_fill = int(fill_alpha)
+
 text = open(src, encoding="utf-8", errors="replace").read()
 
-hexv = primary.lstrip("#")
-r, g, b = (int(hexv[i:i + 2], 16) for i in (0, 2, 4))
-
-# Прозрачность рамки оставляем как в исходной теме (обычно 200 из 255).
-alpha = 200
-m = re.search(r"^OuterStrokeColor=(\d+);;(\d+);;(\d+);;(\d+)\s*$", text, re.M)
-if m:
-    alpha = int(m.group(4))
-
-newline = "OuterStrokeColor=%d;;%d;;%d;;%d" % (r, g, b, alpha)
-if m:
-    text = text[:m.start()] + newline + text[m.end():]
-else:
-    # строки не было - добавляем после LineWidth, а если и его нет, в начало секции
+def set_line(text, key, value):
+    """Заменить строку key=... в секции PlankTheme, иначе вставить после LineWidth."""
+    pat = re.compile(r"^" + key + r"=.*$", re.M)
+    if pat.search(text):
+        return pat.sub(key + "=" + value, text, count=1)
     lm = re.search(r"^LineWidth=.*$", text, re.M)
     if lm:
-        text = text[:lm.end()] + "\n" + newline + text[lm.end():]
-    else:
-        text = "OuterStrokeColor=%d;;%d;;%d;;%d\n" % (r, g, b, alpha) + text
+        return text[:lm.end()] + "\n" + key + "=" + value + text[lm.end():]
+    return key + "=" + value + "\n" + text
+
+m = re.search(r"^OuterStrokeColor=(\d+);;(\d+);;(\d+);;(\d+)\s*$", text, re.M)
+if m:
+    alpha_out = int(m.group(4))
+
+text = set_line(text, "OuterStrokeColor", "%d;;%d;;%d;;%d" % (pr, pg, pb, alpha_out))
+text = set_line(text, "FillStartColor", "%d;;%d;;%d;;%d" % (sr, sg, sb, alpha_fill))
+text = set_line(text, "FillEndColor", "%d;;%d;;%d;;%d" % (sr, sg, sb, alpha_fill))
+# Внутреннюю обводку убираем: у острова её нет, остаётся только рамка.
+text = set_line(text, "InnerStrokeColor", "%d;;%d;;%d;;0" % (sr, sg, sb))
+text = set_line(text, "TopRoundness", round_px)
+text = set_line(text, "BottomRoundness", round_px)
 
 open(dst, "w", encoding="utf-8").write(text)
 PY
-NEWLINE=$(grep -m1 '^OuterStrokeColor=' "$OUTDIR/dock.theme" | cut -d= -f2)
+# Подпись темы для сравнения: все строки, которые мы задаём. Раньше сравнивали
+# только рамку - с новой заливкой этого мало, док остался бы старым.
+NEWLINE=$(grep -E '^(OuterStrokeColor|FillStartColor|FillEndColor|InnerStrokeColor|TopRoundness|BottomRoundness)=' "$OUTDIR/dock.theme" | tr '\n' ' ')
 
 # --- 4. выбрать тему и перезапустить Plank --------------------------------
 # Сравнивать надо с ПРЕДЫДУЩИМ содержимым, но снимок сделать уже поздно:
 # python перезаписал файл. Поэтому сравниваем с тем, что сейчас показывает
-# Plank - исходную тему, если выбрана она, иначе нашу (её цвет сохранён в
+# Plank - исходную тему, если выбрана она, иначе нашу (её набор сохранён в
 # state-файле после прошлого применения).
 STATE_COLOR="$STATE_DIR/plank-color"
 SHOWN=$(cat "$STATE_COLOR" 2>/dev/null || true)
 if [ "$CUR" != "$THEME_NAME" ]; then
-  # Показывается исходная тема - её цвет и есть текущий.
-  SHOWN=$(grep -m1 '^OuterStrokeColor=' "$BASE_DIR/dock.theme" | cut -d= -f2 || true)
+  # Показывается исходная тема - её набор и есть текущий.
+  SHOWN=$(grep -E '^(OuterStrokeColor|FillStartColor|FillEndColor|InnerStrokeColor|TopRoundness|BottomRoundness)=' \
+    "$BASE_DIR/dock.theme" | tr '\n' ' ' || true)
 fi
 
 if [ "$CUR" = "$THEME_NAME" ] && [ "$NEWLINE" = "$SHOWN" ] && plank_running; then
-  # Уже наша тема, цвет тот же и Plank работает - перезапускать незачем.
+  # Уже наша тема, набор тот же и Plank работает - перезапускать незачем.
   # Проверка plank_running обязательна: иначе закрытый док так и остался бы
   # закрытым (проверено - скрипт молча выходил «без изменений»).
-  log "без изменений: рамка $NEWLINE"
+  log "без изменений: $NEWLINE"
   exit 0
 fi
 
@@ -220,5 +253,5 @@ dconf write "$KEY" "'$THEME_NAME'"
 restart_plank || true
 mkdir -p "$STATE_DIR"
 printf '%s\n' "$NEWLINE" > "$STATE_COLOR"
-log "рамка Plank: $PRIMARY -> $NEWLINE (тема $THEME_NAME из $BASE)"
-echo "рамка Plank: $PRIMARY"
+log "тема Plank: рамка $PRIMARY, заливка $SURFACE (тема $THEME_NAME из $BASE)"
+echo "док Plank: рамка $PRIMARY, заливка $SURFACE"
