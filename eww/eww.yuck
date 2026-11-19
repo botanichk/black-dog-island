@@ -619,47 +619,17 @@
 ;; Почему обычные box с :width, а не progress: GtkProgressBar заливает не от
 ;; края, и полоса выходила не той формы.
 ;;
-;; Половина полосы визуализатора - как в radiofm/radio/viz/spectrum.py:
-;; тонкая линия и круглая точка пика, которая висит на своём расстоянии и
-;; медленно падает. Но ось вертикальная: половина растёт ОТ ЦЕНТРАЛЬНОЙ
-;; ВЕРТИКАЛИ влево (левая половина) или вправо (правая).
+;; Полосы визуализатора рисует свой Cairo-виджет `spectrum` (патч
+;; patches/eww-0002-spectrum-cairo-widget.patch). Раньше 24 полосы были 96
+;; отдельными box, и Eww на каждом кадре пересчитывал раскладку окна: демон
+;; упирался в 100 % ядра, а экран показывал единицы кадров. Теперь кадр -
+;; одна перерисовка, как paintEvent в radiofm/radio/viz/spectrum.py.
 ;;
-;; Ширина половины = 6 + p * 78: 6 px под точку, остальное - длина до пика.
-;; Внутри от внешнего края к оси: точка, упругая щель (:hexpand) и линия
-;; длиной v * 78. Щель добирает разницу между пиком и уровнем, поэтому точка
-;; сама отходит от конца линии, когда уровень упал, - ровно как в radiofm.
+;; Что рисует: 24 луча друг под другом, растут от общей вертикальной оси
+;; влево и вправо, на внешнем конце - точка пика. Ось видна всегда.
 ;;
-;; Две отдельные половины (левая и правая), а не одна с "for": в этой сборке
-;; Eww "for" при каждом обновлении сносит детей и строит заново, и на 24
-;; полосах это давало 9 кадров в секунду вместо 30. Без "for" обновляются
-;; только свойства (ширина), дети остаются на месте.
-;; При тишине (p <= 0.02) половина схлопывается в 0 и класс zero гасит точку,
-;; иначе у неё min-width 6 и она висела бы двумя точками в центре.
-(defwidget media-viz-half-left [i]
-  (box :orientation "horizontal" :space-evenly false :valign "center"
-       :class {media-viz.p[i] > 0.02 ? "media-viz-half" : "media-viz-half zero"}
-       :width {media-viz.p[i] > 0.02 ? round(media-viz.p[i] * 78, 0) + 6 : 0}
-    (box :class "media-viz-dot")
-    (box :hexpand true)
-    (box :class "media-viz-line" :valign "center" :width {round(media-viz.v[i] * 78, 0)})))
-
-(defwidget media-viz-half-right [i]
-  (box :orientation "horizontal" :space-evenly false :valign "center"
-       :class {media-viz.p[i] > 0.02 ? "media-viz-half" : "media-viz-half zero"}
-       :width {media-viz.p[i] > 0.02 ? round(media-viz.p[i] * 78, 0) + 6 : 0}
-    (box :class "media-viz-line" :valign "center" :width {round(media-viz.v[i] * 78, 0)})
-    (box :hexpand true)
-    (box :class "media-viz-dot")))
-
-;; Одна полоса: две половины вокруг общей вертикальной оси. Распорки по краям
-;; держат ось ровно по центру колонки, поэтому полосы не сдвигаются от того,
-;; что уровень у соседних разный.
-(defwidget media-viz-band [i]
-  (box :orientation "horizontal" :space-evenly false :class "media-viz-band" :hexpand true :vexpand true
-    (box :hexpand true)
-    (media-viz-half-left :i i)
-    (media-viz-half-right :i i)
-    (box :hexpand true)))
+;; Вид и цвета взяты у radiofm: ramp темы "спектрум" (Marsik) - по частоте
+;; от бирюзы к фиолетовому.
 
 ;; Два состояния, переключаются через "for" (не ":visible" - он в этой сборке
 ;; применяется один раз при первом показе): пустое и обычное.
@@ -720,17 +690,10 @@
     ;; Колонка визуализатора: есть плеер - рисуем, нет - место занимает
     ;; пустое состояние на всю ширину (как и раньше).
     (for z in {media.status != "none" ? "[1]" : "[]"}
-      (overlay
       (box :orientation "vertical" :space-evenly false :class "media-viz" :vexpand true :valign "fill" :hexpand true
-        (media-viz-band :i 0) (media-viz-band :i 1) (media-viz-band :i 2)
-        (media-viz-band :i 3) (media-viz-band :i 4) (media-viz-band :i 5)
-        (media-viz-band :i 6) (media-viz-band :i 7) (media-viz-band :i 8)
-        (media-viz-band :i 9) (media-viz-band :i 10) (media-viz-band :i 11)
-        (media-viz-band :i 12) (media-viz-band :i 13) (media-viz-band :i 14)
-        (media-viz-band :i 15) (media-viz-band :i 16) (media-viz-band :i 17)
-        (media-viz-band :i 18) (media-viz-band :i 19) (media-viz-band :i 20)
-        (media-viz-band :i 21) (media-viz-band :i 22) (media-viz-band :i 23))
-      (box :class "media-viz-axis" :halign "center" :valign "fill" :vexpand true)))))
+        (spectrum :class "media-viz-spec" :hexpand true :vexpand true
+                  :data {media-viz}
+                  :ramp "#3dd8ff,#4b82ff,#965fff,#e256ff")))))
 
 ;; --- вкладка «Цвета» (шаг 11) ---
 ;; Выбор цветовой схемы: наша схема, 10 встроенных палитр Noctalia и свои

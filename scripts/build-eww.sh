@@ -48,7 +48,9 @@ apply_patch() {
   exit 1
 }
 
-for p in "$PATCHES"/*.patch; do
+# Только патчи Eww: в patches/ лежат ещё патчи hypr-wallpicker, их накатывают
+# вручную в свой исходник (docs/WALLPICKER.md), к сборке Eww они не относятся.
+for p in "$PATCHES"/eww-*.patch; do
   [ -e "$p" ] || continue
   apply_patch "$p"
 done

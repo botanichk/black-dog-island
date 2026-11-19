@@ -1320,62 +1320,23 @@ window.panel-hub {
   color: $outline;
 }
 
-// Visualizer: 24 bands stacked one under another, each band grows left and
-// right from one shared vertical centre line, and every end carries a round
-// peak dot that lags behind and falls slowly - the look of
-// radiofm/radio/viz/spectrum.py, but mirrored around a vertical axis.
-// Bands are plain boxes with :width from the yuck, so nothing depends on how
-// GtkProgressBar paints a fill.
+// Visualizer: 24 rays stacked one under another, each ray grows left and right
+// from one shared vertical centre line, and every end carries a round peak dot
+// that lags behind and falls slowly - the look of radiofm/radio/viz/spectrum.py.
+// Everything is drawn by the `spectrum` widget in one cairo pass (patch
+// patches/eww-0002-spectrum-cairo-widget.patch): a frame costs one redraw, not
+// a re-layout of a hundred boxes, which is what used to pin the daemon at 100%
+// of a core. Colours come from the radiofm "spectrum" ramp, passed from yuck.
 .media-viz {
   min-width: 200px;
-  // Отступы слева и справа одинаковые: общая вертикальная ось полос должна
+  // Отступы слева и справа одинаковые: общая вертикальная ось лучей должна
   // приходиться ровно на середину колонки.
   padding: 10px 14px;
 }
 
-// Ряд одной полосы: высоту делит поровну с соседями (vexpand в yuck).
-.media-viz-band {
-  min-height: 6px;
-}
-
-// Ось: постоянная вертикальная линия по центру поля. Лежит в overlay поверх
-// полос и не гаснет на тишине, когда все лучи схлопнулись в ноль.
-.media-viz-axis {
-  min-width: 2px;
-  background-color: $primary;
-}
-
-// Половина полосы: невидимая обёртка, внутри точка пика, линия и щель.
-.media-viz-half {
-  background-color: transparent;
-}
-
-// Сама линия: тонкая, в два раза тоньше прежней полосы. Отрицательный margin
-// в 1 px стягивает половинки в центре: без него между левой и правой линией
-// оставалась щель 2 px, и полоса выглядела разорванной.
-.media-viz-line {
-  min-height: 3px;
-  margin: 0 -1px;
-  border-radius: 999px;
-  background-color: $primary;
-}
-
-// Точка пика на внешнем конце линии.
-.media-viz-dot {
-  min-width: 6px;
-  min-height: 6px;
-  border-radius: 999px;
-  background-color: $primary;
-}
-
-// Тишина: полоса, щель и точка не рисуются совсем (иначе 24 точки с
-// min-width 6 висели бы в центре колонки).
-.media-viz-half.zero,
-.media-viz-half.zero .media-viz-line,
-.media-viz-half.zero .media-viz-dot {
-  min-width: 0;
-  min-height: 0;
-  background-color: transparent;
+// Сам виджет: цвет берётся отсюда для оси (cairo читает style_context.color).
+.media-viz-spec {
+  color: $primary;
 }
 
 // Empty state: centred note, title, hint.

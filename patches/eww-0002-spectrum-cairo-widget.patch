@@ -1,0 +1,339 @@
+diff --git a/crates/eww/src/widgets/mod.rs b/crates/eww/src/widgets/mod.rs
+index 34abab0..9a3383e 100644
+--- a/crates/eww/src/widgets/mod.rs
++++ b/crates/eww/src/widgets/mod.rs
+@@ -4,6 +4,7 @@ pub mod build_widget;
+ pub mod circular_progressbar;
+ pub mod def_widget_macro;
+ pub mod graph;
++pub mod spectrum;
+ mod systray;
+ pub mod transform;
+ pub mod widget_definitions;
+diff --git a/crates/eww/src/widgets/spectrum.rs b/crates/eww/src/widgets/spectrum.rs
+new file mode 100644
+index 0000000..8e897ec
+--- /dev/null
++++ b/crates/eww/src/widgets/spectrum.rs
+@@ -0,0 +1,278 @@
++//! `spectrum` — визуализатор одним проходом cairo.
++//!
++//! Зачем свой виджет. Раньше 24 полосы были 96 отдельными box: Eww на каждом
++//! кадре пересчитывал раскладку окна, и демон упирался в 100 % ядра, а экран
++//! показывал единицы кадров. Здесь кадр = одна перерисовка (queue_draw), как
++//! paintEvent в radiofm/radio/viz/spectrum.py, поэтому цена кадра не зависит
++//! от числа полос.
++//!
++//! Геометрия (принята владельцем): полосы лежат друг под другом, растут от
++//! общей вертикальной оси влево и вправо, на внешнем конце - точка пика,
++//! которая отходит от линии, когда уровень упал. Ось рисуется всегда, в том
++//! числе на тишине.
++
++use std::cell::RefCell;
++use std::f64::consts::PI;
++
++use anyhow::{anyhow, Result};
++use gtk::glib::{self, object_subclass, wrapper, Properties};
++use gtk::{cairo, gdk, prelude::*, subclass::prelude::*};
++
++use crate::error_handling_ctx;
++
++wrapper! {
++    pub struct Spectrum(ObjectSubclass<SpectrumPriv>)
++    @extends gtk::Bin, gtk::Container, gtk::Widget;
++}
++
++#[derive(Properties, Default)]
++#[properties(wrapper_type = Spectrum)]
++pub struct SpectrumPriv {
++    /// Кадр: {"v":[уровни 0..1], "p":[точки пика 0..1]}
++    #[property(get, set, nick = "Data", blurb = "JSON frame with v and p arrays", default = "")]
++    data: RefCell<String>,
++
++    /// Градиент по частоте: 4 цвета через запятую (ramp темы radiofm).
++    #[property(
++        get,
++        set,
++        nick = "Ramp",
++        blurb = "Comma separated hex colours",
++        default = "#3dd8ff,#4b82ff,#965fff,#e256ff"
++    )]
++    ramp: RefCell<String>,
++
++    /// Толщина луча в пикселях (0 - считать от высоты ряда).
++    #[property(get, set, nick = "Thickness", blurb = "Ray thickness in px", default = 0f64)]
++    thickness: RefCell<f64>,
++}
++
++impl ObjectImpl for SpectrumPriv {
++    fn properties() -> &'static [glib::ParamSpec] {
++        Self::derived_properties()
++    }
++
++    fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
++        match pspec.name() {
++            "data" => {
++                let data: String = value.get().unwrap();
++                // Тот же кадр — перерисовывать нечего.
++                if *self.data.borrow() != data {
++                    self.data.replace(data);
++                    self.obj().queue_draw();
++                }
++            }
++            "ramp" => {
++                self.ramp.replace(value.get().unwrap());
++                self.obj().queue_draw();
++            }
++            "thickness" => {
++                self.thickness.replace(value.get().unwrap());
++                self.obj().queue_draw();
++            }
++            x => panic!("Tried to set inexistant property of Spectrum: {}", x),
++        }
++    }
++
++    fn property(&self, id: usize, pspec: &glib::ParamSpec) -> glib::Value {
++        self.derived_property(id, pspec)
++    }
++}
++
++#[object_subclass]
++impl ObjectSubclass for SpectrumPriv {
++    type ParentType = gtk::Bin;
++    type Type = Spectrum;
++
++    const NAME: &'static str = "Spectrum";
++
++    fn class_init(klass: &mut Self::Class) {
++        klass.set_css_name("spectrum");
++    }
++}
++
++impl Default for Spectrum {
++    fn default() -> Self {
++        Self::new()
++    }
++}
++
++impl Spectrum {
++    pub fn new() -> Self {
++        glib::Object::new::<Self>()
++    }
++}
++
++impl ContainerImpl for SpectrumPriv {
++    fn add(&self, _widget: &gtk::Widget) {
++        error_handling_ctx::print_error(anyhow!("Error, Spectrum widget should not have any children"));
++    }
++}
++
++impl BinImpl for SpectrumPriv {}
++
++impl WidgetImpl for SpectrumPriv {
++    fn draw(&self, cr: &cairo::Context) -> glib::Propagation {
++        let res: Result<()> = (|| {
++            let styles = self.obj().style_context();
++            let color: gdk::RGBA = styles.color(gtk::StateFlags::NORMAL);
++            let margin = styles.margin(gtk::StateFlags::NORMAL);
++            let width = self.obj().allocated_width() as f64 - margin.left as f64 - margin.right as f64;
++            let height = self.obj().allocated_height() as f64 - margin.top as f64 - margin.bottom as f64;
++            if width <= 1.0 || height <= 1.0 {
++                return Ok(());
++            }
++
++            let raw = self.data.borrow().clone();
++            let (values, peaks) = parse_frame(&raw);
++            let n = values.len().max(1);
++
++            let ramp = parse_ramp(&self.ramp.borrow());
++            let cx = width / 2.0;
++            // Полторы толщины луча оставляем с каждого края, чтобы точка пика
++            // не обрезалась о границу виджета.
++            let row_h = height / n as f64;
++            let thick = {
++                let t = *self.thickness.borrow();
++                if t > 0.0 { t } else { (row_h * 0.34).clamp(2.0, 4.0) }
++            };
++            let max_half = (width / 2.0 - thick * 1.5).max(1.0);
++            let dot_r = thick * 1.05;
++
++            cr.save()?;
++            cr.translate(margin.left as f64, margin.top as f64);
++            cr.set_line_cap(cairo::LineCap::Round);
++
++            for i in 0..n {
++                let level = values.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
++                let peak = peaks.get(i).copied().unwrap_or(level).clamp(0.0, 1.0);
++                let (r, g, b) = ramp_at(&ramp, if n > 1 { i as f64 / (n - 1) as f64 } else { 0.0 });
++                let y = row_h * (i as f64 + 0.5);
++
++                if level > 0.004 {
++                    cr.set_source_rgba(r, g, b, 1.0);
++                    cr.set_line_width(thick);
++                    cr.move_to(cx - level * max_half, y);
++                    cr.line_to(cx + level * max_half, y);
++                    cr.stroke()?;
++                }
++
++                // Точка пика на внешнем конце: она уходит дальше линии, когда
++                // уровень упал, и медленно догоняет его - вид radiofm.
++                if peak > 0.02 {
++                    let dx = peak * max_half;
++                    cr.set_source_rgba(r, g, b, 1.0);
++                    for x in [cx - dx, cx + dx] {
++                        cr.new_sub_path();
++                        cr.arc(x, y, dot_r, 0.0, 2.0 * PI);
++                    }
++                    cr.fill()?;
++                }
++            }
++
++            // Ось поверх лучей и всегда: на тишине остаётся только она.
++            cr.set_source_rgba(color.red(), color.green(), color.blue(), color.alpha());
++            cr.set_line_width(2.0);
++            cr.move_to(cx, 0.0);
++            cr.line_to(cx, height);
++            cr.stroke()?;
++
++            cr.restore()?;
++            Ok(())
++        })();
++
++        if let Err(error) = res {
++            error_handling_ctx::print_error(error)
++        }
++
++        glib::Propagation::Proceed
++    }
++}
++
++/// Кадр → (уровни, пики). Мусор в данных — пустые массивы, виджет не падает.
++fn parse_frame(raw: &str) -> (Vec<f64>, Vec<f64>) {
++    let Ok(frame) = serde_json::from_str::<serde_json::Value>(raw) else {
++        return (Vec::new(), Vec::new());
++    };
++    let read = |key: &str| -> Vec<f64> {
++        frame
++            .get(key)
++            .and_then(|v| v.as_array())
++            .map(|a| a.iter().map(|x| x.as_f64().unwrap_or(0.0)).collect())
++            .unwrap_or_default()
++    };
++    let values = read("v");
++    let peaks = read("p");
++    (values, peaks)
++}
++
++/// "#rrggbb,#rrggbb,..." → список цветов. Мусор пропускается.
++fn parse_ramp(spec: &str) -> Vec<(f64, f64, f64)> {
++    let colors: Vec<(f64, f64, f64)> = spec.split(',').filter_map(parse_hex).collect();
++    if colors.is_empty() { vec![(0.3, 0.7, 1.0)] } else { colors }
++}
++
++fn parse_hex(raw: &str) -> Option<(f64, f64, f64)> {
++    let s = raw.trim().trim_start_matches('#');
++    let expand = |c: &str| u8::from_str_radix(c, 16).ok().map(|v| v as f64 / 255.0);
++    match s.len() {
++        6 => Some((expand(&s[0..2])?, expand(&s[2..4])?, expand(&s[4..6])?)),
++        3 => Some((
++            expand(&s[0..1].repeat(2))?,
++            expand(&s[1..2].repeat(2))?,
++            expand(&s[2..3].repeat(2))?,
++        )),
++        _ => None,
++    }
++}
++
++/// Градиент по позиции 0..1, как ramp() темы radiofm.
++fn ramp_at(ramp: &[(f64, f64, f64)], pos: f64) -> (f64, f64, f64) {
++    if ramp.len() == 1 {
++        return ramp[0];
++    }
++    let last = ramp.len() - 1;
++    let pos = pos.clamp(0.0, 1.0);
++    let scaled = pos * last as f64;
++    let i = (scaled.floor() as usize).min(last.saturating_sub(1));
++    let t = scaled - i as f64;
++    let (r0, g0, b0) = ramp[i];
++    let (r1, g1, b1) = ramp[i + 1];
++    (r0 + (r1 - r0) * t, g0 + (g1 - g0) * t, b0 + (b1 - b0) * t)
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn parses_frame() {
++        let (v, p) = parse_frame(r#"{"v":[0.5,0.25],"p":[0.9,0.3]}"#);
++        assert_eq!(v, vec![0.5, 0.25]);
++        assert_eq!(p, vec![0.9, 0.3]);
++    }
++
++    #[test]
++    fn broken_frame_is_empty() {
++        assert_eq!(parse_frame("not json"), (Vec::new(), Vec::new()));
++        assert_eq!(parse_frame(""), (Vec::new(), Vec::new()));
++    }
++
++    #[test]
++    fn parses_hex_and_ramp() {
++        assert_eq!(parse_hex("#ff0000"), Some((1.0, 0.0, 0.0)));
++        assert_eq!(parse_hex("#f00"), Some((1.0, 0.0, 0.0)));
++        assert_eq!(parse_hex("zz"), None);
++        assert_eq!(parse_ramp("").len(), 1); // запасной цвет
++        assert_eq!(parse_ramp("#000000,#ffffff").len(), 2);
++    }
++
++    #[test]
++    fn ramp_interpolates() {
++        let ramp = parse_ramp("#000000,#ffffff");
++        let (r, g, b) = ramp_at(&ramp, 0.5);
++        assert!((r - 0.5).abs() < 1e-6 && (g - 0.5).abs() < 1e-6 && (b - 0.5).abs() < 1e-6);
++        assert_eq!(ramp_at(&ramp, 0.0), (0.0, 0.0, 0.0));
++        assert_eq!(ramp_at(&ramp, 1.0), (1.0, 1.0, 1.0));
++    }
++}
+diff --git a/crates/eww/src/widgets/widget_definitions.rs b/crates/eww/src/widgets/widget_definitions.rs
+index 8284d0f..58e6945 100644
+--- a/crates/eww/src/widgets/widget_definitions.rs
++++ b/crates/eww/src/widgets/widget_definitions.rs
+@@ -65,6 +65,7 @@ pub const BUILTIN_WIDGET_NAMES: &[&str] = &[
+     WIDGET_NAME_TOOLTIP,
+     WIDGET_NAME_CIRCULAR_PROGRESS,
+     WIDGET_NAME_GRAPH,
++    WIDGET_NAME_SPECTRUM,
+     WIDGET_NAME_TRANSFORM,
+     WIDGET_NAME_SCALE,
+     WIDGET_NAME_PROGRESS,
+@@ -95,6 +96,7 @@ pub(super) fn widget_use_to_gtk_widget(bargs: &mut BuilderArgs) -> Result<gtk::W
+         WIDGET_NAME_TOOLTIP => build_tooltip(bargs)?.upcast(),
+         WIDGET_NAME_CIRCULAR_PROGRESS => build_circular_progress_bar(bargs)?.upcast(),
+         WIDGET_NAME_GRAPH => build_graph(bargs)?.upcast(),
++        WIDGET_NAME_SPECTRUM => build_spectrum(bargs)?.upcast(),
+         WIDGET_NAME_TRANSFORM => build_transform(bargs)?.upcast(),
+         WIDGET_NAME_SCALE => build_gtk_scale(bargs)?.upcast(),
+         WIDGET_NAME_PROGRESS => build_gtk_progress(bargs)?.upcast(),
+@@ -1290,6 +1292,22 @@ fn build_graph(bargs: &mut BuilderArgs) -> Result<super::graph::Graph> {
+     Ok(w)
+ }
+ 
++const WIDGET_NAME_SPECTRUM: &str = "spectrum";
++/// @widget spectrum
++/// @desc Audio visualizer: bars grow left and right from a vertical axis, each end carries a peak dot
++fn build_spectrum(bargs: &mut BuilderArgs) -> Result<super::spectrum::Spectrum> {
++    let w = super::spectrum::Spectrum::new();
++    def_widget!(bargs, _g, w, {
++        // @prop data - frame from the visualizer script: {"v":[levels],"p":[peaks]}
++        prop(data: as_string) { w.set_property("data", data); },
++        // @prop ramp - four comma separated hex colours, the gradient across frequencies
++        prop(ramp: as_string) { w.set_property("ramp", ramp); },
++        // @prop thickness - ray thickness in px, 0 means derive it from the row height
++        prop(thickness: as_f64) { w.set_property("thickness", thickness); },
++    });
++    Ok(w)
++}
++
+ const WIDGET_NAME_SYSTRAY: &str = "systray";
+ /// @widget systray
+ /// @desc Tray for system notifier icons
