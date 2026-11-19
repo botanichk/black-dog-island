@@ -64,6 +64,15 @@
 
 (deflisten layout :initial "" "$HOME/eww-island/adapters/x11/layout.sh")
 
+;; Таймер: состояние (state/left/total/pct/fmt) одной JSON-строкой.
+;; tick раз в секунду двигает отсчёт и заводит будильник. Отсчёт живёт в
+;; adapters/timer/timer.sh по метке конца, поэтому идёт и при закрытой панели,
+;; и при перезапуске Eww. На паузе или в покое опрос ничего не меняет, но
+;; оставлен постоянным: Eww запускает defpoll только при ссылке из дерева,
+;; а ссылка появляется лишь когда открыта панель таймера.
+(defpoll timer-state :interval "1s" :initial "{\"state\":\"idle\",\"left\":0,\"total\":0,\"pct\":0,\"fmt\":\"0:00\"}"
+  "$HOME/eww-island/adapters/timer/timer.sh tick")
+
 ;; Погода для выпадающей панели: Open-Meteo + координаты из Noctalia.
 ;; Данные кешируются адаптером на 10 минут, поэтому опрос чаще не нужен.
 (defpoll w-city :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh city")
@@ -228,6 +237,13 @@
         (button :class "clock" :timeout "8s"
           :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-hub calendar"
           (label :text clock))
+        ;; Таймер: кнопка между часами и громкостью, из неё растёт небольшая
+        ;; панель. На острове только глиф: цифры отсчёта раздували окно (619 ->
+        ;; 644), а ширина острова - константа. Время видно в панели.
+        (button :class {timer-state.state == "ring" ? "timer ringing" : (timer-state.state == "run" || timer-state.state == "pause") ? "timer active" : "timer"}
+          :timeout "8s"
+          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-timer"
+          (label :class "timer-ic" :text "󰔛"))
         ;; onscroll живёт только на eventbox: у button он удалён в Eww 0.6.
         (eventbox :onscroll "$HOME/eww-island/adapters/audio/volume.sh {}"
           (button :class "vol" :onclick "$HOME/eww-island/adapters/audio/volume.sh mute"
@@ -966,6 +982,54 @@
 (defwidget power-btn [ic cmd]
   (button :class "pwr-btn" :hexpand true :timeout "10s" :onclick cmd
     (label :class "pwr-ic" :text ic)))
+
+;; --- таймер (небольшая панель под островом) ---
+;; Кнопка на острове открывает panel-timer через panel.sh. Панель уже не во всю
+;; ширину острова, а 280 px по центру: таймер - не хаб, места ему нужно мало.
+;; Ввод: "10" (секунды), "6m", "90s", "1h30m", "1:30". Enter в поле запускает.
+;; :focusable true - без него gtk.Entry в окне не получает клавиатуру.
+(defwidget tmr-preset [m lbl]
+  (button :class "tmr-preset" :hexpand true :timeout "8s"
+    :onclick "$HOME/eww-island/adapters/timer/timer.sh start ${m}m"
+    (label :class "tmr-preset-txt" :text lbl)))
+
+(defwindow panel-timer
+  :monitor 0
+  :geometry (geometry :x "0px" :y "50px" :width "280px" :anchor "top left")
+  :stacking "fg"
+  :windowtype "utility"
+  :unfocus-close true
+  :focusable true
+  (box :orientation "horizontal" :space-evenly false :class "tmr-frame" :hexpand true
+    (box :orientation "vertical" :space-evenly false :class "tmr-menu" :hexpand true
+      ;; Крупный отсчёт. На покое показывает 0:00, пока идёт - остаток.
+      (label :class {timer-state.state == "ring" ? "tmr-time ring" : "tmr-time"}
+             :xalign 0.5 :text {timer-state.fmt})
+      (progress :class "tmr-bar" :hexpand true :height 6 :value {timer-state.pct})
+      ;; Готовые длительности: один клик вместо набора.
+      (box :orientation "horizontal" :space-evenly false :class "tmr-presets"
+        (tmr-preset :m "5" :lbl "5")
+        (tmr-preset :m "10" :lbl "10")
+        (tmr-preset :m "15" :lbl "15")
+        (tmr-preset :m "25" :lbl "25"))
+      (input :class "tmr-input" :hexpand true :placeholder "6m, 1:30 → Enter"
+             :onaccept "$HOME/eww-island/adapters/timer/timer.sh start {}")
+      (box :orientation "horizontal" :space-evenly false :class "tmr-actions"
+        (button :class "tmr-btn" :hexpand true :timeout "8s"
+          :onclick "$HOME/eww-island/adapters/timer/timer.sh reset"
+          (label :class "tmr-btn-txt" :text "Сброс"))
+        (for t in {timer-state.state == "run" ? "[1]" : "[]"}
+          (button :class "tmr-btn main" :hexpand true :timeout "8s"
+            :onclick "$HOME/eww-island/adapters/timer/timer.sh pause"
+            (label :class "tmr-btn-txt" :text "Пауза")))
+        (for t in {timer-state.state == "pause" ? "[1]" : "[]"}
+          (button :class "tmr-btn main" :hexpand true :timeout "8s"
+            :onclick "$HOME/eww-island/adapters/timer/timer.sh resume"
+            (label :class "tmr-btn-txt" :text "Продолжить")))
+        (for t in {timer-state.state == "ring" ? "[1]" : "[]"}
+          (button :class "tmr-btn stop" :hexpand true :timeout "8s"
+            :onclick "$HOME/eww-island/adapters/timer/timer.sh stop-sound"
+            (label :class "tmr-btn-txt" :text "Стоп")))))))
 
 (defwindow panel-power [w]
   :monitor 0

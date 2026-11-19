@@ -147,7 +147,7 @@ menu separator {
 // Layout indicator (US/RU): assist chip, tonal container, 8 px radius.
 .layout {
   min-width: 24px;
-  margin-right: 8px;
+  margin-right: 5px;
   padding: 3px 8px;
   border-radius: $r-control;
   background-color: $surface-container;
@@ -206,8 +206,8 @@ menu separator {
 
 // Clock: display size, medium weight.
 .clock {
-  margin-right: 4px;
-  padding: 2px 8px;
+  margin-right: 2px;
+  padding: 2px 5px;
   border-radius: $r-control;
   color: $on-surface;
   font-size: $t-display;
@@ -218,10 +218,42 @@ menu separator {
   background-color: $state-hover;
 }
 
+// Timer button (island, between clock and volume): a bare glyph when idle so it
+// costs almost no width, a tonal chip while counting, the error plate while the
+// alarm rings.
+.timer {
+  margin-right: 6px;
+  padding: 3px 5px;
+  border-radius: $r-control;
+  background-color: transparent;
+}
+
+.timer:hover {
+  background-color: $state-hover;
+}
+
+.timer.active {
+  background-color: $surface-container;
+}
+
+.timer.ringing {
+  background-color: $error;
+}
+
+.timer-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 15px;
+  color: $on-surface-variant;
+}
+
+.timer.ringing .timer-ic {
+  color: $on-primary;
+}
+
 // Volume: tonal chip.
 .vol {
   min-width: 34px;
-  padding: 3px 8px;
+  padding: 3px 7px;
   border-radius: $r-control;
   background-color: $surface-container;
   color: $on-surface-variant;
@@ -237,8 +269,8 @@ menu separator {
 // the accent plate, the same "active" look as the Home button.
 .power {
   min-width: 24px;
-  margin-left: 6px;
-  padding: 3px 8px;
+  margin-left: 5px;
+  padding: 3px 7px;
   border-radius: $r-control;
   background-color: $surface-container;
 }
@@ -265,7 +297,7 @@ menu separator {
 // the layout chip next to it - tonal container, 8 px radius, hover layer.
 .wall {
   min-width: 24px;
-  margin-right: 8px;
+  margin-right: 5px;
   padding: 3px 8px;
   border-radius: $r-control;
   background-color: $surface-container;
@@ -280,7 +312,7 @@ menu separator {
 // open on the home tab the chip switches to the accent plate (active tab look).
 .home-btn {
   min-width: 24px;
-  margin-right: 8px;
+  margin-right: 5px;
   padding: 3px 8px;
   border-radius: $r-control;
   background-color: $surface-container;
@@ -1662,6 +1694,130 @@ window.panel-hub {
 
 // Power window itself is transparent: the frame draws shape and color.
 window.panel-power {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+// --- timer panel (small plate under the island) ---
+// Not the island width: 280 px centred, so the timer does not look like a hub.
+// Same seam rule as the other panels - straight top, rounded bottom.
+.tmr-frame {
+  background: transparent;
+  padding: 0 12px;
+}
+
+.tmr-menu {
+  background-color: $surface;
+  border: none;
+  border-radius: 0 0 $r-card $r-card;
+  padding: 10px 12px 12px;
+}
+
+.tmr-time {
+  font-size: 34px;
+  font-weight: 500;
+  color: $on-surface;
+  padding: 2px 0 4px;
+}
+
+.tmr-time.ring {
+  color: $error;
+}
+
+.tmr-bar trough {
+  min-height: 4px;
+  border-radius: 999px;
+  background-color: $surface-highest;
+  background-image: none;
+}
+
+.tmr-bar progress {
+  min-height: 4px;
+  border-radius: 999px;
+  background-color: $primary;
+  background-image: none;
+}
+
+.tmr-presets {
+  margin: 10px 0 0;
+}
+
+.tmr-preset {
+  min-width: 0;
+  padding: 5px 0;
+  margin-right: 6px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+}
+
+.tmr-preset:last-child {
+  margin-right: 0;
+}
+
+.tmr-preset:hover {
+  background-color: $surface-container-high;
+}
+
+.tmr-preset-txt {
+  font-size: $t-secondary;
+  color: $on-surface;
+}
+
+.tmr-input {
+  margin: 8px 0;
+  padding: 6px 8px;
+  border: none;
+  border-radius: $r-control;
+  background-color: $surface-container;
+  color: $on-surface;
+  font-size: $t-secondary;
+}
+
+.tmr-input:focus {
+  box-shadow: 0 0 0 2px $primary;
+}
+
+.tmr-actions {
+  background: transparent;
+}
+
+.tmr-btn {
+  min-width: 0;
+  padding: 5px 10px;
+  margin-right: 6px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+}
+
+.tmr-btn:last-child {
+  margin-right: 0;
+}
+
+.tmr-btn:hover {
+  background-color: $surface-container-high;
+}
+
+.tmr-btn.main {
+  background-color: $primary;
+}
+
+.tmr-btn.stop {
+  background-color: $error;
+}
+
+.tmr-btn-txt {
+  font-size: $t-secondary;
+  color: $on-surface;
+}
+
+.tmr-btn.main .tmr-btn-txt,
+.tmr-btn.stop .tmr-btn-txt {
+  color: $on-primary;
+}
+
+window.panel-timer {
   background: transparent;
   border: none;
   border-radius: 0;
