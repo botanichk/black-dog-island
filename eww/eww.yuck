@@ -622,30 +622,34 @@
 ;; Половина полосы визуализатора - как в radiofm/radio/viz/spectrum.py:
 ;; тонкая линия и круглая точка пика, которая висит на своём расстоянии и
 ;; медленно падает. Но ось вертикальная: половина растёт ОТ ЦЕНТРАЛЬНОЙ
-;; ВЕРТИКАЛИ влево (flip=false) или вправо (flip=true).
+;; ВЕРТИКАЛИ влево (левая половина) или вправо (правая).
 ;;
 ;; Ширина половины = 6 + p * 78: 6 px под точку, остальное - длина до пика.
 ;; Внутри от внешнего края к оси: точка, упругая щель (:hexpand) и линия
-;; длиной v * 78. Щель добирает разницу между пиком и текущим уровнем, поэтому
-;; точка сама отходит от конца линии, когда уровень упал, - ровно как в radiofm.
-;; p ~= v -> щель 0, точка сидит вплотную к концу линии.
-;; При тишине (p <= 0.02) половина схлопывается в 0 и класс zero гасит и точку,
-;; иначе у точки min-width 6 и она висела бы двумя точками в центре.
-(defwidget media-viz-half [i flip]
+;; длиной v * 78. Щель добирает разницу между пиком и уровнем, поэтому точка
+;; сама отходит от конца линии, когда уровень упал, - ровно как в radiofm.
+;;
+;; Две отдельные половины (левая и правая), а не одна с "for": в этой сборке
+;; Eww "for" при каждом обновлении сносит детей и строит заново, и на 24
+;; полосах это давало 9 кадров в секунду вместо 30. Без "for" обновляются
+;; только свойства (ширина), дети остаются на месте.
+;; При тишине (p <= 0.02) половина схлопывается в 0 и класс zero гасит точку,
+;; иначе у неё min-width 6 и она висела бы двумя точками в центре.
+(defwidget media-viz-half-left [i]
   (box :orientation "horizontal" :space-evenly false :valign "center"
        :class {media-viz.p[i] > 0.02 ? "media-viz-half" : "media-viz-half zero"}
        :width {media-viz.p[i] > 0.02 ? round(media-viz.p[i] * 78, 0) + 6 : 0}
-    ;; Линия всегда прижата к оси (внутренний край половины), точка пика - на
-    ;; внешнем конце, между ними щель :hexpand. Она добирает (p - v), поэтому
-    ;; точка отходит от конца линии, когда уровень упал. Левая половина идёт
-    ;; точка-щель-линия, правая зеркально: линия-щель-точка.
-    (for z in {flip ? "[]" : "[1]"} (box :class "media-viz-dot"))
-    (for z in {flip ? "[1]" : "[]"}
-      (box :class "media-viz-line" :valign "center" :width {round(media-viz.v[i] * 78, 0)}))
+    (box :class "media-viz-dot")
     (box :hexpand true)
-    (for z in {flip ? "[]" : "[1]"}
-      (box :class "media-viz-line" :valign "center" :width {round(media-viz.v[i] * 78, 0)}))
-    (for z in {flip ? "[1]" : "[]"} (box :class "media-viz-dot"))))
+    (box :class "media-viz-line" :valign "center" :width {round(media-viz.v[i] * 78, 0)})))
+
+(defwidget media-viz-half-right [i]
+  (box :orientation "horizontal" :space-evenly false :valign "center"
+       :class {media-viz.p[i] > 0.02 ? "media-viz-half" : "media-viz-half zero"}
+       :width {media-viz.p[i] > 0.02 ? round(media-viz.p[i] * 78, 0) + 6 : 0}
+    (box :class "media-viz-line" :valign "center" :width {round(media-viz.v[i] * 78, 0)})
+    (box :hexpand true)
+    (box :class "media-viz-dot")))
 
 ;; Одна полоса: две половины вокруг общей вертикальной оси. Распорки по краям
 ;; держат ось ровно по центру колонки, поэтому полосы не сдвигаются от того,
@@ -653,8 +657,8 @@
 (defwidget media-viz-band [i]
   (box :orientation "horizontal" :space-evenly false :class "media-viz-band" :hexpand true :vexpand true
     (box :hexpand true)
-    (media-viz-half :i i :flip false)
-    (media-viz-half :i i :flip true)
+    (media-viz-half-left :i i)
+    (media-viz-half-right :i i)
     (box :hexpand true)))
 
 ;; Два состояния, переключаются через "for" (не ":visible" - он в этой сборке
@@ -716,10 +720,17 @@
     ;; Колонка визуализатора: есть плеер - рисуем, нет - место занимает
     ;; пустое состояние на всю ширину (как и раньше).
     (for z in {media.status != "none" ? "[1]" : "[]"}
+      (overlay
       (box :orientation "vertical" :space-evenly false :class "media-viz" :vexpand true :valign "fill" :hexpand true
-        (for i in {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-                   12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]}
-          (media-viz-band :i i))))))
+        (media-viz-band :i 0) (media-viz-band :i 1) (media-viz-band :i 2)
+        (media-viz-band :i 3) (media-viz-band :i 4) (media-viz-band :i 5)
+        (media-viz-band :i 6) (media-viz-band :i 7) (media-viz-band :i 8)
+        (media-viz-band :i 9) (media-viz-band :i 10) (media-viz-band :i 11)
+        (media-viz-band :i 12) (media-viz-band :i 13) (media-viz-band :i 14)
+        (media-viz-band :i 15) (media-viz-band :i 16) (media-viz-band :i 17)
+        (media-viz-band :i 18) (media-viz-band :i 19) (media-viz-band :i 20)
+        (media-viz-band :i 21) (media-viz-band :i 22) (media-viz-band :i 23))
+      (box :class "media-viz-axis" :halign "center" :valign "fill" :vexpand true)))))
 
 ;; --- вкладка «Цвета» (шаг 11) ---
 ;; Выбор цветовой схемы: наша схема, 10 встроенных палитр Noctalia и свои
@@ -935,6 +946,14 @@
     (box :orientation "horizontal" :space-evenly false :class "hub-panel"
          :hexpand true :vexpand true
       (hub-rail)
+      ;; media-viz объявлен здесь намеренно: Eww запускает deflisten только для
+      ;; переменных, на которые есть ссылка в дереве в момент открытия окна.
+      ;; Внутри "for" (колонка визуализатора) ссылки может не быть - при пустом
+      ;; плеере дети не строятся, и spectrum.py тогда не стартует вообще.
+      ;; Поэтому упоминаем её безусловно: пустой label, чей текст зависит от
+      ;; media-viz. :visible не подходит - он вычисляется один раз и слушателя
+      ;; не ставит.
+      (label :class "viz-probe" :text {media-viz.v[0] >= 0 ? "" : ""})
       (stack :selected hub_tab :transition "crossfade" :same-size true
              :hexpand true :vexpand true
         (scroll :height 330 :hexpand true :vexpand true :vscroll true :hscroll false

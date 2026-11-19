@@ -1338,6 +1338,13 @@ window.panel-hub {
   min-height: 6px;
 }
 
+// Ось: постоянная вертикальная линия по центру поля. Лежит в overlay поверх
+// полос и не гаснет на тишине, когда все лучи схлопнулись в ноль.
+.media-viz-axis {
+  min-width: 2px;
+  background-color: $primary;
+}
+
 // Половина полосы: невидимая обёртка, внутри точка пика, линия и щель.
 .media-viz-half {
   background-color: transparent;
