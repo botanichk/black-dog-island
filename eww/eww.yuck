@@ -691,7 +691,7 @@
     ;; пустое состояние на всю ширину (как и раньше).
     (for z in {media.status != "none" ? "[1]" : "[]"}
       (box :orientation "vertical" :space-evenly false :class "media-viz" :vexpand true :valign "fill" :hexpand true
-        (spectrum :class "media-viz-spec" :hexpand true :vexpand true
+        (spectrum :hexpand true :vexpand true
                   :data {media-viz}
                   :ramp "#3dd8ff,#4b82ff,#965fff,#e256ff")))))
 

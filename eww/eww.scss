@@ -1329,14 +1329,9 @@ window.panel-hub {
 // of a core. Colours come from the radiofm "spectrum" ramp, passed from yuck.
 .media-viz {
   min-width: 200px;
-  // Отступы слева и справа одинаковые: общая вертикальная ось лучей должна
+  // Отступы слева и справа одинаковые: общая вертикаль полос должна
   // приходиться ровно на середину колонки.
   padding: 10px 14px;
-}
-
-// Сам виджет: цвет берётся отсюда для оси (cairo читает style_context.color).
-.media-viz-spec {
-  color: $primary;
 }
 
 // Empty state: centred note, title, hint.

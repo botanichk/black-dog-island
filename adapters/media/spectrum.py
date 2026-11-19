@@ -55,6 +55,8 @@ DB_MIN, DB_MAX = -66.0, -10.0   # диапазон громкости, раст�
 RISE, FALL = 0.62, 0.14         # сглаживание: вверх быстро, вниз медленно
 PEAK_ACCEL = 1.8                # разгон падающей точки пика (как в radiofm)
 IDLE_EVERY = 1.0                # пауза между попытками, когда звука нет
+IDLE_FPS = 20.0                 # на тишине кадры идут реже, но пунктир «дышит»
+IDLE_AMP = 0.008                # амплитуда дыхания: единицы пикселей, «еле колышется»
 
 _proc = None
 
@@ -163,15 +165,18 @@ def main():
     prev_t = time.monotonic()
 
     while True:
-        # Пауза: parec не держим, столбики плавно гаснут до нуля.
+        # Пауза: parec не держим. Пунктир у центра не замирает насмерть -
+        # уровни еле «дышат», как в radiofm и noctalia. MPRIS спрашиваем раз
+        # в секунду, а кадры дыхания идут чаще: busctl на каждом кадре - лишняя
+        # работа.
         if _proc is None:
             if not _playing():
-                levels *= 1.0 - FALL
-                levels[levels < 0.02] = 0.0
-                peaks = np.maximum(levels, peaks - 0.02)
-                peaks[peaks < 0.02] = 0.0
-                _emit(levels, peaks)
-                time.sleep(IDLE_EVERY)
+                for _ in range(int(IDLE_FPS)):
+                    t = time.monotonic()
+                    breathe = IDLE_AMP * (0.5 + 0.5 * np.sin(t * 1.4))
+                    levels = np.maximum(levels * (1.0 - FALL), breathe)
+                    _emit(levels, levels)
+                    time.sleep(1.0 / IDLE_FPS)
                 continue
             try:
                 _proc = _start_parec()

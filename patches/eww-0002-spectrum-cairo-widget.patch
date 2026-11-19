@@ -12,10 +12,10 @@ index 34abab0..9a3383e 100644
  pub mod widget_definitions;
 diff --git a/crates/eww/src/widgets/spectrum.rs b/crates/eww/src/widgets/spectrum.rs
 new file mode 100644
-index 0000000..8e897ec
+index 0000000..b9f2d8f
 --- /dev/null
 +++ b/crates/eww/src/widgets/spectrum.rs
-@@ -0,0 +1,278 @@
+@@ -0,0 +1,281 @@
 +//! `spectrum` — визуализатор одним проходом cairo.
 +//!
 +//! Зачем свой виджет. Раньше 24 полосы были 96 отдельными box: Eww на каждом
@@ -25,16 +25,18 @@ index 0000000..8e897ec
 +//! от числа полос.
 +//!
 +//! Геометрия (принята владельцем): полосы лежат друг под другом, растут от
-+//! общей вертикальной оси влево и вправо, на внешнем конце - точка пика,
-+//! которая отходит от линии, когда уровень упал. Ось рисуется всегда, в том
-+//! числе на тишине.
++//! общей вертикали влево и вправо, на внешнем конце - точка пика, которая
++//! отходит от линии, когда уровень упал. Толщина полоски равна диаметру
++//! шарика, щель между концом полоски и шариком - один шарик. Постоянной оси
++//! нет: на тишине шарики собираются у центра и читаются как вертикальный
++//! пунктир, который еле колышется.
 +
 +use std::cell::RefCell;
 +use std::f64::consts::PI;
 +
 +use anyhow::{anyhow, Result};
 +use gtk::glib::{self, object_subclass, wrapper, Properties};
-+use gtk::{cairo, gdk, prelude::*, subclass::prelude::*};
++use gtk::{cairo, prelude::*, subclass::prelude::*};
 +
 +use crate::error_handling_ctx;
 +
@@ -59,10 +61,6 @@ index 0000000..8e897ec
 +        default = "#3dd8ff,#4b82ff,#965fff,#e256ff"
 +    )]
 +    ramp: RefCell<String>,
-+
-+    /// Толщина луча в пикселях (0 - считать от высоты ряда).
-+    #[property(get, set, nick = "Thickness", blurb = "Ray thickness in px", default = 0f64)]
-+    thickness: RefCell<f64>,
 +}
 +
 +impl ObjectImpl for SpectrumPriv {
@@ -82,10 +80,6 @@ index 0000000..8e897ec
 +            }
 +            "ramp" => {
 +                self.ramp.replace(value.get().unwrap());
-+                self.obj().queue_draw();
-+            }
-+            "thickness" => {
-+                self.thickness.replace(value.get().unwrap());
 +                self.obj().queue_draw();
 +            }
 +            x => panic!("Tried to set inexistant property of Spectrum: {}", x),
@@ -130,10 +124,20 @@ index 0000000..8e897ec
 +impl BinImpl for SpectrumPriv {}
 +
 +impl WidgetImpl for SpectrumPriv {
++    // Без этого GtkBin просит размер у ребёнка, ребёнка нет - виджет получает
++    // 0x0 и draw не вызывается вовсе. graph.rs по этой же причине задаёт
++    // preferred_* явно.
++    fn preferred_width(&self) -> (i32, i32) {
++        (1, i32::MAX)
++    }
++
++    fn preferred_height(&self) -> (i32, i32) {
++        (1, i32::MAX)
++    }
++
 +    fn draw(&self, cr: &cairo::Context) -> glib::Propagation {
 +        let res: Result<()> = (|| {
 +            let styles = self.obj().style_context();
-+            let color: gdk::RGBA = styles.color(gtk::StateFlags::NORMAL);
 +            let margin = styles.margin(gtk::StateFlags::NORMAL);
 +            let width = self.obj().allocated_width() as f64 - margin.left as f64 - margin.right as f64;
 +            let height = self.obj().allocated_height() as f64 - margin.top as f64 - margin.bottom as f64;
@@ -147,15 +151,13 @@ index 0000000..8e897ec
 +
 +            let ramp = parse_ramp(&self.ramp.borrow());
 +            let cx = width / 2.0;
-+            // Полторы толщины луча оставляем с каждого края, чтобы точка пика
-+            // не обрезалась о границу виджета.
 +            let row_h = height / n as f64;
-+            let thick = {
-+                let t = *self.thickness.borrow();
-+                if t > 0.0 { t } else { (row_h * 0.34).clamp(2.0, 4.0) }
-+            };
-+            let max_half = (width / 2.0 - thick * 1.5).max(1.0);
-+            let dot_r = thick * 1.05;
++            // Шарик задаёт масштаб: полоска толщиной ровно в его диаметр, и
++            // между концом полоски и шариком остаётся ещё один диаметр пустоты.
++            let dot_r = (row_h * 0.20).clamp(1.6, 3.2);
++            let thick = dot_r * 2.0;
++            // Край: полоска, щель в шарик и сам шарик.
++            let max_half = (width / 2.0 - thick - dot_r).max(1.0);
 +
 +            cr.save()?;
 +            cr.translate(margin.left as f64, margin.top as f64);
@@ -167,33 +169,34 @@ index 0000000..8e897ec
 +                let (r, g, b) = ramp_at(&ramp, if n > 1 { i as f64 / (n - 1) as f64 } else { 0.0 });
 +                let y = row_h * (i as f64 + 0.5);
 +
-+                if level > 0.004 {
++                let ray = level * max_half;
++                if ray > 0.5 {
 +                    cr.set_source_rgba(r, g, b, 1.0);
 +                    cr.set_line_width(thick);
-+                    cr.move_to(cx - level * max_half, y);
-+                    cr.line_to(cx + level * max_half, y);
++                    cr.move_to(cx - ray, y);
++                    cr.line_to(cx + ray, y);
 +                    cr.stroke()?;
 +                }
 +
-+                // Точка пика на внешнем конце: она уходит дальше линии, когда
-+                // уровень упал, и медленно догоняет его - вид radiofm.
-+                if peak > 0.02 {
-+                    let dx = peak * max_half;
-+                    cr.set_source_rgba(r, g, b, 1.0);
++                // Точка пика висит за концом полоски на один шарик. Когда
++                // уровень упал, она отходит дальше и медленно догоняет его -
++                // вид radiofm. На тишине полосок нет, и все точки стоят по
++                // центру одной вертикалью: это и есть пунктирная линия,
++                // которая еле колышется вместе с уровнем.
++                let dx = peak * max_half + thick + dot_r;
++                cr.set_source_rgba(r, g, b, 1.0);
++                if peak < 0.05 {
++                    // Тишина: одна точка в центре, иначе линия была бы двойной.
++                    cr.new_sub_path();
++                    cr.arc(cx + peak * max_half, y, dot_r, 0.0, 2.0 * PI);
++                } else {
 +                    for x in [cx - dx, cx + dx] {
 +                        cr.new_sub_path();
 +                        cr.arc(x, y, dot_r, 0.0, 2.0 * PI);
 +                    }
-+                    cr.fill()?;
 +                }
++                cr.fill()?;
 +            }
-+
-+            // Ось поверх лучей и всегда: на тишине остаётся только она.
-+            cr.set_source_rgba(color.red(), color.green(), color.blue(), color.alpha());
-+            cr.set_line_width(2.0);
-+            cr.move_to(cx, 0.0);
-+            cr.line_to(cx, height);
-+            cr.stroke()?;
 +
 +            cr.restore()?;
 +            Ok(())
@@ -295,7 +298,7 @@ index 0000000..8e897ec
 +    }
 +}
 diff --git a/crates/eww/src/widgets/widget_definitions.rs b/crates/eww/src/widgets/widget_definitions.rs
-index 8284d0f..58e6945 100644
+index 03540dc..eab5fac 100644
 --- a/crates/eww/src/widgets/widget_definitions.rs
 +++ b/crates/eww/src/widgets/widget_definitions.rs
 @@ -65,6 +65,7 @@ pub const BUILTIN_WIDGET_NAMES: &[&str] = &[
@@ -314,22 +317,20 @@ index 8284d0f..58e6945 100644
          WIDGET_NAME_TRANSFORM => build_transform(bargs)?.upcast(),
          WIDGET_NAME_SCALE => build_gtk_scale(bargs)?.upcast(),
          WIDGET_NAME_PROGRESS => build_gtk_progress(bargs)?.upcast(),
-@@ -1290,6 +1292,22 @@ fn build_graph(bargs: &mut BuilderArgs) -> Result<super::graph::Graph> {
+@@ -1301,6 +1303,20 @@ fn build_graph(bargs: &mut BuilderArgs) -> Result<super::graph::Graph> {
      Ok(w)
  }
  
 +const WIDGET_NAME_SPECTRUM: &str = "spectrum";
 +/// @widget spectrum
-+/// @desc Audio visualizer: bars grow left and right from a vertical axis, each end carries a peak dot
++/// @desc Audio visualizer: rays grow left and right from a vertical centre, each end carries a peak dot
 +fn build_spectrum(bargs: &mut BuilderArgs) -> Result<super::spectrum::Spectrum> {
 +    let w = super::spectrum::Spectrum::new();
 +    def_widget!(bargs, _g, w, {
 +        // @prop data - frame from the visualizer script: {"v":[levels],"p":[peaks]}
 +        prop(data: as_string) { w.set_property("data", data); },
-+        // @prop ramp - four comma separated hex colours, the gradient across frequencies
++        // @prop ramp - comma separated hex colours, the gradient across frequencies
 +        prop(ramp: as_string) { w.set_property("ramp", ramp); },
-+        // @prop thickness - ray thickness in px, 0 means derive it from the row height
-+        prop(thickness: as_f64) { w.set_property("thickness", thickness); },
 +    });
 +    Ok(w)
 +}
