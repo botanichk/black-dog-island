@@ -232,15 +232,20 @@ url = s("mpris:artUrl")
 if url.startswith("file://"):
     src = url[7:]
     if os.path.isfile(src):
-        h = hashlib.sha1((url + str(int(os.path.getmtime(src)))).encode()).hexdigest()[:12]
+        h = hashlib.sha1(("sq2|" + url + str(int(os.path.getmtime(src)))).encode()).hexdigest()[:12]
         dst = os.path.join(artdir, "f-" + h + ".png")
         if not os.path.isfile(dst):
             os.makedirs(artdir, exist_ok=True)
-            subprocess.run(["magick", src, "-resize", "200x200>", dst], timeout=10)
+            # Квадрат по центру: у вкладки слот 210x210, а обложки в тегах
+            # бывают вытянутыми (16:9, 1:1, 4:3) - без кропа в слоте
+            # оставалась мёртвая полоса и карточка вылезала за окно.
+            subprocess.run(["magick", src, "-resize", "200x200^",
+                            "-gravity", "center", "-extent", "200x200",
+                            "-strip", dst], timeout=10)
         art = dst
 elif url.startswith(("http://", "https://")):
     os.makedirs(artdir, exist_ok=True)
-    dst = os.path.join(artdir, "h-" + hashlib.sha1(url.encode()).hexdigest()[:12] + ".png")
+    dst = os.path.join(artdir, "h-" + hashlib.sha1(("sq2|" + url).encode()).hexdigest()[:12] + ".png")
     if os.path.isfile(dst):
         art = dst
     else:
@@ -248,7 +253,9 @@ elif url.startswith(("http://", "https://")):
         r = subprocess.run(["curl", "--proto", "=http,https", "-fsSL", "--max-time", "5",
                             "-o", dst + ".part", url], capture_output=True, timeout=8)
         if r.returncode == 0 and os.path.getsize(dst + ".part") > 0:
-            subprocess.run(["magick", dst + ".part", "-resize", "200x200>", dst], timeout=10)
+            subprocess.run(["magick", dst + ".part", "-resize", "200x200^",
+                            "-gravity", "center", "-extent", "200x200",
+                            "-strip", dst], timeout=10)
             art = dst
         try: os.remove(dst + ".part")
         except OSError: pass

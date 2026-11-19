@@ -135,6 +135,14 @@
   :initial "{\"player\":\"\",\"status\":\"none\",\"title\":\"\",\"artist\":\"\",\"album\":\"\",\"art\":\"\",\"pos\":0,\"len\":0,\"posfmt\":\"0:00\",\"lenfmt\":\"0:00\",\"canseek\":false,\"canprev\":false,\"cannext\":false,\"canpause\":false,\"players\":[]}"
   "$HOME/eww-island/adapters/media/mpris.sh json")
 
+;; Медиа-визуализатор: массив из 16 уровней 0..1, кадр ~20 раз в секунду
+;; (adapters/media/spectrum.py: parec + numpy FFT, cava не нужен).
+;; deflisten, а не defpoll: скрипт сам держит темп и не перезапускается каждый
+;; тик. Запускается только пока открыта вкладка медиа (переменную читает лишь
+;; она), при паузе плеера скрипт не держит parec и печатает гаснущие нули.
+(deflisten media-viz :initial "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]"
+  "$HOME/eww-island/adapters/media/spectrum.py")
+
 ;; Календарь: текущая дата для виджета calendar.
 (defpoll cal-day :interval "1h" "date +%d")
 (defpoll cal-month :interval "1h" "date +%m")
@@ -591,6 +599,11 @@
         (label :text "Папка")))))
 
 ;; --- вкладка «Медиа» (MPRIS) ---
+;; Макет как в центре управления Noctalia: слева карточка «сейчас играет»
+;; (обложка крупно по центру, под ней название, исполнитель, альбом, ползунок
+;; и кнопки), справа колонка визуализатора - 16 полос, каждая растёт от
+;; середины вверх и вниз (в Noctalia это setMirrored + setCentered).
+;;
 ;; Всё состояние - переменная media (JSON адаптера). Название и исполнитель
 ;; попадают только в :text - в командах кнопок их нет, кнопки знают лишь имя
 ;; действия (prev/playpause/next) и цифры от ползунка.
@@ -601,10 +614,31 @@
           :onclick "setsid -f $HOME/eww-island/adapters/media/mpris.sh ${action} >/dev/null 2>&1"
     (label :class "media-btn-ic" :text glyph)))
 
+;; Одна полоса визуализатора: полоса лежит горизонтально и растёт ОТ
+;; ВЕРТИКАЛЬНОЙ ОСИ - влево и вправо. Ось общая для всех полос и проходит по
+;; центру колонки: слева и справа распорки :hexpand, между ними две плашки по
+;; :width. Так у Noctalia выглядят setMirrored + setCentered: столбики стоят
+;; друг под другом, а зеркалятся вокруг вертикальной линии.
+;;
+;; Почему обычные box с :width, а не progress: GtkProgressBar заливает не от
+;; края, и полоса выходила не той формы.
+;; Значение - media-viz[i] (0..1) из adapters/media/spectrum.py, 95 px на
+;; половину при максимуме (колонка 200 px минус отступы); round нужен, потому
+;; что :width ждёт целое. На тишине плашки прозрачные (класс zero): иначе
+;; min-width 2px давал непрерывную линию по центру колонки.
+(defwidget media-viz-band [i]
+  (box :orientation "horizontal" :space-evenly false :class "media-viz-band" :hexpand true :vexpand true
+    (box :hexpand true)
+    (box :class {media-viz[i] > 0.01 ? "media-viz-half" : "media-viz-half zero"}
+         :vexpand true :width {round(media-viz[i] * 95, 0)})
+    (box :class {media-viz[i] > 0.01 ? "media-viz-half" : "media-viz-half zero"}
+         :vexpand true :width {round(media-viz[i] * 95, 0)})
+    (box :hexpand true)))
+
 ;; Два состояния, переключаются через "for" (не ":visible" - он в этой сборке
 ;; применяется один раз при первом показе): пустое и обычное.
 (defwidget media-content []
-  (box :orientation "vertical" :space-evenly false :class "media-panel" :hexpand true :vexpand true
+  (box :orientation "horizontal" :space-evenly false :class "media-panel" :hexpand true :vexpand true
     ;; Пустое состояние: плееров нет (или плеер закрылся посреди работы).
     (for z in {media.status == "none" ? "[1]" : "[]"}
       (box :orientation "vertical" :space-evenly false :class "media-off" :halign "center" :valign "center" :hexpand true :vexpand true
@@ -613,47 +647,56 @@
         (label :class "media-off-text" :text "Запустите плеер - он появится здесь")))
     ;; Обычный режим.
     (for z in {media.status != "none" ? "[1]" : "[]"}
-      (box :orientation "vertical" :space-evenly false :hexpand true :vexpand true
+      (box :orientation "vertical" :space-evenly false :class "media-card" :hexpand true :valign "center"
         ;; Переключатель плеера: клик - следующий по кругу, выбор помнит адаптер.
         (box :orientation "horizontal" :space-evenly false :class "media-head" :halign "fill"
           (label :class "media-cap" :text "ПЛЕЕР")
           (button :class "media-player-chip" :timeout "3s" :halign "end" :hexpand true
                   :onclick "$HOME/eww-island/adapters/media/mpris.sh next-player >/dev/null"
             (label :class "media-player-name" :text "${media.player}")))
-        (box :orientation "horizontal" :space-evenly false :class "media-body" :halign "fill" :vexpand true
-          ;; Слот обложки: статичная обёртка. Дети "for" в этой сборке Eww
-          ;; добавляются в конец родителя при пересборке, поэтому без обёртки
-          ;; обложка уехала бы направо, после media-info.
-          (box :orientation "horizontal" :space-evenly false :class "media-art-slot"
-            ;; Обложка 200x200, скруглена; нет обложки - плита с нотой.
+        ;; Обложка по центру, крупно.
+        (box :orientation "vertical" :space-evenly false :class "media-art-row" :halign "center"
+          ;; Слот статичный: дети "for" в этой сборке Eww при пересборке
+          ;; добавляются в конец родителя, без обёртки картинка уехала бы.
+          (box :orientation "vertical" :space-evenly false :class "media-art-slot"
             (for z in {media.art != "" ? "[1]" : "[]"}
-              (image :class "media-art" :path {media.art} :image-width 200 :image-height 200))
+              (image :class "media-art" :path {media.art} :image-width 210 :image-height 210))
             (for z in {media.art == "" ? "[1]" : "[]"}
-              (box :orientation "vertical" :class "media-art-fallback" :halign "start" :valign "start"
-                (label :class "media-art-fallback-ic" :text ""))))
-          (box :orientation "vertical" :space-evenly false :class "media-info" :hexpand true :valign "start"
-            (label :class "media-title" :xalign 0 :limit-width 40 :text "${media.title}")
-            (label :class "media-artist" :xalign 0 :limit-width 44 :text "${media.artist}")
-            (label :class "media-album" :xalign 0 :limit-width 44 :text "${media.album}")
-            ;; Ползунок позиции: с CanSeek - scale с перемоткой, без - полоска
-            ;; "только показывает". Держим в правой колонке, чтобы высота вкладки
-            ;; не росла (окно хаба должно остаться 358 px).
-            (for z in {media.canseek ? "[1]" : "[]"}
-              (box :orientation "horizontal" :space-evenly false :class "media-seekrow" :halign "fill"
-                (scale :class "media-scale" :hexpand true :valign "center"
-                       :value {media.pos} :min 0 :max {media.len > 0 ? media.len : 1} :round-digits 0
-                       :timeout "2s" :onchange "$HOME/eww-island/adapters/media/mpris.sh seek {}")
-                (label :class "media-time" :text "${media.posfmt} / ${media.lenfmt}")))
-            (for z in {media.canseek ? "[]" : "[1]"}
-              (box :orientation "horizontal" :space-evenly false :class "media-seekrow" :halign "fill"
-                (progress :class "media-bar" :hexpand true :valign "center"
-                          :value {media.len > 0 ? round(media.pos * 100 / media.len, 0) : 0})
-                (label :class "media-time" :text "${media.posfmt} / ${media.lenfmt}")))))
-        ;; Ряд кнопок под обложкой: предыдущий, пауза/играть, следующий.
+              (box :orientation "vertical" :class "media-art-fallback" :halign "center" :valign "center"
+                (label :class "media-art-fallback-ic" :text "")))))
+        ;; Название, исполнитель, альбом - по центру под обложкой.
+        (box :orientation "vertical" :space-evenly false :class "media-info"
+          (label :class "media-title" :xalign 0.5 :limit-width 46 :text "${media.title}")
+          (label :class "media-artist" :xalign 0.5 :limit-width 50 :text "${media.artist}")
+          (for z in {media.album != "" ? "[1]" : "[]"}
+            (label :class "media-album" :xalign 0.5 :limit-width 56 :text "${media.album}")))
+        ;; Ползунок позиции: с CanSeek - scale с перемоткой, без - полоска
+        ;; "только показывает". Высота вкладки при этом не растёт.
+        ;; Обёртка статичная: дети "for" в этой сборке Eww при пересборке
+        ;; добавляются в конец родителя, без обёртки ползунок уезжал под кнопки.
+        (box :orientation "vertical" :space-evenly false :class "media-seek"
+          (for z in {media.canseek ? "[1]" : "[]"}
+            (box :orientation "horizontal" :space-evenly false :class "media-seekrow" :halign "fill"
+              (scale :class "media-scale" :hexpand true :valign "center"
+                     :value {media.pos} :min 0 :max {media.len > 0 ? media.len : 1} :round-digits 0
+                     :timeout "2s" :onchange "$HOME/eww-island/adapters/media/mpris.sh seek {}")
+              (label :class "media-time" :text "${media.posfmt} / ${media.lenfmt}")))
+          (for z in {media.canseek ? "[]" : "[1]"}
+            (box :orientation "horizontal" :space-evenly false :class "media-seekrow" :halign "fill"
+              (progress :class "media-bar" :hexpand true :valign "center"
+                        :value {media.len > 0 ? round(media.pos * 100 / media.len, 0) : 0})
+              (label :class "media-time" :text "${media.posfmt} / ${media.lenfmt}"))))
+        ;; Ряд кнопок под ползунком: предыдущий, пауза/играть, следующий.
         (box :orientation "horizontal" :space-evenly false :class "media-controls" :halign "center"
           (media-btn :glyph "" :action "prev" :cls "media-btn" :disabled {!media.canprev})
           (media-btn :glyph {media.status == "playing" ? "" : ""} :action "playpause" :cls "media-btn play" :disabled {!media.canpause})
-          (media-btn :glyph "" :action "next" :cls "media-btn" :disabled {!media.cannext}))))))
+          (media-btn :glyph "" :action "next" :cls "media-btn" :disabled {!media.cannext}))))
+    ;; Колонка визуализатора: есть плеер - рисуем, нет - место занимает
+    ;; пустое состояние на всю ширину (как и раньше).
+    (for z in {media.status != "none" ? "[1]" : "[]"}
+      (box :orientation "vertical" :space-evenly false :class "media-viz" :vexpand true :valign "fill" :hexpand true
+        (for i in {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]}
+          (media-viz-band :i i))))))
 
 ;; --- вкладка «Цвета» (шаг 11) ---
 ;; Выбор цветовой схемы: наша схема, 10 встроенных палитр Noctalia и свои

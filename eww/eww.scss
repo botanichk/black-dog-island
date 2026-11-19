@@ -1124,15 +1124,24 @@ window.panel-hub {
 }
 
 // --- hub: media tab (MPRIS) ---
-// Art left (200 px, rounded), track info right, seek row and controls below.
-// Everything must fit the 330 px tab body so the hub window keeps its height.
+// Layout follows Noctalia's control-center media tab: the "now playing" card
+// on the left (art on top, centred, then title/artist/album, seek row and
+// transport buttons), the visualizer column on the right.
+// The card keeps the tab body at 330 px so the hub window stays 358 px tall.
 .media-panel {
   background-color: transparent;
   padding: 0;
 }
 
+// Now-playing card fills the left part, the visualizer takes the rest.
+.media-card {
+  background-color: $surface-container;
+  border-radius: $r-card;
+  padding: 4px 12px 0 12px;
+}
+
 .media-head {
-  padding: 0 2px 8px 2px;
+  padding: 0 2px 0 2px;
 }
 
 .media-cap {
@@ -1144,19 +1153,30 @@ window.panel-hub {
 
 // Player switcher chip at the right edge of the head row.
 .media-player-chip {
-  min-height: 26px;
-  padding: 0 12px;
+  min-height: 18px;
+  padding: 0 10px;
   border-radius: 999px;
-  background-color: $surface-container;
+  background-color: $surface-container-high;
 }
 
 .media-player-chip:hover {
-  background-color: $surface-container-high;
+  background-color: $state-hover;
 }
 
 .media-player-name {
   color: $on-surface;
   font-size: $t-secondary;
+}
+
+// Artwork slot: fixed footprint so the card does not jump between a real
+// cover and the fallback plate.
+.media-art-row {
+  padding: 0;
+}
+
+.media-art-slot {
+  min-width: 210px;
+  min-height: 210px;
 }
 
 .media-art {
@@ -1165,21 +1185,21 @@ window.panel-hub {
 
 // No artwork: tonal plate with a note glyph, same footprint as the art.
 .media-art-fallback {
-  min-width: 200px;
-  min-height: 200px;
+  min-width: 210px;
+  min-height: 210px;
   border-radius: $r-card;
-  background-color: $surface-container;
-  margin-right: 14px;
+  background-color: $surface-highest;
 }
 
 .media-art-fallback-ic {
   font-family: "MesloLGSDZ Nerd Font Mono";
-  font-size: 56px;
+  font-size: 44px;
   color: $on-surface-variant;
 }
 
+// Track text, centred under the artwork.
 .media-info {
-  padding-left: 14px;
+  padding: 0;
 }
 
 .media-title {
@@ -1191,22 +1211,20 @@ window.panel-hub {
 .media-artist {
   color: $on-surface-variant;
   font-size: $t-body;
-  padding-top: 2px;
 }
 
 .media-album {
   color: $on-surface-variant;
   font-size: $t-secondary;
-  padding-top: 2px;
 }
 
 // Seek row: scale (or plain progress) with "1:23 / 4:56" at the right.
 .media-seekrow {
-  padding: 14px 0 0 0;
+  padding: 0;
 }
 
 .media-time {
-  min-width: 84px;
+  min-width: 78px;
   color: $on-surface-variant;
   font-size: $t-caption;
 }
@@ -1226,9 +1244,9 @@ window.panel-hub {
 }
 
 .media-scale slider {
-  min-width: 12px;
-  min-height: 12px;
-  margin: -5px 0;
+  min-width: 10px;
+  min-height: 10px;
+  margin: -4px 0;
   border-radius: 999px;
   background-color: $on-surface;
   background-image: none;
@@ -1253,24 +1271,24 @@ window.panel-hub {
 
 // Transport controls: round chips, play/pause is the accent plate.
 .media-controls {
-  padding-top: 12px;
+  padding-top: 0;
 }
 
 .media-btn {
-  min-width: 46px;
-  min-height: 40px;
+  min-width: 34px;
+  min-height: 28px;
   margin: 0 4px;
   border-radius: 999px;
-  background-color: $surface-container;
-}
-
-.media-btn:hover {
   background-color: $surface-container-high;
 }
 
+.media-btn:hover {
+  background-color: $surface-highest;
+}
+
 .media-btn.play {
-  min-width: 56px;
-  min-height: 56px;
+  min-width: 36px;
+  min-height: 36px;
   background-color: $primary;
 }
 
@@ -1285,7 +1303,7 @@ window.panel-hub {
 }
 
 .media-btn.play .media-btn-ic {
-  font-size: 20px;
+  font-size: 17px;
   color: $on-primary;
 }
 
@@ -1300,6 +1318,35 @@ window.panel-hub {
 
 .media-btn.off .media-btn-ic {
   color: $outline;
+}
+
+// Visualizer: bands stacked one under another (vertical axis), each band grows
+// left and right from the shared vertical centre line - the mirrored spectrum
+// Noctalia draws with setMirrored + setCentered. Halves are plain boxes with
+// :width from the yuck, so the result never depends on how GtkProgressBar
+// paints a fill.
+.media-viz {
+  min-width: 200px;
+  // Отступы слева и справа одинаковые: общая вертикальная ось полос должна
+  // приходиться ровно на середину колонки.
+  padding: 8px 16px;
+}
+
+.media-viz-band {
+  min-height: 8px;
+  padding: 1px 0;
+}
+
+.media-viz-half {
+  min-width: 2px;
+  border-radius: 999px;
+  background-color: $primary;
+}
+
+// Тишина: плашки не рисуются совсем, иначе 16 точек min-width сливаются
+// в сплошную вертикальную линию по центру колонки.
+.media-viz-half.zero {
+  background-color: transparent;
 }
 
 // Empty state: centred note, title, hint.
