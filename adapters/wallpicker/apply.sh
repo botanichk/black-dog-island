@@ -22,7 +22,7 @@ set -eu
 # $0 - путь ССЫЛКИ (~/.config/hypr-wallpicker/apply-wallpaper.sh), а не
 # нашего файла: wallpicker запускает ссылку через /bin/sh. Без readlink -f
 # dirname/../.. дал бы ~/.config, и подключаемые файлы не нашлись бы
-# (проверено: «строка 46: /home/user/theme/desktop.sh: Нет такого файла»).
+# (проверено: «строка 46: ~/theme/desktop.sh: Нет такого файла»).
 SELF=$(readlink -f "$0")
 ROOT=$(CDPATH= cd -- "$(dirname -- "$SELF")/../.." && pwd)
 LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
