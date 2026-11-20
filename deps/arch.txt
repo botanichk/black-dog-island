@@ -1,0 +1,50 @@
+# Зависимости BDI для Arch / CachyOS.
+#
+# Формат: команда | пакет | обязательна | зачем
+# pacman не ставит то, что уже стоит (--needed). Пакет `?` - имя не проверено,
+# установщик скажет "поставьте вручную" и не будет угадывать.
+#
+# Версии сняты на CachyOS 2026-11-20 через `pacman -Qo $(command -v <команда>)`.
+# Проверено: все строки ниже, кроме помеченных ?.
+
+# --- оболочка: без этого остров не работает ---
+wmctrl            | wmctrl            | да | перечисление окон, воркспейсы, панели, закрытие меню
+xprop             | xorg-xprop        | да | свойства окон, _NET_WM_STATE_FULLSCREEN, резерв
+xrandr            | xorg-xrandr       | да | ширина монитора для центровки острова
+xfconf-query      | xfconf            | да | обои, композитинг, панель XFCE, число столов
+python3           | python            | да | адаптеры (погода, медиа, автоскрытие, темы)
+sh                | ? (base)          | да | сами скрипты
+
+# --- звук, яркость, сеть, питание ---
+pactl             | libpulse          | да | громкость; без него тихо показывает 0 %
+brightnessctl     | brightnessctl     | да | яркость
+nmcli             | networkmanager    | да | вкладка Wi-Fi; без него врёт "отключено"
+bluetoothctl      | bluez-utils       | нет | Bluetooth, если есть адаптер
+pw-play           | pipewire-audio    | нет | звук таймера; без него таймер молчит
+notify-send       | libnotify         | нет | уведомление "время вышло"
+xfce4-session-logout | xfce4-session  | да | кнопка "Выйти"
+systemctl         | systemd           | нет | reboot/poweroff; на Void заменяется
+
+# --- картинки, сеть, данные ---
+magick            | imagemagick       | да | снимки экрана, кроп обложек, фоны погоды
+import            | imagemagick       | да | то же (одна поставка)
+curl              | curl              | да | погода
+jq                | jq                | да | разбор ответов погоды и MPRIS
+dconf             | dconf             | нет | тема Plank; без него Plank остаётся как есть
+xdg-open          | xdg-utils         | нет | кнопки "Папка"
+
+# --- сборка движка Eww (только при install, не для check) ---
+cargo             | rustup            | да | сборка Eww; rustup, а не rust, чтобы версия 1.100+
+gcc               | gcc               | да | линковка нативных библиотек при сборке
+pkg-config        | pkgconf           | да | поиск библиотек при сборке
+gtk3              | gtk3              | да | заголовки GTK3 для сборки
+libdbusmenu-gtk3  | libdbusmenu-gtk3  | да | обязателен даже без трея (notifier_host)
+libpulse          | libpulse          | да | заголовки PulseAudio для сборки
+
+# --- необязательные приложения ---
+plank             | plank             | нет | док; тема ставится из острова
+ulauncher         | ulauncher         | нет | лаунчер; тема ставится из острова
+noctalia          | noctalia          | нет | палитры и координаты с обоев
+
+# --- шрифты ---
+Meslo Nerd Font   | ttf-meslo-nerd    | нет | глифы кнопок острова (проверено: стоит)

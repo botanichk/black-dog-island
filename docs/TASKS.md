@@ -109,6 +109,17 @@
   по таймауту кнопки).
 
 ## Журнал (новые строки сверху: дата, коммит, что сделано)
+- 2026-11-20 Шаг 2 задания 16: `lib/log.sh`, `lib/distro.sh`,
+  `lib/backup.sh`, `lib/journal.sh`, `lib/selftest.sh`, `deps/arch.txt`,
+  `deps/void.txt`, `deps/engine.txt` (пин `48f5aa8`, upstream
+  `github.com/elkowar/eww`). Имена пакетов Void взяты из настоящего индекса
+  репозитория (`index.plist` из `x86_64-repodata`): `xfconf-4.20.0_1`,
+  `libpulseaudio-16.1_2`, `gtk+3-3.24.52_1`, `pkgconf`, `ImageMagick`; чего
+  в индексе нет (`noctalia`, Meslo) помечено `?` и "поставьте вручную".
+  Самопроверка `lib/selftest.sh` изолированно: 15 строк ok, `lib: всё ок`,
+  код 0. Реальные ключи целы: `Client2_Command`=`true`,
+  dconf=`EwwIsland`, sha `~/.config/dconf/user`=`bf51af5b…`, состояние
+  владельца (8 файлов в `~/.config/bdi`, 22 схемы) не тронуто.
 - 2026-11-20 Задание 16 упрощено по слову владельца: остались `check`,
   `install` (пакеты после "y", сборка Eww, панель XFCE, автозапуск),
   резервная копия, `uninstall` по журналу. Убраны `report`, `doctor`,

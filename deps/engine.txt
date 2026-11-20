@@ -1,0 +1,9 @@
+# Движок Eww для BDI.
+#
+# Код не копируется: установщик клонирует upstream в build/eww-src и
+# переключает на этот коммит, потом накладывает patches/eww-*.patch через
+# scripts/build-eww.sh. Пин подтверждён 2026-11-20: `git describe` ->
+# v0.6.0-91-g48f5aa8 (docs/BDI-FACTS.md, B10).
+EWW_REPO=https://github.com/elkowar/eww
+EWW_PIN=48f5aa8b379adf29da0b0bb9ca04164f65d8bdaa
+EWW_TAG_BASE=v0.6.0

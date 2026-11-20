@@ -35,12 +35,12 @@
 - Правило изоляции тестов в AGENTS.md и docs/TESTING.md, доказательство на тестовой шине.
 - docs/BDI-FACTS.md обновлён под `$BDI_ROOT`, `BDI_CONFIG`, `BDI_STATE`, `BDI_CACHE`.
 
-## Шаг 2. Общие функции и зависимости
-`lib/log.sh`, `lib/distro.sh` (`/etc/os-release`: arch/cachyos -> pacman, void -> xbps,
-остальное -> "не поддерживается, но check работает"), `lib/backup.sh`, `lib/journal.sh`.
-`deps/arch.txt` и `deps/void.txt`: команда -> пакет -> обязательна/нет. Void: только
-пакеты, в которых уверен, остальное `?` и "поставьте вручную", без угадывания.
-Пин Eww (`48f5aa8`) записать в `deps/`.
+## Шаг 2. Общие функции и зависимости - СДЕЛАНО
+`lib/log.sh` (OK/WARN/FAIL, вопросы да/нет), `lib/distro.sh` (`/etc/os-release` ->
+pacman / xbps-install / "не поддерживается"), `lib/backup.sh` (копия настроек +
+дамп xfconf), `lib/journal.sh` (TAB-формат changes.log), `lib/selftest.sh`.
+`deps/arch.txt`, `deps/void.txt`, `deps/engine.txt` (пин `48f5aa8`).
+Имена пакетов Void сверены с реальным индексом репозитория Void, а не выдуманы.
 
 ## Шаг 3. `./install.sh check` (только чтение)
 X11 (не Wayland), XFCE и версия, xfwm4 с композитингом, экран (WARN если меньше 1280x720),

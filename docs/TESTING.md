@@ -27,7 +27,20 @@ env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR \
 - Если тест обязан читать живые ключи XFCE — это не тест, а замер владельца.
 
 ## 1. Проверка системы (только чтение)
-Ставится в шаге 3 установщика; пока `install.sh` нет, раздел пуст.
+Ставится в шаге 3 установщика; пока `install.sh` нет, проверяется то, что есть.
+
+Самопроверка `lib/` (изолированно, ничего не меняет):
+
+```
+env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR HOME=/tmp/fakehome \
+    XDG_CONFIG_HOME=/tmp/fakehome/.config XDG_STATE_HOME=/tmp/fakehome/.local/state \
+    BDI_STATE=/tmp/fakehome/.local/state/bdi \
+    dbus-run-session -- sh lib/selftest.sh
+```
+
+Ожидается 15 строк `ok` и `lib: всё ок`, код 0. Проверено 2026-11-20:
+дистро arch/void/unknown, команды pacman и xbps, журнал (включая значение
+с табуляцией), копия `~/.config/xfce4`, дамп xfconf, `last-backup`.
 
 Ожидается после шага 3:
 

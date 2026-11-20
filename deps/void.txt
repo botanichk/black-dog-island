@@ -1,0 +1,51 @@
+# Зависимости BDI для Void Linux.
+#
+# Формат: команда | пакет | обязательна | зачем
+# Имена пакетов сверены с реальным индексом репозитория Void (2026-11-20):
+# index.plist из repo-default.voidlinux.org/current/x86_64-repodata, версии
+# в скобках оттуда же. Установка на Void НЕ проверялась - помечено в TESTING.md.
+# `?` - пакет не найден в индексе или имя не подтверждено: установщик скажет
+# "поставьте вручную" и не будет угадывать.
+
+# --- оболочка: без этого остров не работает ---
+wmctrl            | wmctrl            | да | окна, воркспейсы, панели (1.07_6)
+xprop             | xprop             | да | свойства окон (1.2.8_1)
+xrandr            | xrandr            | да | ширина монитора (1.5.4_1)
+xfconf-query      | xfconf            | да | обои, композитинг, панель XFCE (4.20.0_1)
+python3           | python3           | да | адаптеры (3.14.8_1)
+sh                | (base)            | да | сами скрипты, отдельного пакета нет
+
+# --- звук, яркость, сеть, питание ---
+pactl             | libpulseaudio     | да | громкость (16.1_2); пакет даёт pactl, не pulseaudio
+brightnessctl     | brightnessctl     | да | яркость (0.5.1_1)
+nmcli             | NetworkManager    | да | вкладка Wi-Fi (1.58.1_2)
+bluetoothctl      | bluez             | нет | Bluetooth, если есть адаптер (5.88_1)
+pw-play           | pipewire          | нет | звук таймера (1.6.10_1); на Void без pipewire - ?
+notify-send       | libnotify         | нет | уведомление "время вышло" (0.8.9_1)
+xfce4-session-logout | xfce4-session  | да | кнопка "Выйти" (4.20.4_1)
+systemctl         | —                 | нет | на Void его нет: reboot/poweroff идут через runit (проверить)
+
+# --- картинки, сеть, данные ---
+magick            | ImageMagick       | да | снимки экрана, кроп обложек (7.1.2.35_2)
+import            | ImageMagick       | да | то же (одна поставка)
+curl              | curl              | да | погода
+jq                | jq                | да | разбор ответов
+dconf             | dconf             | нет | тема Plank (0.40.0_1)
+xdg-open          | xdg-utils         | нет | кнопки "Папка" (1.2.1_1)
+
+# --- сборка движка Eww (только при install, не для check) ---
+cargo             | cargo             | да | сборка Eww (1.99.0_1)
+rustc             | rust              | да | компилятор (1.99.0_1)
+gcc               | gcc               | да | линковка (14.2.1)
+pkg-config        | pkgconf           | да | поиск библиотек (3.0.11_1)
+gtk3              | gtk+3             | да | заголовки GTK3 (3.24.52_1)
+libdbusmenu-gtk3  | libdbusmenu-gtk3  | да | обязателен даже без трея (16.04.0_6)
+libpulse          | libpulseaudio     | да | заголовки PulseAudio (16.1_2)
+
+# --- необязательные приложения ---
+plank             | plank             | нет | док (0.11.89_3)
+ulauncher         | ulauncher         | нет | лаунчер (5.15.7_3)
+noctalia          | ?                 | нет | в индексе Void не найден: цвета с обоев недоступны
+
+# --- шрифты ---
+Meslo Nerd Font   | ?                 | нет | в индексе Void не найден: скачать вручную или пропустить
