@@ -59,6 +59,29 @@ docs/ (спеки и отчёты). Состояние вне репозитор
 - Лог Eww общий для запусков: смотреть только строки новее начала сессии
   (run-island.sh чистит лог при старте демона).
 
+### Изоляция тестов (обязательно)
+Тесты не трогают сеанс владельца: Plank, xfconf, dconf, gsettings, панель
+XFCE. Каждый тест запускается так:
+
+    env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR \
+        HOME=/tmp/fakehome \
+        XDG_CONFIG_HOME=/tmp/fakehome/.config \
+        XDG_CACHE_HOME=/tmp/fakehome/.cache \
+        XDG_STATE_HOME=/tmp/fakehome/.local/state \
+        BDI_CONFIG=... BDI_STATE=... BDI_CACHE=... \
+        dbus-run-session -- sh .../test.sh
+
+- `dbus-run-session` + `-u DBUS_SESSION_BUS_ADDRESS` даёт свою шину: xfconfd
+  на ней стартует заново и видит системный дефолт, а не значения владельца.
+- Пустые `XDG_*` уводят базы dconf и gsettings в `/tmp/fakehome`, реальный
+  `~/.config/dconf/user` не открывается.
+- Проверено 2026-11-20: на тестовой шине `Client2_Command` читается как
+  `xfce4-panel` (системный дефолт) вместо реального `true`, а записи
+  `TESTVALUE` в dconf/gsettings остались в `/tmp/bdi-iso/`; sha
+  `~/.config/dconf/user` до и после совпал (`bf51af5b…`).
+- Тест, который обязан читать живые XFCE-ключи, — это не тест, а замер
+  владельца: такие замеры делаются только по его слову и без записи.
+
 ## Ограничения GTK3 CSS
 Нет flex, grid, keyframes, backdrop-filter, clip-path. `transition` есть.
 `min-width` у меню (GtkMenu) игнорируется, у box и label работает.

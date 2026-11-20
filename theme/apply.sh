@@ -19,15 +19,22 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
 BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
-mkdir -p "$BDI_CONFIG" "$BDI_STATE/schemes" 2>/dev/null || true
+BDI_CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
+mkdir -p "$BDI_CONFIG" "$BDI_STATE/schemes" "$BDI_CACHE" 2>/dev/null || true
+
+# Ошибки темы уходят в файл: apply.sh зовёт остров при старте, его stderr
+# никто не читает, а без цвета остров не поднимается вовсе.
+LOG="$BDI_CACHE/theme.log"
+log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG" 2>/dev/null || true; }
 
 # Значения по умолчанию: на свежем клоне файлов состояния ещё нет, а чтение
-# через `< файл` ругается в stderr даже с 2>/dev/null.
-[ -s "$BDI_CONFIG/mode" ] || printf 'dark\n' > "$BDI_CONFIG/mode"
-[ -s "$BDI_CONFIG/current" ] || printf 'default\n' > "$BDI_CONFIG/current"
-[ -s "$BDI_CONFIG/accent" ] || printf 'primary\n' > "$BDI_CONFIG/accent"
-[ -s "$BDI_CONFIG/wallpaper-scheme" ] || printf 'm3-tonal-spot\n' > "$BDI_CONFIG/wallpaper-scheme"
-[ -s "$BDI_CONFIG/hue-filter" ] || printf 'all\n' > "$BDI_CONFIG/hue-filter"
+# через `< файл` ругается в stderr даже с 2>/dev/null. Запись может не пройти
+# (~/.config/bdi только на чтение) - это не повод не рендерить тему.
+[ -s "$BDI_CONFIG/mode" ] || printf 'dark\n' > "$BDI_CONFIG/mode" 2>/dev/null || log "не записал mode в $BDI_CONFIG"
+[ -s "$BDI_CONFIG/current" ] || printf 'default\n' > "$BDI_CONFIG/current" 2>/dev/null || log "не записал current в $BDI_CONFIG"
+[ -s "$BDI_CONFIG/accent" ] || printf 'primary\n' > "$BDI_CONFIG/accent" 2>/dev/null || log "не записал accent в $BDI_CONFIG"
+[ -s "$BDI_CONFIG/wallpaper-scheme" ] || printf 'm3-tonal-spot\n' > "$BDI_CONFIG/wallpaper-scheme" 2>/dev/null || log "не записал wallpaper-scheme в $BDI_CONFIG"
+[ -s "$BDI_CONFIG/hue-filter" ] || printf 'all\n' > "$BDI_CONFIG/hue-filter" 2>/dev/null || log "не записал hue-filter в $BDI_CONFIG"
 
 # Разбор аргументов: первый не-флаг - схема, --reload - перечитать конфиг.
 SCHEME=""
@@ -77,13 +84,18 @@ fi
 # «нет схемы» уводила бы в сторону.
 if [ ! -f "$JSON" ]; then
   echo "нет схемы $SCHEME - беру default" >&2
+  log "нет схемы $SCHEME - беру default"
   SCHEME=default
   JSON="$ROOT/theme/schemes/default.json"
-  printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current"
+  printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current" 2>/dev/null || true
 fi
 
-python3 - "$ROOT" "$JSON" "$SCHEME" <<'PY'
-import json, sys, pathlib, re
+# Один проход рендера. Вынесено в функцию, чтобы битую схему можно было
+# заменить на default и повторить: раньше кривой JSON или чужой id в
+# ~/.config/bdi/current валили apply.sh и остров оставался без colors.scss.
+render_theme() {
+python3 - "$ROOT" "$1" "$2" <<'PY'
+import json, sys, pathlib, re, os
 
 root = pathlib.Path(sys.argv[1])
 scheme_path = pathlib.Path(sys.argv[2])
@@ -133,12 +145,16 @@ def render(text, where):
     return re.sub(r"\{\{([a-z0-9_]+)\}\}", sub, text)
 
 # --- 2. eww/colors.scss ---
+# Пишем через временный файл: если рендер упадёт посередине, на диске
+# останется прошлая целая тема, и остров поднимется с ней.
 tpl = root / "theme/templates/colors.scss.tpl"
 out = root / "eww/colors.scss"
 css = render(tpl.read_text(encoding="utf-8"), "colors.scss.tpl")
 # SCSS-компилятор падает на не-ASCII в @charset: комментарии шаблона английские,
 # но проверяем: если в результате есть не-ASCII в коде - это ошибка шаблона.
-out.write_text(css, encoding="utf-8")
+tmp = out.with_suffix(".scss.tmp")
+tmp.write_text(css, encoding="utf-8")
+os.replace(str(tmp), str(out))
 print("eww/colors.scss <- %s (%d строк)" % (scheme_name, css.count("\n")))
 
 # --- 3. SVG ---
@@ -164,6 +180,22 @@ if orphans:
 else:
     print("сирот нет: все SVG в eww/assets из шаблонов")
 PY
+}
+
+# Рендер с откатом: битая схема (кривой JSON, чужой id, не #rrggbb) не должна
+# оставлять остров без colors.scss. Вторая попытка всегда на default из git.
+if ! render_theme "$JSON" "$SCHEME"; then
+  log "схема $SCHEME не отрендерилась - повторяю на default"
+  echo "схема $SCHEME не отрендерилась - беру default" >&2
+  SCHEME=default
+  JSON="$ROOT/theme/schemes/default.json"
+  render_theme "$JSON" "$SCHEME" || {
+    log "default тоже не отрендерился - остров останется без темы"
+    echo "default не отрендерился, см. $LOG" >&2
+    exit 1
+  }
+  printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current" 2>/dev/null || true
+fi
 
 if [ "$RELOAD" -eq 1 ]; then
   EWW="$ROOT/build/target/release/eww"
@@ -180,7 +212,7 @@ fi
 
 # Запоминаем выбор последним шагом: если рендер упал, ~/.config/bdi/current не врёт.
 # apply.sh без аргумента возьмёт схему отсюда.
-printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current"
+printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current" 2>/dev/null || true
 echo "схема: $SCHEME (~/.config/bdi/current)"
 
 # --- 5. рамка Plank в цвет $primary ---------------------------------------

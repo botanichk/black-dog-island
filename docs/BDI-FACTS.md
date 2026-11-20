@@ -16,8 +16,9 @@
 |---|---|---|---|
 | `xfce4-desktop/<key>.last-image` | `desktop.sh:86,89` (`xfconf-query -s`/`-n`) | обои текущего стола | `xfdesktop-settings` |
 | `~/.config/hypr-wallpicker/apply-wallpaper.sh` | `wallpicker/install.sh:56` (`ln -sfn`) | хук обоев под XFCE | `rm` ссылки |
-| `~/.cache/eww-island/` | `timer.sh:28`, `forecast.sh:17`, `wifi.sh:26`, `mpris.sh:30`, `screenshot.sh:107`, `wall-schemes.sh:66` | кэши, логи, `kbdlayout`, `pointer` | `rm -rf` |
-| `~/.config/eww-island/` | `plank.sh:31` (`STATE_DIR`) | база и цвет темы Plank, тема Ulauncher | `rm -rf` |
+| `~/.cache/bdi/` (`$BDI_CACHE`) | `timer.sh:28`, `forecast.sh:17`, `wifi.sh:26`, `mpris.sh:30`, `screenshot.sh:107`, `wall-schemes.sh:66` | кэши, логи, `kbdlayout`, `pointer`, `theme.log` | `rm -rf` |
+| `~/.config/bdi/` (`$BDI_CONFIG`) | `plank.sh:31`, `ulauncher.sh:41` | выбор темы, база и цвет темы Plank, тема Ulauncher | `rm -rf` |
+| `~/.local/state/bdi/` (`$BDI_STATE`) | `apply.sh`, `colors-pick.sh`, `accents.sh`, `switch.sh`, `from-wallpaper.sh` | сгенерированные схемы (`schemes/`) | `rm -rf` |
 | `~/.local/share/plank/themes/EwwIsland/` | `plank.sh` | док в цвет острова | `rm -rf` + тема через `dconf` |
 | `~/.config/ulauncher/user-themes/light/` | `ulauncher.sh` | Ulauncher в цвета острова | `rm -rf` |
 | `~/.config/noctalia/palettes/*.json` | `theme-save.sh` (по клику) | свои темы | удалить файл |
@@ -29,30 +30,37 @@
 
 ### Фактически на этой машине
 
-Содержимое `~/.cache/eww-island/`: `art/`, `thumbs/`, `timer/`,
+Содержимое `~/.cache/bdi/`: `art/`, `thumbs/`, `timer/`,
 `wall-schemes/`, `kbdlayout`, `pointer`, `island-width`, `weather.json` и
-логи (`autohide`, `plank`, `ulauncher`, `wallpicker`, `power`). Всего 3.6 МБ.
+логи (`autohide`, `plank`, `ulauncher`, `wallpicker`, `power`, `theme`).
 `city.txt` содержит город владельца - значение не печатается.
 
 ```
-~/.config/hypr-wallpicker/apply-wallpaper.sh -> ~/eww-island/adapters/wallpicker/apply.sh
-~/.config/eww-island/: plank-base-theme  plank-color  ulauncher-theme
+~/.config/bdi/:        accent  current  hue-filter  mode  wallpaper-scheme
+                       plank-base-theme  plank-color  ulauncher-theme
+~/.local/state/bdi/:   schemes/  (22 сгенерированные схемы)
+~/.cache/bdi/:         кэш, pid автоскрытия, island-width, логи
+~/.config/hypr-wallpicker/apply-wallpaper.sh -> <клон>/adapters/wallpicker/apply.sh
 ~/.local/share/plank/themes/EwwIsland/   (19 ноября; остальные темы от янв. 2023)
 ~/.config/ulauncher/user-themes/light/   (18 ноября, наша)
 ~/src/hypr-wallpicker                    (исходники wallpicker, вне репозитория)
 ```
 
+Старые пути `~/.config/eww-island` и `~/.cache/eww-island` больше не
+пишутся: их переносит `scripts/migrate-state.sh` (идемпотентно, оригиналы
+удаляет только при совпадении байт в байт).
+
 ### Автозапуск (создан вручную, не скриптами проекта)
 
 ```
 ~/.config/autostart/: eww-island  plank  ulauncher  xfdesktop
-Exec: eww-island -> ~/eww-island/scripts/run-island.sh
+Exec: eww-island -> <клон>/scripts/run-island.sh  (сейчас: /home/$USER/eww-island/...)
       plank -> plank | ulauncher -> ulauncher --hide-window | xfdesktop -> xfdesktop
 ```
 
-`eww-island.desktop` содержит полный личный путь (в отчёте заменён на `~`).
-Автозапуск **целиком** настраивался вручную, установщика в репозитории нет:
-`[не известно: спросить владельца]`.
+`eww-island.desktop` содержит полный личный путь: установщик обязан
+записывать путь клона сам, иначе остров не поднимется после переноса.
+Автозапуск **целиком** настраивался вручную, установщика в репозитории нет.
 
 ## B2. Как отключена панель XFCE
 
@@ -137,8 +145,8 @@ xfce4-panel &
 | 373, 1366, 768 | **только комментарии** (`wallpicker/run.sh:8-32`) | ничего: центровка из `run-island.sh:110-123` (`xrandr`) |
 | `wlan0` | `wifi.sh:73` - запасное значение после автопоиска | оставить |
 | `LVDS` | только комментарии (`desktop.sh:58`, `from-wallpaper.sh:26`) | оставить, монитор перебирается |
-| `$HOME/eww-island` | `eww.yuck` - **121 вхождение**, `timer.sh:1` | **вычислять**: главный блокер переноса; в yuck есть `${EWW_CONFIG_DIR}` |
-| `eww-island` (кэш) | ~15 мест | вынести в `~/.cache/bdi` при переименовании |
+| `$HOME/eww-island` | **0 вхождений** после шага 14-portable | **сделано**: пути в `eww.yuck` и `timer.sh` идут через `$BDI_ROOT` |
+| `eww-island` (кэш) | было ~15 мест | **сделано**: `$BDI_CACHE` (`~/.cache/bdi`) |
 | `intel_backlight` | не найдено | — |
 | имена Plank-тем, путь `noctalia`, число столов | берутся из `dconf` / по `command -v` / из `wmctrl -d` | оставить |
 | город и координаты | **не в коде**: `~/.cache/noctalia/location.json` (`forecast.sh:14,23-24`) | оставить: личное вне репозитория |
@@ -146,8 +154,7 @@ xfce4-panel &
 Вычисляется само: позиция острова (`run-island.sh:110-123`, `xrandr` ->
 `want_x = (SCREEN_W - iw) / 2`), размер панелей (`panel.sh` из `wmctrl`),
 стол обоев (`desktop.sh` перебирает ключи), устройство Wi-Fi (`wifi.sh`).
-**Не** вычисляется: ширина острова задана дважды (SCSS и Python), все пути
-`$HOME/eww-island`.
+**Не** вычисляется: ширина острова задана дважды (SCSS и Python).
 
 Другой экран по коду: центровка работать должна (`xrandr` даёт ширину), но
 **не проверено** - экрана нет. Числа `1366x768` в `wallpicker/run.sh` подобраны
@@ -266,36 +273,38 @@ docs/tasks/15-audit-and-bdi-facts.md:6,40,56
 (0.5 МБ), 18 скриншотов стола (могут содержать чужие окна и имена файлов).
 Чистая история или `filter-repo` - **за владельцем**. Аудит ничего не чистил.
 
-## B9. Состояние внутри репозитория при работе
+## B9. Состояние внутри репозитория при работе (после шага 1 задания 16)
 
 | Файл | Пишется при работе | В git? | Мешает `git pull`? |
 |---|---|---|---|
-| `eww/colors.scss` | да (`theme/apply.sh`) | **в git** | **да**: после любой смены темы файл грязный |
-| `eww/assets/*.svg` (19 шт.) | да (тот же `apply.sh`) | **в git** | **да**: то же |
-| `theme/current` | да (`colors-pick.sh`) | **в git** | **да** |
-| `theme/mode` | да | **в git** | **да** |
-| `theme/wallpaper-scheme` | да | нет (`.gitignore`) | нет |
-| `theme/accent` | да | нет | нет |
-| `theme/hue-filter` | да | нет | нет |
-| `theme/schemes/{p,u,c,wallpaper}-*.json` | да | нет | нет |
+| `eww/colors.scss` | да (`theme/apply.sh`) | нет (`.gitignore`) | нет |
+| `eww/assets/*.svg` (19 шт.) | да (тот же `apply.sh`) | нет | нет |
+| `~/.config/bdi/current` | да (`colors-pick.sh`, `apply.sh`) | вне репозитория | нет |
+| `~/.config/bdi/mode` | да | вне репозитория | нет |
+| `~/.config/bdi/{accent,wallpaper-scheme,hue-filter}` | да | вне репозитория | нет |
+| `~/.local/state/bdi/schemes/*.json` | да | вне репозитория | нет |
 | `theme/__pycache__/` | да (Python) | нет | нет |
 | `adapters/timer/sounds/*` кроме `alarm.wav` | кладёт владелец | нет | нет |
+| `eww/assets/weather-src/` | исходники генератора | нет | нет |
 
-Сейчас `git status` показывает 18 изменённых файлов (`colors.scss` + 17 SVG)
-и `theme/current`: это применённая тема владельца, а не правки кода.
+`git status` чистый после смены темы, акцента и обоев - это и есть приёмка
+шага 1.
 
-### Что можно вынести и что придётся менять
+### Что осталось внутри репозитория и почему
 
-| Что | Куда | Кого менять |
-|---|---|---|
-| `colors.scss` | `~/.config/bdi/` | `apply.sh`, `ulauncher.sh:222`, `plank.sh`; `@import` не берёт абсолютный путь - нужен `:css` |
-| `eww/assets/*.svg` | `~/.local/state/bdi/assets/` | `apply.sh` + 19 `:path` в `eww.yuck` (вне конфига `${EWW_CONFIG_DIR}` не поможет) |
-| `theme/current`, `theme/mode` | `~/.config/bdi/` | 8 скриптов (`colors-pick`, `apply`, `plank`, `ulauncher`, `theme-save`, `accents`, `from-wallpaper`, `wall-schemes`) |
-| `theme/schemes/*` | `~/.local/state/bdi/schemes/` | `palette_lib.py`, `colors-list.sh`, `apply.sh`, `switch.sh` |
+`colors.scss` и 19 SVG генерируются в `eww/` на месте, а не в каталог
+состояния. Причина: `eww.scss` импортирует `@import "colors"` относительно
+своего каталога (абсолютный путь GTK не берёт), а `:path` в 19 местах
+`eww.yuck` идут через `${EWW_CONFIG_DIR}/assets/`. Вынос потребовал бы
+runtime-каталога симлинков и 19 правок yuck - за это время ничего не
+окупается. Побочные следствия: `git clean -xfd` сносит тему (собирается
+заново `theme/apply.sh` при старте острова), а запуск из каталога только на
+чтение не сработает.
 
-Вывод: вынос `colors.scss` и SVG - самая дорогая часть (сломает
-`@import` и 19 путей). Состояние (`current`, `mode`, `accent`, схемы) вынести
-проще: пути уже в переменных `$THEME` в каждом скрипте.
+Остальное состояние вынесено: `$BDI_CONFIG` (выбор пользователя),
+`$BDI_STATE` (сгенерированные схемы), `$BDI_CACHE` (кэш и pid-файлы).
+Три переменные экспортирует один `scripts/run-island.sh`, дальше их читают
+25 файлов; при ручном запуске скрипты берут те же значения по умолчанию.
 
 ## B10. Сборка и обновление
 

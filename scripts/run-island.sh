@@ -38,9 +38,16 @@ err() { echo "ошибка: $*" >&2; exit 1; }
 # Старое состояние из репозитория переносим один раз (скрипт идемпотентный).
 [ -x "$ROOT/scripts/migrate-state.sh" ] && "$ROOT/scripts/migrate-state.sh" >/dev/null 2>&1 || true
 # colors.scss и SVG генерируются из шаблонов и в git не лежат: на свежем
-# клоне их надо собрать до старта демона, иначе Eww упадёт на @import "colors".
+# клоне их надо собрать до старта демона, иначе Eww не поднимется.
+# Пустой ~/.config/bdi или битая схема не должны мешать запуску: apply.sh
+# сам откатывается на default, а если и он не вышел - берём цвета из
+# последнего удачного рендера (colors.scss уже на диске) и стартуем.
 if [ ! -f "$CONF/colors.scss" ]; then
-  "$ROOT/theme/apply.sh" >/dev/null 2>&1 || echo "предупреждение: не удалось сгенерировать colors.scss" >&2
+  "$ROOT/theme/apply.sh" >/dev/null 2>&1 ||
+    echo "предупреждение: не удалось сгенерировать тему, см. $BDI_CACHE/theme.log" >&2
+fi
+if [ ! -f "$CONF/colors.scss" ]; then
+  err "нет $CONF/colors.scss и собрать не удалось (см. $BDI_CACHE/theme.log)"
 fi
 
 # --- 1. Демон: используем существующий или запускаем новый ---
