@@ -1018,9 +1018,13 @@
          :hexpand true :vexpand true
       (box :orientation "vertical" :space-evenly false :class "tmr-menu"
            :hexpand true :vexpand true
-        (label :class {timer-state.state == "ring" ? "tmr-time ring" : "tmr-time"}
-               :xalign 0.5
-               :text {timer-state.state == "idle" ? tmr_num : timer-state.fmt})
+        ;; Цифры показываются, только когда есть что показать: в покое их нет
+        ;; вовсе (поле ввода сверху), при наборе над полем появляется набранное,
+        ;; при отсчёте — остаток. Так в покое нет пустой полосы под цифры.
+        (for t in {(timer-state.state != "idle" || tmr_num != "") ? "[1]" : "[]"}
+          (label :class {timer-state.state == "ring" ? "tmr-time ring" : "tmr-time"}
+                 :xalign 0.5
+                 :text {timer-state.state == "idle" ? tmr_num : timer-state.fmt}))
         (input :class "tmr-input" :hexpand true :placeholder "10, 6m, 1:30"
                :onchange "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update tmr_num={}"
                :onaccept "$HOME/eww-island/adapters/timer/timer.sh start {}")
