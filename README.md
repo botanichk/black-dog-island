@@ -10,8 +10,10 @@
 
 ## Установка
 
-Три команды. Ставится на Arch (CachyOS, Manjaro) и Void Linux, рабочий стол
-Xfce в сеансе X11.
+Ставится на Arch (CachyOS, Manjaro) и Void Linux, рабочий стол Xfce в
+сеансе X11.
+
+Скачать и проверить, чего не хватает:
 
 ```
 git clone https://github.com/botanichk/black-dog-island
