@@ -1827,6 +1827,44 @@ window.panel-power {
   color: $on-primary;
 }
 
+// Звук будильника: имя текущего файла и папка рядом с ним. Подпись мелкая -
+// это служебная строка, глаза на неё не должны падать.
+.tmr-sounds {
+  margin-top: 6px;
+  background: transparent;
+}
+
+.tmr-snd {
+  min-height: 26px;
+  padding: 2px 8px;
+  border-radius: $r-control;
+  background-color: transparent;
+}
+
+.tmr-snd:hover {
+  background-color: $surface-container;
+}
+
+.tmr-snd-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 12px;
+  color: $on-surface-variant;
+  margin-right: 6px;
+}
+
+.tmr-snd-txt {
+  font-size: $t-secondary;
+  color: $on-surface-variant;
+}
+
+.tmr-snd.folder {
+  min-width: 26px;
+}
+
+.tmr-snd.folder .tmr-snd-ic {
+  margin-right: 0;
+}
+
 window.panel-timer {
   background: transparent;
   border: none;

@@ -24,8 +24,37 @@
 set -eu
 
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/timer"
-ALARM="$HOME/eww-island/adapters/timer/alarm.wav"
+SOUNDS="$HOME/eww-island/adapters/timer/sounds"
 mkdir -p "$CACHE"
+
+# Звук будильника: файлы из папки sounds/, выбранный - в $CACHE/sound (имя
+# файла). Пусто или файл пропал - первый по алфавиту. Так звук меняется без
+# правки кода: положил файл в папку, выбрал его кнопкой в панели.
+current_sound() {
+  _s=$(cat "$CACHE/sound" 2>/dev/null || true)
+  if [ -n "$_s" ] && [ -f "$SOUNDS/$_s" ]; then
+    printf '%s' "$SOUNDS/$_s"
+  else
+    _f=$(ls "$SOUNDS" 2>/dev/null | grep -iE '\.(wav|oga|ogg|mp3|flac)$' | head -1)
+    [ -n "$_f" ] || return 1
+    printf '%s' "$SOUNDS/$_f"
+  fi
+}
+
+# Следующий файл по кругу - для кнопки выбора. Печатает имя нового звука.
+next_sound() {
+  _list=$(ls "$SOUNDS" 2>/dev/null | grep -iE '\.(wav|oga|ogg|mp3|flac)$')
+  [ -n "$_list" ] || return 1
+  _cur=$(basename "$(current_sound 2>/dev/null || echo -)")
+  _first=$(printf '%s\n' "$_list" | head -1)
+  _next=$_first
+  _take=0
+  for _f in $_list; do
+    [ "$_f" = "$_cur" ] && { _take=1; continue; }
+    [ "$_take" -eq 1 ] && { _next=$_f; break; }
+  done
+  printf '%s' "$_next"
+}
 
 now() { date +%s; }
 
@@ -108,7 +137,7 @@ ringing() {
 stop_sound() {
   _pid=$(read_int "$CACHE/alarm.pid")
   [ "$_pid" -gt 0 ] && kill "$_pid" 2>/dev/null || true
-  pkill -f 'pw-play.*eww-island/adapters/timer/alarm' 2>/dev/null || true
+  pkill -f 'pw-play.*eww-island/adapters/timer/sounds/' 2>/dev/null || true
   rm -f "$CACHE/ringing" "$CACHE/alarm.pid"
 }
 
@@ -122,7 +151,7 @@ start_alarm() {
   # осиротевшего флага.
   (
     while [ -f "$CACHE/ringing" ]; do
-      [ -f "$ALARM" ] || break
+      ALARM=$(current_sound) || break
       # Не выходим при сбое звука: будильник должен звенеть до "Стоп", даже
       # если первый pw-play не достал устройство. Пауза на ошибке - чтобы
       # отсутствующий плеер не крутил цикл вхолостую.
@@ -193,6 +222,26 @@ case "${1:-status}" in
     stop_sound
     rm -f "$CACHE/end" "$CACHE/left" "$CACHE/total"
     status ;;
+  sound-next)
+    # Кнопка выбора в панели: следующий звук по кругу, сразу играет отрывок,
+    # чтобы было слышно, что выбрал. Отрывок - тот же pw-play, ограниченный
+    # по времени: будильник после выбора не остаётся.
+    _s=$(next_sound) || { echo "нет звуков в $SOUNDS" >&2; exit 1; }
+    printf '%s' "$_s" > "$CACHE/sound"
+    _p="$SOUNDS/$_s"
+    if command -v timeout >/dev/null 2>&1; then
+      timeout 3 pw-play --volume=0.5 "$_p" 2>/dev/null || true
+    fi
+    printf '{"sound":"%s"}\n' "$_s" ;;
+  sound-name)
+    # Имя текущего звука без пути - для подписи на кнопке в панели.
+    basename "$(current_sound 2>/dev/null || echo "нет звуков")" ;;
+  open-sounds)
+    # Открыть папку со звуками в наутилусе: там их добавляют. Папку создаём,
+    # если её нет, - иначе наутилус откроет пустоту или упадёт.
+    mkdir -p "$SOUNDS"
+    setsid nautilus "$SOUNDS" >/dev/null 2>&1 &
+    echo "открыто: $SOUNDS" ;;
   tick)
     # Вызывается defpoll раз в секунду, пока остров жив.
     if [ -f "$CACHE/ringing" ] && ! ringing; then
@@ -236,6 +285,13 @@ case "${1:-status}" in
   ck "$(fmtshort 0)" "0:00" "fmtshort 0"
   ck "$(fmtshort 125)" "2:05" "fmtshort 125"
   ck "$(fmtshort 3725)" "62:05" "fmtshort 3725"
+    # Звуки: имя текущего непустое и существует в папке.
+    _snd=$(current_sound)
+    if [ -f "$_snd" ]; then :; else echo "FAIL звук: текущий '$_snd' не найден"; _bad=1; fi
+    # Следующий по кругу на одном файле - он же; на двух - другой.
+    _snd2=$(next_sound)
+    if [ -f "$SOUNDS/$_snd2" ]; then :; else echo "FAIL звук: next_sound '$_snd2' не в папке"; _bad=1; fi
+    ck "$(basename "$_snd" | grep -cE '\.(wav|oga|ogg|mp3|flac)$')" 1 "звук с расширением"
     [ "$_bad" -eq 0 ] && echo "selftest ok"
     exit "$_bad" ;;
   *) echo "usage: timer.sh start <время> | pause | resume | reset | stop-sound | tick | status" >&2; exit 2 ;;

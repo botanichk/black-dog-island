@@ -72,6 +72,10 @@
 (defpoll timer-state :interval "1s" :initial "{\"state\":\"idle\",\"left\":0,\"total\":0,\"pct\":0,\"fmt\":\"0:00\",\"short\":\"0:00\"}"
   "$HOME/eww-island/adapters/timer/timer.sh tick")
 
+;; Имя текущего звука будильника - подпись на кнопке выбора в панели.
+;; Опрос редкий: файл меняется только кнопкой или руками в папке.
+(defpoll timer-sound :interval "2s" "$HOME/eww-island/adapters/timer/timer.sh sound-name")
+
 ;; Погода для выпадающей панели: Open-Meteo + координаты из Noctalia.
 ;; Данные кешируются адаптером на 10 минут, поэтому опрос чаще не нужен.
 (defpoll w-city :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh city")
@@ -1039,7 +1043,19 @@
           (for t in {timer-state.state == "ring" ? "[1]" : "[]"}
             (button :class "tmr-btn stop" :hexpand true :timeout "8s"
               :onclick "$HOME/eww-island/adapters/timer/timer.sh stop-sound"
-              (label :class "tmr-btn-txt" :text "Стоп")))))))
+              (label :class "tmr-btn-txt" :text "Стоп"))))
+        ;; Звук будильника: папка (добавлять файлы) и выбор по кругу.
+        ;; Клик по имени - следующий звук, сразу играет отрывок 3 с.
+        ;; Клик по папке - наутилус на adapters/timer/sounds.
+        (box :orientation "horizontal" :space-evenly false :class "tmr-sounds"
+          (button :class "tmr-snd" :hexpand true :timeout "8s"
+            :onclick "$HOME/eww-island/adapters/timer/timer.sh sound-next"
+            (box :orientation "horizontal" :space-evenly false :halign "center"
+              (label :class "tmr-snd-ic" :text "󰓃")
+              (label :class "tmr-snd-txt" :text {timer-sound})))
+          (button :class "tmr-snd folder" :timeout "8s"
+            :onclick "$HOME/eww-island/adapters/timer/timer.sh open-sounds"
+            (label :class "tmr-snd-ic" :text "󰉋")))))
     (box :orientation "horizontal" :space-evenly false :class "flare-row"
       :hexpand true :halign "fill" :valign "start"
       (image :class "flare-left" :path "${EWW_CONFIG_DIR}/assets/corner-left.svg"
