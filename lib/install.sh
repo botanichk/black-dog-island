@@ -145,6 +145,38 @@ EOF
   log_ok "автозапуск: $_f"
 }
 
+# install_extras - автозапуск Plank и Ulauncher, если они установлены.
+# Тема дока и лаунчера уже ставится theme/apply.sh (шаги 5-6) при каждом
+# запуске острова, здесь только подъём при входе. Чужой .desktop не
+# перезаписываем: владелец мог настроить свой.
+install_extras() {
+  _n=0
+  for _p in plank ulauncher; do
+    command -v "$_p" >/dev/null 2>&1 || { log_info "$_p не установлен - пропускаю"; continue; }
+    _f="$HOME/.config/autostart/$_p.desktop"
+    if [ -f "$_f" ]; then
+      log_ok "автозапуск $_p уже есть, не трогаю"
+      continue
+    fi
+    case "$_p" in
+      plank) _exec=plank ;;
+      ulauncher) _exec="ulauncher --hide-window" ;;
+    esac
+    journal_add autostart "$_f" "" "$_exec"
+    cat > "$_f" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$_p
+Exec=$_exec
+Terminal=false
+X-GNOME-Autostart-enabled=true
+EOF
+    log_ok "автозапуск: $_f"
+    _n=$((_n + 1))
+  done
+  return 0
+}
+
 # install_start - поднять остров сейчас, не дожидаясь перезагрузки.
 install_start() {
   if "$ROOT/adapters/x11/island-geom.sh" xid >/dev/null 2>&1; then
@@ -167,7 +199,7 @@ install_all() {
   log_info "1. резервная копия настроек в ~/.local/state/bdi/backup-<дата>"
   log_info "2. сборка движка с нашими патчами (10-25 минут, ~2 ГБ в build/)"
   log_info "3. отключение панели XFCE (настройки не удаляются)"
-  log_info "4. автозапуск острова при входе"
+  log_info "4. автозапуск острова при входе (и Plank с Ulauncher, если стоят)"
   log_ask "Продолжаем?" || { log_info "отменено, ничего не менял"; return 1; }
 
   log_step "Резервная копия"
@@ -184,6 +216,7 @@ install_all() {
 
   log_step "Автозапуск"
   install_autostart || return 1
+  install_extras
 
   log_step "Запуск"
   install_start || true
