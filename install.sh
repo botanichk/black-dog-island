@@ -4,6 +4,7 @@
 # usage:
 #   ./install.sh check     # что не хватает, какой командой поставить (только чтение)
 #   ./install.sh install   # собрать движок, отключить панель XFCE, поставить автозапуск
+#   ./install.sh update    # git pull, пересборка при новом пине или патчах, перезапуск
 #   ./install.sh help      # эта справка
 #
 # sudo не зовётся нигде: пакеты ставит владелец сам по подсказке из check.
@@ -25,12 +26,13 @@ export BDI_CONFIG BDI_STATE BDI_CACHE
 . "$ROOT/lib/check.sh"
 
 usage() {
-  sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 case "${1:-help}" in
   check)   check_all ;;
   install) . "$ROOT/lib/install.sh"; install_all ;;
+  update)  . "$ROOT/lib/install.sh"; update_all ;;
   help|-h|--help) usage ;;
   *) usage; exit 2 ;;
 esac

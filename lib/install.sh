@@ -4,6 +4,18 @@
 # Каждое изменение пишется в журнал (~/.local/state/bdi/changes.log), чтобы
 # uninstall мог вернуть прежнее. Нет записи - нет изменения.
 
+# run_indent <команда...> - печатает вывод с отступом, возвращает её код.
+# Через файл, а не через `| sed`: в POSIX sh код возврата после pipe - это код
+# sed, то есть ошибка команды терялась.
+run_indent() {
+  _o=$(mktemp "${TMPDIR:-/tmp}/bdi-out.XXXXXX") || return 1
+  "$@" >"$_o" 2>&1
+  _r=$?
+  sed 's/^/  /' "$_o"
+  rm -f "$_o"
+  return "$_r"
+}
+
 # install_eww - клон движка на закреплённом коммите и сборка с патчами.
 # Не пересобирает, если бинарник новее пина и патчей.
 install_eww() {
@@ -26,8 +38,7 @@ install_eww() {
     log_info "клонирую движок в build/eww-src (около 3.7 МБ, нужен интернет)"
     mkdir -p "$ROOT/build"
     # --filter=blob:none: история не нужна, только коммит.
-    git clone --quiet --filter=blob:none "$EWW_REPO" "$_src" 2>&1 |
-      sed 's/^/  /' || true
+    run_indent git clone --quiet --filter=blob:none "$EWW_REPO" "$_src" || true
     [ -d "$_src/.git" ] || { log_fail "не удалось клонировать $_EWW_REPO (нет интернета?)"; return 1; }
   fi
 
@@ -36,7 +47,9 @@ install_eww() {
     { log_fail "коммит $EWW_PIN не найден в клоне"; return 1; }
 
   log_info "собираю. Это 10-25 минут и около 2 ГБ в build/, можно пить чай"
-  if ! sh "$ROOT/scripts/build-eww.sh" 2>&1 | sed 's/^/  /'; then
+  # Без pipe в sed: сборка долгая, прогресс нужен живым, а код возврата -
+  # от cargo, а не от sed.
+  if ! sh "$ROOT/scripts/build-eww.sh"; then
     log_fail "сборка не удалась: смотри вывод выше и $ROOT/build/eww-src"
     return 1
   fi
@@ -139,7 +152,7 @@ install_start() {
     return 0
   fi
   log_info "запускаю остров"
-  "$ROOT/scripts/run-island.sh" 2>&1 | sed 's/^/  /' || {
+  run_indent "$ROOT/scripts/run-island.sh" || {
     log_fail "остров не поднялся, смотри вывод выше"; return 1; }
 }
 
@@ -178,5 +191,41 @@ install_all() {
   log_step "Готово"
   log_info "Изменений в журнале: $(journal_count) ($BDI_JOURNAL)"
   log_info "Откатить: ./install.sh uninstall (появится в следующем шаге)"
+  log_info "Проверить систему: ./install.sh check"
+}
+
+# update_all - обновление из git без переустановки.
+# Пересобирает движок только если изменился пин или патчи (это решает
+# install_eww), и перезапускает остров: окно и резерв применяются только
+# полным перезапуском, eww reload их не трогает.
+# В журнал не пишет: настроек не меняет, откатывать нечего.
+update_all() {
+  log_step "Обновление"
+  if [ ! -d "$ROOT/.git" ]; then
+    log_fail "$ROOT не клон git (скачан ZIP-ом): обновление вручную"
+    return 1
+  fi
+  if [ -n "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ]; then
+    log_warn "в репозитории есть свои правки - pull может не пройти"
+    git -C "$ROOT" status --short | sed 's/^/  /'
+  fi
+
+  log_info "git pull --ff-only"
+  if ! run_indent git -C "$ROOT" pull --ff-only; then
+    log_fail "pull не прошёл: разберись с правками выше, потом повтори"
+    return 1
+  fi
+
+  log_step "Движок"
+  install_eww || return 1
+
+  log_step "Перезапуск острова"
+  # Остановка только по нашему пути к eww (stop-island.sh), чужие демоны
+  # не трогаем. Код возврата не важен: остров мог быть не запущен.
+  sh "$ROOT/scripts/stop-island.sh" >/dev/null 2>&1 || true
+  install_start || return 1
+
+  log_step "Готово"
+  log_info "Версия: $(git -C "$ROOT" log --oneline -1)"
   log_info "Проверить систему: ./install.sh check"
 }
