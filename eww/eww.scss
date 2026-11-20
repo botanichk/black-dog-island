@@ -248,7 +248,7 @@ menu separator {
 
 .timer-ic {
   font-family: "MesloLGSDZ Nerd Font Mono";
-  font-size: 15px;
+  font-size: 13px;
   color: $on-surface-variant;
 }
 
@@ -1713,22 +1713,45 @@ window.panel-power {
   padding: 0;
 }
 
-// --- timer panel (plate like the power menu) ---
-// Full island width, straight top, rounded bottom: the same .pwr-frame and
-// .pwr-menu as the power menu, only the content differs.
-.tmr-row {
+// --- timer panel (280 px plate centred under the island) ---
+// Narrower than the island on purpose: the owner asked for it back at 280 px
+// centred. Same seam rule as the other panels - concave corners on top
+// (flare-row overlay), rounded bottom.
+.tmr-frame {
   background: transparent;
+  padding: 0 12px;
+}
+
+.tmr-menu {
+  background-color: $surface;
+  border: none;
+  border-radius: 0 0 $r-card $r-card;
+  padding: 10px 12px 12px;
+}
+
+// Крупные цифры. Место под них постоянное: в покое строка пустая, и без
+// min-height панель прыгала бы на каждой новой цифре.
+.tmr-time {
+  font-family: "Bitcount Prop Single Roman", "Noto Sans";
+  font-size: 40px;
+  min-height: 46px;
+  color: $primary;
+  padding: 0 0 4px;
+}
+
+.tmr-time.ring {
+  color: $error;
 }
 
 .tmr-input {
-  margin-right: 10px;
+  margin-bottom: 10px;
   padding: 8px 12px;
   border: none;
   border-radius: $r-control;
   background-color: $surface-container;
   color: $on-surface;
   font-family: "Bitcount Prop Single Roman", "Noto Sans";
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .tmr-input:focus {
@@ -1766,7 +1789,6 @@ window.panel-power {
 }
 
 .tmr-actions {
-  margin-top: 10px;
   background: transparent;
 }
 

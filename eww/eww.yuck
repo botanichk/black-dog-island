@@ -989,16 +989,17 @@
   (button :class "pwr-btn" :hexpand true :timeout "10s" :onclick cmd
     (label :class "pwr-ic" :text ic)))
 
-;; --- таймер (панель под островом, как меню питания) ---
-;; Плашка как у panel-power: во всю ширину острова, прямой верх, скруглённый
-;; низ. Внутри, как в образце Noctalia (panel.luau): крупные цифры, поле ввода
-;; и два действия. В поле пишут цифры с единицей - "30", "30s", "6m", "1:30";
-;; Enter запускает. Пока таймер идёт, крупно видно остаток; в покое - то, что
-;; набрано. Кнопка справа: «Старт» в покое, «Пауза» на ходу, «Продолжить» на
-;; паузе, «Стоп» при звонке.
-;; tmr_num - набранное число: нужно и крупным цифрам, и кнопке «Старт» (у
-;; кнопки нет доступа к тексту поля). panel.sh очищает его при открытии.
+;; --- таймер (небольшая панель по центру острова) ---
+;; Панель 280 px по центру (panel.sh центрирует её сам). Внутри, по слову
+;; владельца: крупные цифры, поле ввода под ними, внизу «Сброс» и «Старт».
+;; Цифры показываются, только когда есть что показать: в покое - пусто, пока
+;; печатаешь - то, что набрано, идёт отсчёт - остаток. Поэтому при вводе окно
+;; не прыгает: место под цифры постоянное (min-height), а пустая строка его
+;; держит.
+;; tmr_num - набранное число: нужно и цифрам, и кнопке «Старт» (у кнопки нет
+;; доступа к тексту поля). panel.sh очищает его при открытии.
 ;; :focusable true - без него gtk.Entry в окне не получает клавиатуру.
+;; Ступенька стыка: те же вогнутые углы, что у острова с верхом экрана.
 (defvar tmr_num "")
 
 (defwindow panel-timer [w]
@@ -1008,36 +1009,44 @@
   :windowtype "utility"
   :unfocus-close true
   :focusable true
-  (box :orientation "horizontal" :space-evenly false :class "pwr-frame"
-       :hexpand true :vexpand true
-    (box :orientation "vertical" :space-evenly false :class "pwr-menu"
+  (overlay
+    (box :orientation "horizontal" :space-evenly false :class "tmr-frame"
          :hexpand true :vexpand true
-      (label :class {timer-state.state == "ring" ? "tmr-time ring" : "tmr-time"}
-             :xalign 0.5
-             :text {timer-state.state == "idle" ? tmr_num : timer-state.fmt})
-      (input :class "tmr-input" :hexpand true :placeholder "10, 6m, 1:30"
-             :onchange "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update tmr_num={}"
-             :onaccept "$HOME/eww-island/adapters/timer/timer.sh start {}")
-      (box :orientation "horizontal" :space-evenly false :class "tmr-actions"
-        (button :class "tmr-btn reset" :hexpand true :timeout "8s"
-          :onclick "$HOME/eww-island/adapters/timer/timer.sh reset"
-          (label :class "tmr-btn-txt" :text "Сброс"))
-        (for t in {timer-state.state == "idle" ? "[1]" : "[]"}
-          (button :class "tmr-btn main" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh start {tmr_num}"
-            (label :class "tmr-btn-txt" :text "Старт")))
-        (for t in {timer-state.state == "run" ? "[1]" : "[]"}
-          (button :class "tmr-btn main" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh pause"
-            (label :class "tmr-btn-txt" :text "Пауза")))
-        (for t in {timer-state.state == "pause" ? "[1]" : "[]"}
-          (button :class "tmr-btn main" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh resume"
-            (label :class "tmr-btn-txt" :text "Продолжить")))
-        (for t in {timer-state.state == "ring" ? "[1]" : "[]"}
+      (box :orientation "vertical" :space-evenly false :class "tmr-menu"
+           :hexpand true :vexpand true
+        (label :class {timer-state.state == "ring" ? "tmr-time ring" : "tmr-time"}
+               :xalign 0.5
+               :text {timer-state.state == "idle" ? tmr_num : timer-state.fmt})
+        (input :class "tmr-input" :hexpand true :placeholder "10, 6m, 1:30"
+               :onchange "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update tmr_num={}"
+               :onaccept "$HOME/eww-island/adapters/timer/timer.sh start {}")
+        (box :orientation "horizontal" :space-evenly false :class "tmr-actions"
           (button :class "tmr-btn" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh stop-sound"
-            (label :class "tmr-btn-txt" :text "Стоп")))))))
+            :onclick "$HOME/eww-island/adapters/timer/timer.sh reset"
+            (label :class "tmr-btn-txt" :text "Сброс"))
+          (for t in {timer-state.state == "idle" ? "[1]" : "[]"}
+            (button :class "tmr-btn main" :hexpand true :timeout "8s"
+              :onclick "$HOME/eww-island/adapters/timer/timer.sh start {tmr_num}"
+              (label :class "tmr-btn-txt" :text "Старт")))
+          (for t in {timer-state.state == "run" ? "[1]" : "[]"}
+            (button :class "tmr-btn main" :hexpand true :timeout "8s"
+              :onclick "$HOME/eww-island/adapters/timer/timer.sh pause"
+              (label :class "tmr-btn-txt" :text "Пауза")))
+          (for t in {timer-state.state == "pause" ? "[1]" : "[]"}
+            (button :class "tmr-btn main" :hexpand true :timeout "8s"
+              :onclick "$HOME/eww-island/adapters/timer/timer.sh resume"
+              (label :class "tmr-btn-txt" :text "Продолжить")))
+          (for t in {timer-state.state == "ring" ? "[1]" : "[]"}
+            (button :class "tmr-btn stop" :hexpand true :timeout "8s"
+              :onclick "$HOME/eww-island/adapters/timer/timer.sh stop-sound"
+              (label :class "tmr-btn-txt" :text "Стоп")))))))
+    (box :orientation "horizontal" :space-evenly false :class "flare-row"
+      :hexpand true :halign "fill" :valign "start"
+      (image :class "flare-left" :path "${EWW_CONFIG_DIR}/assets/corner-left.svg"
+        :image-width 12 :image-height 12)
+      (box :hexpand true)
+      (image :class "flare-right" :path "${EWW_CONFIG_DIR}/assets/corner-right.svg"
+        :image-width 12 :image-height 12))))
 
 (defwindow panel-power [w]
   :monitor 0
