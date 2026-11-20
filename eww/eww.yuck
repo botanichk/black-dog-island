@@ -818,13 +818,29 @@
         ;; Блок «Свои» стоит ВТОРЫМ, сразу после нашей схемы, а не в конце:
         ;; в конце он уходил за границу прокрутки и его никто не видел
         ;; (проверено замерами - секция начиналась ниже y=350).
-        ;; Пустой список не прячем: иначе человек не знает, что свои палитры
-        ;; вообще поддерживаются, и спрашивает «а где пользовательские?».
-        (label :class "colors-sec" :xalign 0 :text "Свои")
+        ;; Строка сохранения: набрал название - текущий вид стал своей темой.
+        ;; Имя живёт в defvar: у кнопки нет доступа к тексту поля (как tmr_num).
+        ;; Кнопка папки открывает ~/.config/noctalia/palettes в менеджере по
+        ;; умолчанию (xdg-open): положить чужой файл или забрать свой.
+        ;; Раздел выделен акцентом: остальные подписи серые, и «Свои» сливались
+        ;; с ними, хотя это единственное место, где человек что-то создаёт.
+        (label :class "colors-sec colors-sec-main" :xalign 0 :text "Свои")
+        ;; Подпись строкой выше: :placeholder у input в этой сборке нет вовсе
+        ;; (в widget_definitions.rs только value/onchange/onaccept/password),
+        ;; поэтому пустое поле выглядело просто пустой плашкой.
+        (label :class "colors-hint" :xalign 0
+               :text "Название темы: наберите и нажмите «Сохранить»")
         (box :orientation "horizontal" :space-evenly false :class "colors-hint-row" :halign "fill"
-          (label :class "colors-hint" :xalign 0 :hexpand true
-                 :text "Положите файл палитры в папку настроек")
+          (input :class "colors-name" :hexpand true
+                 :value {theme_name}
+                 :onchange "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update theme_name={}"
+                 :onaccept "$HOME/eww-island/theme/theme-save.sh {theme_name}")
+          (button :class "colors-chip colors-save" :timeout "20s"
+                  :tooltip "Сохранить палитру, режим и акцент в свои темы"
+                  :onclick "$HOME/eww-island/theme/theme-save.sh {theme_name}"
+            (label :class "colors-folder-txt" :text "Сохранить"))
           (button :class "colors-chip colors-folder" :timeout "8s"
+                  :tooltip "Открыть папку своих палитр"
                   :onclick "$HOME/eww-island/theme/colors-pick.sh open-palettes"
             (box :orientation "horizontal" :space-evenly false :spacing 5
               (label :class "colors-folder-ic" :text "󰉋")
@@ -937,6 +953,9 @@
   :stacking "fg"
   :windowtype "normal"
   :unfocus-close true
+  ;; Поле «Название темы» во вкладке «Цвета»: без :focusable true gtk.Entry
+  ;; клавиатуру не получает (та же причина, что у panel-timer).
+  :focusable true
   (panel-frame
     (box :orientation "horizontal" :space-evenly false :class "hub-panel"
          :hexpand true :vexpand true
@@ -1011,6 +1030,10 @@
 ;; :focusable true - без него gtk.Entry в окне не получает клавиатуру.
 ;; Ступенька стыка: те же вогнутые углы, что у острова с верхом экрана.
 (defvar tmr_num "")
+
+;; Название сохраняемой темы: у кнопки «Сохранить» нет доступа к тексту поля,
+;; поэтому набранное живёт в переменной (та же причина, что у tmr_num).
+(defvar theme_name "")
 
 (defwindow panel-timer [w]
   :monitor 0

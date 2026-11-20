@@ -5,6 +5,8 @@
 #        theme/colors-pick.sh mode <dark|light>
 #        theme/colors-pick.sh wallpaper [m3-схема]
 #        theme/colors-pick.sh reset
+#        theme/colors-pick.sh open-palettes   (открыть папку своих палитр)
+#        theme/colors-pick.sh path [<id>]     (файл палитры действующей темы)
 #
 # id - из theme/colors-list.sh: n-island (наши схемы), p-<слаг> (встроенная
 # палитра Noctalia), u-<слаг> (своя палитра из ~/.config/noctalia/palettes).
@@ -106,7 +108,14 @@ SCHEME=""
 NEED_BUILD=""       # пусто | "palette:<файл>" | "wallpaper"
 
 case "$ACTION" in
-  # Открыть папку своих палитр: рядом с подсказкой «Свои» во вкладке «Цвета».
+  # Путь к файлу палитры: без аргумента - у действующей темы, с аргументом -
+  # у указанного id. Нужен theme/theme-save.sh, чтобы не повторять поиск файла.
+  path)
+    [ -n "$ARG" ] || ARG=$(read_current)
+    resolve_source "$ARG" || { echo "нет файла палитры для '$ARG'" >&2; exit 1; }
+    exit 0 ;;
+
+  # Открыть папку своих палитр: рядом с полем названия во вкладке «Цвета».
   # Менеджер берём по умолчанию (xdg-open), а не наутилус жёстко: у разных
   # людей разные файловые менеджеры. У владельца xdg-open ведёт в наутилус.
   open-palettes)

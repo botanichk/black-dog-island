@@ -1499,6 +1499,20 @@ window.panel-hub {
   padding: 0 0 6px 0;
 }
 
+// Поле названия темы: та же высота, что у чипов рядом, чтобы строка была ровной.
+.colors-name {
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+  color: $on-surface;
+  font-size: $t-caption;
+}
+
+.colors-save {
+  margin-left: 6px;
+}
+
 .colors-folder {
   margin-left: 8px;
 }
@@ -1517,6 +1531,14 @@ window.panel-hub {
   color: $on-surface-variant;
   font-size: $t-caption;
   padding: 6px 0 3px 0;
+}
+
+// «Свои» - единственный раздел, где человек создаёт своё, поэтому он цветной
+// и на кегль больше; остальные подписи остаются служебными.
+.colors-sec-main {
+  color: $primary;
+  font-size: $t-secondary;
+  font-weight: bold;
 }
 
 // One row of cards. Rows are pre-chunked by colors-list.sh: 3 builtin,
