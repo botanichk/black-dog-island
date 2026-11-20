@@ -75,6 +75,72 @@ scripts/stop-island.sh    # закрыть
 Проект в работе, интерфейс меняется. Доска задач и журнал - в
 `docs/TASKS.md`, отчёт аудита - в `docs/AUDIT-2026-11-20.md`.
 
+## Источники цветов
+
+Все палитры острова приходят из **Noctalia** или строятся по её правилам.
+
+| Что | Откуда | Лицензия |
+|---|---|---|
+| 10 встроенных палитр (`theme/palettes/*.json`) | Noctalia, файл `src/theme/builtin_palettes.cpp` тега `v5.4.1` | MIT (`Copyright (c) 2026 noctalia-dev`) |
+| Цвета с обоев, 10 M3-схем | генератор Material 3 внутри Noctalia | MIT (пакет Noctalia) |
+| Светлая и тёмная схемы, акценты | наши, выводятся из палитры | MIT (этот репозиторий) |
+
+Проверено на машине (2026-11-20):
+
+```
+$ pacman -Qi noctalia
+Версия   : 5.5.0-1
+URL      : https://github.com/noctalia-dev/noctalia
+Лицензии : MIT
+$ head -4 /usr/share/licenses/noctalia/LICENSE
+MIT License
+Copyright (c) 2026 noctalia-dev
+```Ссылки: [Noctalia](https://github.com/noctalia-dev/noctalia) ·
+[LICENSE апстрима](https://github.com/noctalia-dev/noctalia/blob/main/LICENSE) ·
+[CREDITS.md](https://github.com/noctalia-dev/noctalia/blob/main/CREDITS.md) ·
+[builtin_palettes.cpp в v5.4.1](https://github.com/noctalia-dev/noctalia/blob/v5.4.1/src/theme/builtin_palettes.cpp).
+
+### Палитры
+
+| Файл | Палитра | Схема на острове |
+|---|---|---|
+| `ayu.json` | Ayu | `p-ayu` |
+| `catppuccin.json` | Catppuccin | `p-catppuccin` |
+| `dracula.json` | Dracula | `p-dracula` |
+| `eldritch.json` | Eldritch | `p-eldritch` |
+| `gruvbox.json` | Gruvbox | `p-gruvbox` |
+| `kanagawa.json` | Kanagawa | `p-kanagawa` |
+| `noctalia.json` | Noctalia | `p-noctalia` |
+| `nord.json` | Nord | `p-nord` |
+| `rosepine.json` | Rosé Pine | `p-rosepine` |
+| `tokyo-night.json` | Tokyo-Night | `p-tokyo-night` |
+
+Файлы скопированы из `builtin_palettes.cpp` **тега v5.4.1** и не правлены.
+Сверено 2026-11-20: у нас 32 цвета (16 ролей × 2 режима) на палитру, и все
+они есть в апстриме - лишних нет. Остальные цвета апстрима (76 на палитру) -
+это терминальная палитра, остров её не использует. Имена полей тоже из
+v5.4.1: в v5.5.0 `surfaceVariant`/`outline` переименованы в
+`surfaceContainer`/`outlineVariant`, значения те же, поэтому при обновлении
+палитр поля придётся сопоставлять, а не копировать вслепую.
+
+**Авторы отдельных палитр: [не подтверждено].** Noctalia не указывает
+авторство палитр ни в `builtin_palettes.cpp`, ни в `CREDITS.md` (там
+перечислены дизайнеры, библиотеки и вендоренные проекты, но не авторы
+схем). Сами названия - известные сообществу схемы, однако приписать их
+конкретным людям по исходникам пакета нельзя. Поэтому мы не пишем
+предполагаемых имён и не выдумываем ссылки. Копирование разрешено
+лицензией MIT самого Noctalia; если понадобится точное авторство, его надо
+брать у апстрима.
+
+### Палитры сообщества
+
+Каталог сообщества (41 палитра) читается **на месте** из
+`~/.local/state/noctalia/community-palettes/*.json` при каждом открытии
+вкладки «Цвета». В репозиторий эти файлы не копируются: у них нет ни
+автора, ни лицензии внутри файла (в JSON только ключи `dark`/`light`), так
+что распространять их мы не вправе и не будем. Нет каталога - нет раздела,
+вкладка остаётся целой.
+
 ## Лицензия
 
 MIT, см. `LICENSE`.

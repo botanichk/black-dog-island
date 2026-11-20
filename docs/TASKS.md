@@ -109,6 +109,17 @@
   по таймауту кнопки).
 
 ## Журнал (новые строки сверху: дата, коммит, что сделано)
+- 2026-11-20 README: раздел «Источники цветов». Лицензия Noctalia
+  подтверждена (`pacman -Qi noctalia` -> MIT, `Copyright (c) 2026
+  noctalia-dev` в `/usr/share/licenses/noctalia/LICENSE`). Перечень 10
+  встроенных палитр и их схем; сверено с `builtin_palettes.cpp` тега
+  `v5.4.1`: 32 наших цвета на палитру - подмножество апстрима, лишних нет;
+  в `v5.5.0` поля `surfaceVariant`/`outline` переименованы в
+  `surfaceContainer`/`outlineVariant`. Авторы палитр - `[не подтверждено]`:
+  ни исходник, ни `CREDITS.md` их не называют, поэтому имён не приписываем.
+  Палитры сообщества (41) в репозиторий не копируются - читаются из
+  `~/.local/state/noctalia/community-palettes`; проверено, что без каталога
+  `colors-list` отвечает (код 0) и вкладка цела.
 - 2026-11-20 Шаг 2 задания 16: `lib/log.sh`, `lib/distro.sh`,
   `lib/backup.sh`, `lib/journal.sh`, `lib/selftest.sh`, `deps/arch.txt`,
   `deps/void.txt`, `deps/engine.txt` (пин `48f5aa8`, upstream
