@@ -17,6 +17,8 @@ xprop             | xorg-xprop        | да | свойства окон, авт
 xrandr            | xorg-xrandr       | да | ширина монитора для центровки острова
 xfconf-query      | xfconf            | да | обои, композитинг, панель XFCE
 python3           | python            | да | адаптеры: погода, медиа, автоскрытие, темы
+setxkbmap         | xorg-setxkbmap    | да | переключатель раскладки
+git               | git               | да | клон движка при установке и update
 
 # --- звук, яркость, сеть, питание ---
 pactl             | libpulse          | да | громкость; без него тихо показывает 0 %
@@ -32,15 +34,17 @@ magick            | imagemagick       | да | снимки экрана, обл
 curl              | curl              | да | погода
 jq                | jq                | да | разбор ответов погоды и медиа
 dconf             | dconf             | нет | тема Plank
+gsettings         | glib2             | нет | тема Plank (тот же пакет, что glib2)
 xdg-open          | xdg-utils         | нет | кнопки "Папка"
 
 # --- сборка движка Eww ---
 cargo             | rustup            | да | сборка движка | сборка
-gcc               | gcc               | да | линковка | сборка
+gcc               | gcc               | да | C-адаптер раскладки собирается при первом запуске
 pkg-config        | pkgconf           | да | поиск библиотек | сборка
-gtk3              | gtk3              | да | заголовки GTK3 | сборка
-libdbusmenu-gtk3  | libdbusmenu-gtk3  | да | нужен даже без трея | сборка
+gtk+-3.0          | gtk3              | да | заголовки GTK3 | сборка
+dbusmenu-gtk3-0.4 | libdbusmenu-gtk3  | да | нужен даже без трея | сборка
 libpulse          | libpulse          | да | заголовки PulseAudio | сборка
+x11               | libx11            | да | заголовки X11 для C-адаптера раскладки | сборка
 
 # --- необязательные приложения ---
 plank             | plank             | нет | док; тема ставится из острова

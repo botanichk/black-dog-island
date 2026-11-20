@@ -14,6 +14,8 @@ xprop             | xprop             | да | свойства окон (1.2.8_
 xrandr            | xrandr            | да | ширина монитора (1.5.4_1)
 xfconf-query      | xfconf            | да | обои, композитинг, панель XFCE (4.20.0_1)
 python3           | python3           | да | адаптеры (3.14.8_1)
+setxkbmap         | setxkbmap         | да | переключатель раскладки (1.3.5_1)
+git               | git               | да | клон движка при установке и update (2.56.1_1)
 
 # --- звук, яркость, сеть, питание ---
 pactl             | libpulseaudio     | да | громкость (16.1_2); pactl лежит в libpulseaudio
@@ -29,15 +31,17 @@ magick            | ImageMagick       | да | снимки экрана, обл
 curl              | curl              | да | погода
 jq                | jq                | да | разбор ответов
 dconf             | dconf             | нет | тема Plank (0.40.0_1)
+gsettings         | glib              | нет | тема Plank (пакет glib, gsettings внутри)
 xdg-open          | xdg-utils         | нет | кнопки "Папка" (1.2.1_1)
 
 # --- сборка движка Eww ---
 cargo             | cargo             | да | сборка движка (1.99.0_1) | сборка
-gcc               | gcc               | да | линковка (14.2.1) | сборка
+gcc               | gcc               | да | C-адаптер раскладки собирается при первом запуске (14.2.1)
 pkg-config        | pkgconf           | да | поиск библиотек (3.0.11_1) | сборка
-gtk3              | gtk+3-devel       | да | заголовки GTK3 (3.24.52_1) | сборка
-libdbusmenu-gtk3  | libdbusmenu-gtk3-devel | да | нужен даже без трея (16.04.0_6) | сборка
+gtk+-3.0          | gtk+3-devel       | да | заголовки GTK3 (3.24.52_1) | сборка
+dbusmenu-gtk3-0.4 | libdbusmenu-gtk3-devel | да | нужен даже без трея (16.04.0_6) | сборка
 libpulse          | pulseaudio-devel  | да | заголовки PulseAudio (16.1_2) | сборка
+x11               | libX11-devel      | да | заголовки X11 для C-адаптера раскладки (1.8.14_1) | сборка
 
 # --- необязательные приложения ---
 plank             | plank             | нет | док (0.11.89_3)

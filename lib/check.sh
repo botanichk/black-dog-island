@@ -62,22 +62,19 @@ check_meslo() {
   case "${1:-?}" in
     '?') log_warn "шрифт Meslo Nerd Font не найден: глифы кнопок будут квадратами, ставь вручную" ;;
     *)   log_warn "шрифт Meslo Nerd Font не найден (пакет $1): глифы кнопок будут квадратами"
-         printf '%s\n' "$1" >> "$_pkgs_opt" ;;
+         printf '%s\n' "$1" >> "$BDI_PKGS_OPT" ;;
   esac
 }
 
 # check_dep_lines <файл deps> <check|build>
+# Пишет пакеты в общие списки: BDI_PKGS_NOW (обязательные), BDI_PKGS_OPT
+# (необязательные, в том числе для сборки). Печать — один раз в check_all,
+# иначе два вызова (check + build) дублировали блоки.
 check_dep_lines() {
   _f=$1
   _mode=$2
   [ -r "$_f" ] || { log_warn "нет таблицы зависимостей: $_f"; return 0; }
 
-  # Пакеты для команды установки. Значения newline-разделены, дубли снимаем
-  # sort -u: imagemagick приходит и от magick, и от import.
-  # Обязательные и необязательные копим в разные файлы: первые мешают install,
-  # вторые только украшение (док, лаунчер), их ставит владелец по желанию.
-  _pkgs=$(mktemp "${TMPDIR:-/tmp}/bdi-pkgs.XXXXXX")
-  _pkgs_opt=$(mktemp "${TMPDIR:-/tmp}/bdi-pkgs-opt.XXXXXX")
   while IFS= read -r _line; do
     case "$_line" in ''|\#*) continue ;; esac
     # Разбор по |. Поля: команда | пакет | обязательна | зачем | сборка
@@ -88,8 +85,10 @@ check_dep_lines() {
     _build=$(printf '%s' "$_line" | cut -d'|' -f5 | tr -d ' ')
 
     [ -z "$_cmd" ] && continue
-    # В режиме check не трогаем то, что нужно только для сборки.
+    # check - только рабочая часть, build - только строки сборки. Иначе
+    # второй проход повторно печатал весь список.
     if [ "$_mode" = check ] && [ "$_build" = сборка ]; then continue; fi
+    if [ "$_mode" = build ] && [ "$_build" != сборка ]; then continue; fi
 
     # Шрифт проверяется отдельно, через fc-list.
     if [ "$_cmd" = "@meslo" ]; then
@@ -101,23 +100,25 @@ check_dep_lines() {
       log_ok "$_cmd"
       continue
     fi
+    # Строки сборки — это библиотеки: у них нет команды, проверяем заголовки
+    # через pkg-config по тому же имени, что в первой колонке.
+    if [ "$_build" = сборка ] && command -v pkg-config >/dev/null 2>&1 &&
+       pkg-config --exists "$_cmd" 2>/dev/null; then
+      log_ok "$_cmd (заголовки на месте)"
+      continue
+    fi
 
-    # Нет команды. Обязательная - fail, необязательная - warn.
-    if [ "$_need" = да ]; then
+    # Нет ни команды, ни заголовков. Строки сборки без заголовков считаем
+    # предупреждением: без них движок не собрать, но остров не падает.
+    if [ "$_need" = да ] && [ "$_build" != сборка ]; then
       log_fail "$_cmd  нет  (пакет $_pkg) - $_why"
-      [ "$_pkg" != "?" ] && printf '%s\n' "$_pkg" >> "$_pkgs"
+      [ "$_pkg" != "?" ] && printf '%s\n' "$_pkg" >> "$BDI_PKGS_NOW"
       BDI_MISSING="$BDI_MISSING $_cmd"
     else
       log_warn "$_cmd  нет  (пакет $_pkg) - $_why"
-      # Необязательное подсказываем отдельно, install из-за него не падает.
-      [ "$_pkg" != "?" ] && printf '%s\n' "$_pkg" >> "$_pkgs_opt"
+      [ "$_pkg" != "?" ] && printf '%s\n' "$_pkg" >> "$BDI_PKGS_OPT"
     fi
   done < "$_f"
-
-  # Дубли пакетов -> одна строка команды.
-  check_pkg_cmd "$_pkgs" "Поставь недостающие пакеты сам (sudo есть только у тебя):"
-  check_pkg_cmd "$_pkgs_opt" "По желанию (не обязательно для работы острова):"
-  rm -f "$_pkgs" "$_pkgs_opt"
 }
 
 # check_pkg_cmd <файл со списком> <заголовок> - печать команды установки.
@@ -127,19 +128,19 @@ check_pkg_cmd() {
   [ -n "$_list" ] || return 0
   _cmdline=$(distro_install_cmd "$_list")
   if [ -n "$_cmdline" ]; then
-    printf '\n%s\n\n  %s\n' "$2" "$_cmdline" >> "$BDI_CHECK_PKGS"
+    printf '\n%s\n\n  %s\n' "$2" "$_cmdline"
   else
-    printf '\nПакетный менеджер этой системы неизвестен. Поставь вручную: %s\n' "$_list" \
-      >> "$BDI_CHECK_PKGS"
+    printf '\nПакетный менеджер этой системы неизвестен. Поставь вручную: %s\n' "$_list"
   fi
 }
 
 # check_all - полная проверка. Печатает отчёт, код 0 если обязательное есть.
-# Отчёт о пакетах собирается в $BDI_CHECK_PKGS и печатается в конце, чтобы
-# команда установки стояла одной строкой, а не после каждого пакета.
+# Пакеты копятся в двух списках и печатаются в конце, одной строкой на группу.
 check_all() {
-  BDI_CHECK_PKGS=$(mktemp "${TMPDIR:-/tmp}/bdi-check.XXXXXX")
   BDI_MISSING=""
+  # Списки пакетов общие для всех вызовов check_dep_lines; печатаются один раз.
+  BDI_PKGS_NOW=$(mktemp "${TMPDIR:-/tmp}/bdi-now.XXXXXX")
+  BDI_PKGS_OPT=$(mktemp "${TMPDIR:-/tmp}/bdi-opt.XXXXXX")
   _fails=0
 
   distro_detect
@@ -159,18 +160,13 @@ check_all() {
     check_dep_lines "$ROOT/deps/arch.txt" check
   fi
 
-  # Сборка движка: отдельным блоком, чтобы было видно, что это только для
-  # компиляции, а не для работы острова.
+  # Сборка движка: строки с пометкой "сборка" проверяются по заголовкам,
+  # а не по команде (у библиотек команды нет).
   log_step "Для сборки движка"
-  if command -v cargo >/dev/null 2>&1 && command -v pkg-config >/dev/null 2>&1; then
-    _ok=1
-    for _pc in gtk+-3.0 dbusmenu-gtk3-0.4 libpulse; do
-      pkg-config --exists "$_pc" 2>/dev/null || { _ok=0; log_fail "нет заголовков $_pc (пакет для сборки)"; }
-    done
-    [ "$_ok" = 1 ] && log_ok "cargo и заголовки GTK3 на месте, можно собирать"
+  if [ -r "$ROOT/build/target/release/eww" ] &&
+     ! find "$ROOT/patches" -name 'eww-*.patch' -newer "$ROOT/build/target/release/eww" 2>/dev/null | head -1 | grep -q .; then
+    log_ok "движок уже собран, пересборка не нужна"
   else
-    [ -r "$ROOT/build/target/release/eww" ] && log_ok "движок уже собран, пересборка не нужна" \
-      || log_warn "движок не собран и нечем собирать: install поставит сборку в очередь"
     [ -n "$BDI_DEPS" ] && check_dep_lines "$ROOT/deps/$BDI_DEPS" build
   fi
 
@@ -190,8 +186,9 @@ check_all() {
   fi
 
   printf '\n'
-  cat "$BDI_CHECK_PKGS"
-  rm -f "$BDI_CHECK_PKGS"
+  check_pkg_cmd "$BDI_PKGS_NOW" "Поставь недостающие пакеты сам (sudo есть только у тебя):"
+  check_pkg_cmd "$BDI_PKGS_OPT" "По желанию (не обязательно для работы острова):"
+  rm -f "$BDI_PKGS_NOW" "$BDI_PKGS_OPT"
 
   if [ -n "$BDI_MISSING" ]; then
     log_info "Не хватает обязательного:$BDI_MISSING"
