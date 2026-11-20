@@ -24,3 +24,4 @@
 12-colors-accents.md - цвета: выбор акцента, каталог сообщества, схемы обоев.
 13-wallpicker.md - шестиугольный выбор обоев (hypr-wallpicker), хук под XFCE.
 15-audit-and-bdi-facts.md - аудит проекта и сбор фактов для BDI (только чтение).
+16-installer.md - установщик BDI: check, install, uninstall, update, doctor.
