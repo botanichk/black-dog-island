@@ -26,7 +26,7 @@
 # иначе последний виденный играющим (файл last), иначе первый по алфавиту.
 set -eu
 
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 mkdir -p "$CACHE"
 PREF="$CACHE/media-player.prefer"
 LAST="$CACHE/media-player.last"

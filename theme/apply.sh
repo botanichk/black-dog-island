@@ -8,7 +8,7 @@
 #        theme/apply.sh default --reload   # файлы + eww reload
 #
 # Что делает:
-#   1. читает theme/schemes/<схема>.json (роли + alpha роли + градиенты);
+#   1. читает схему: theme/schemes (встроенные) или ~/.local/state/bdi/schemes;
 #   2. рендерит theme/templates/colors.scss.tpl -> eww/colors.scss;
 #   3. рендерит theme/templates/assets/*.svg -> eww/assets/ (те же имена);
 #   4. с --reload: build/target/release/eww --config eww reload.
@@ -17,6 +17,17 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
+mkdir -p "$BDI_CONFIG" "$BDI_STATE/schemes" 2>/dev/null || true
+
+# Значения по умолчанию: на свежем клоне файлов состояния ещё нет, а чтение
+# через `< файл` ругается в stderr даже с 2>/dev/null.
+[ -s "$BDI_CONFIG/mode" ] || printf 'dark\n' > "$BDI_CONFIG/mode"
+[ -s "$BDI_CONFIG/current" ] || printf 'default\n' > "$BDI_CONFIG/current"
+[ -s "$BDI_CONFIG/accent" ] || printf 'primary\n' > "$BDI_CONFIG/accent"
+[ -s "$BDI_CONFIG/wallpaper-scheme" ] || printf 'm3-tonal-spot\n' > "$BDI_CONFIG/wallpaper-scheme"
+[ -s "$BDI_CONFIG/hue-filter" ] || printf 'all\n' > "$BDI_CONFIG/hue-filter"
 
 # Разбор аргументов: первый не-флаг - схема, --reload - перечитать конфиг.
 SCHEME=""
@@ -32,19 +43,20 @@ for arg in "$@"; do
       SCHEME=$arg ;;
   esac
 done
-# Без аргумента берём схему из theme/current: так apply.sh не сбрасывает выбор.
+# Без аргумента берём схему из ~/.config/bdi/current: так выбор не сбрасывается.
 if [ -z "$SCHEME" ]; then
-  if [ -f "$ROOT/theme/current" ]; then
-    SCHEME=$(tr -d ' \t\r\n' < "$ROOT/theme/current")
+  if [ -f "$BDI_CONFIG/current" ]; then
+    SCHEME=$(tr -d ' \t\r\n' < "$BDI_CONFIG/current")
   fi
   SCHEME=${SCHEME:-default}
 fi
 
 JSON="$ROOT/theme/schemes/$SCHEME.json"
+[ -f "$JSON" ] || JSON="$BDI_STATE/schemes/$SCHEME.json"
 
 # Схема из палитры (p-*) или из каталога (c-*) в git не лежит: она
 # выводится из theme/palettes/<id>.json и попадает в .gitignore. На чистом
-# клоне theme/current может указывать на такую схему, а файла ещё нет -
+# клоне ~/.config/bdi/current может указывать на такую схему, а файла ещё нет -
 # это не ошибка, а «палитра выбрана, но не отрендерена». Собираем её тем же
 # скриптом, что и вкладка «Цвета», и только потом ругаемся.
 # Без этого свежий клон падал с «нет схемы: p-ayu.json».
@@ -54,7 +66,7 @@ if [ ! -f "$JSON" ]; then
       if [ -f "$ROOT/theme/palettes/${SCHEME#p-}.json" ]; then
         echo "схема $SCHEME не отрендерена - собираю из палитры"
         sh "$ROOT/theme/colors-pick.sh" palette "$SCHEME" \
-          "$(tr -d ' \t\r\n' < "$ROOT/theme/mode" 2>/dev/null || echo dark)" \
+          "$(tr -d ' \t\r\n' < "$BDI_CONFIG/mode" 2>/dev/null || echo dark)" \
           >/dev/null 2>&1 || true
       fi ;;
   esac
@@ -67,7 +79,7 @@ if [ ! -f "$JSON" ]; then
   echo "нет схемы $SCHEME - беру default" >&2
   SCHEME=default
   JSON="$ROOT/theme/schemes/default.json"
-  printf '%s\n' "$SCHEME" > "$ROOT/theme/current"
+  printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current"
 fi
 
 python3 - "$ROOT" "$JSON" "$SCHEME" <<'PY'
@@ -166,10 +178,10 @@ if [ "$RELOAD" -eq 1 ]; then
   fi
 fi
 
-# Запоминаем выбор последним шагом: если рендер упал, theme/current не врёт.
+# Запоминаем выбор последним шагом: если рендер упал, ~/.config/bdi/current не врёт.
 # apply.sh без аргумента возьмёт схему отсюда.
-printf '%s\n' "$SCHEME" > "$ROOT/theme/current"
-echo "схема: $SCHEME (theme/current)"
+printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current"
+echo "схема: $SCHEME (~/.config/bdi/current)"
 
 # --- 5. рамка Plank в цвет $primary ---------------------------------------
 # Plank не перечитывает тему на лету, поэтому его надо перезапустить (~1 с).
@@ -177,7 +189,7 @@ echo "схема: $SCHEME (theme/current)"
 # дока не должен. Подробности - в theme/plank.sh и docs/PLANK.md.
 if [ -x "$ROOT/theme/plank.sh" ]; then
   if ! "$ROOT/theme/plank.sh" apply; then
-    echo "рамка Plank: не применилась (см. ~/.cache/eww-island/plank.log)" >&2
+    echo "рамка Plank: не применилась (см. ~/.cache/bdi/plank.log)" >&2
   fi
 fi
 
@@ -187,6 +199,6 @@ fi
 # пробрасываем: без Ulauncher остров работает. Подробности - theme/ulauncher.sh.
 if [ -x "$ROOT/theme/ulauncher.sh" ]; then
   if ! "$ROOT/theme/ulauncher.sh" apply; then
-    echo "тема Ulauncher: не применилась (см. ~/.cache/eww-island/ulauncher.log)" >&2
+    echo "тема Ulauncher: не применилась (см. ~/.cache/bdi/ulauncher.log)" >&2
   fi
 fi

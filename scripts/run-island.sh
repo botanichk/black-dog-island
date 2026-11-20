@@ -13,7 +13,14 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # EWW_CONFIG_DIR движок в defpoll/defvar не пускает ("cannot access variables
 # here"), а в окружение команд не экспортирует, поэтому передаём своё.
 BDI_ROOT="$ROOT"
-export BDI_ROOT
+# Состояние живёт вне репозитория: выбор темы - в ~/.config/bdi, схемы - в
+# ~/.local/state/bdi, кэш - в ~/.cache/bdi. Скрипты читают эти же переменные,
+# поэтому запуск руками (без run-island.sh) тоже работает.
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
+BDI_CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
+export BDI_ROOT BDI_CONFIG BDI_STATE BDI_CACHE
+mkdir -p "$BDI_CONFIG" "$BDI_STATE/schemes" "$BDI_CACHE" 2>/dev/null || true
 EWW="$ROOT/build/target/release/eww"
 CONF="$ROOT/eww"
 GEOM="$ROOT/adapters/x11/island-geom.sh"
@@ -27,6 +34,14 @@ OPEN_TIMEOUT=10
 [ -x "$GEOM" ] || { echo "нет скрипта поиска окна: $GEOM" >&2; exit 1; }
 
 err() { echo "ошибка: $*" >&2; exit 1; }
+
+# Старое состояние из репозитория переносим один раз (скрипт идемпотентный).
+[ -x "$ROOT/scripts/migrate-state.sh" ] && "$ROOT/scripts/migrate-state.sh" >/dev/null 2>&1 || true
+# colors.scss и SVG генерируются из шаблонов и в git не лежат: на свежем
+# клоне их надо собрать до старта демона, иначе Eww упадёт на @import "colors".
+if [ ! -f "$CONF/colors.scss" ]; then
+  "$ROOT/theme/apply.sh" >/dev/null 2>&1 || echo "предупреждение: не удалось сгенерировать colors.scss" >&2
+fi
 
 # --- 1. Демон: используем существующий или запускаем новый ---
 # "eww daemon" при занятом сокете виснет вечно: родительский процесс ждёт ответа
@@ -68,7 +83,7 @@ if ! "$GEOM" xid >/dev/null 2>&1; then
   # кадр, в котором остров виден слева, а потом прыжок в центр. Ширину берём
   # из того же кэша, что и автоскрытие (файл island-width), чтобы оба пути
   # открывали окно одинаково; нет кэша - открываем в 0x0 и центрируем ниже.
-  WIDTHFILE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/island-width"
+  WIDTHFILE="$BDI_CACHE/island-width"
   OPEN_X=0
   if [ -r "$WIDTHFILE" ]; then
     W=$(tr -cd '0-9' < "$WIDTHFILE")
@@ -105,7 +120,7 @@ ih=$(echo "$geom" | awk '{print $5}')
 # Ширина нужна автоскрытию, чтобы открывать остров сразу по центру, а не
 # открывать в 0x0 и переносить (это видимый прыжок слева). Ширина острова от
 # содержимого не зависит, поэтому кэш безопасен; оба пути пишут один файл.
-WIDTHFILE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/island-width"
+WIDTHFILE="$BDI_CACHE/island-width"
 mkdir -p "$(dirname "$WIDTHFILE")" 2>/dev/null || true
 printf '%s\n' "$iw" > "$WIDTHFILE" 2>/dev/null || true
 

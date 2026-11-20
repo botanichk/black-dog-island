@@ -13,7 +13,7 @@
 #   2. если сейчас активна схема «с обоев» - пересчитывает палитру новыми
 #      обоями и перезагружает остров. Обычную палитру НЕ трогает: человек
 #      выбрал конкретную палитру, и смена картинки не должна её отменять;
-#   3. пишет всё в ~/.cache/eww-island/wallpicker.log, а не в stdout:
+#   3. пишет всё в ~/.cache/bdi/wallpicker.log, а не в stdout:
 #      stdout принадлежит программе выбора, и мусор в нём не нужен.
 #
 # Зависимости только из системы: sh, xfconf-query, xrandr, xprop, noctalia.
@@ -25,7 +25,8 @@ set -eu
 # (проверено: «строка 46: ~/theme/desktop.sh: Нет такого файла»).
 SELF=$(readlink -f "$0")
 ROOT=$(CDPATH= cd -- "$(dirname -- "$SELF")/../.." && pwd)
-LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOG="$LOG_DIR/wallpicker.log"
 
 # Путь приходит первым аргументом. rel_x/rel_y нам не нужны: xfdesktop сам
@@ -61,20 +62,20 @@ fi
 log "обои: $WALL -> $KEY"
 
 # --- 2. палитра -----------------------------------------------------------
-# Схема «с обоев» активна, когда theme/current = wallpaper. Именно так её
+# Схема «с обоев» активна, когда ~/.config/bdi/current = wallpaper. Именно так её
 # определяет вкладка «Цвета» (theme/colors-pick.sh пишет это же значение).
-CURRENT=$(tr -d ' \t\r\n' < "$ROOT/theme/current" 2>/dev/null || true)
+CURRENT=$(tr -d ' \t\r\n' < "$BDI_CONFIG/current" 2>/dev/null || true)
 
 if [ "$CURRENT" != "wallpaper" ]; then
-  log "палитра не с обоев (theme/current=$CURRENT) - цвета не меняю"
+  log "палитра не с обоев (current=$CURRENT) - цвета не меняю"
   exit 0
 fi
 
 # Режим и m3-схему берём из уже сохранённого выбора, чтобы клик по обоям
 # не сбрасывал «Яркую» на «Спокойную» и не переключал светлое на тёмное.
-MODE=$(tr -d ' \t\r\n' < "$ROOT/theme/mode" 2>/dev/null || true)
+MODE=$(tr -d ' \t\r\n' < "$BDI_CONFIG/mode" 2>/dev/null || true)
 case "$MODE" in light|dark) ;; *) MODE=dark ;; esac
-SCHEME=$(tr -d ' \t\r\n' < "$ROOT/theme/wallpaper-scheme" 2>/dev/null || true)
+SCHEME=$(tr -d ' \t\r\n' < "$BDI_CONFIG/wallpaper-scheme" 2>/dev/null || true)
 [ -n "$SCHEME" ] || SCHEME=m3-tonal-spot
 
 # Пересчёт палитры и reload занимают секунды: человек уже закрыл окно

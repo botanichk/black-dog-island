@@ -22,7 +22,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 EWW="$ROOT/build/target/release/eww"
 CONF="$ROOT/eww"
 
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 mkdir -p "$CACHE"
 STAMP="$CACHE/wifi-scan.stamp"
 # Снимок списка, который сейчас показан в панели: "номер|use|sig|locked|ssid".

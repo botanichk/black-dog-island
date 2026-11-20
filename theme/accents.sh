@@ -1,7 +1,7 @@
 #!/bin/sh
 # accents.sh - образцы акцентов действующей палитры для вкладки «Цвета».
 #
-# usage: theme/accents.sh
+# usage: ~/.config/bdi/accents.sh
 #
 # Печатает строку JSON с ПЛОСКИМИ полями, без массивов:
 #   {"id":"p-noctalia","n":2,"active":"primary",
@@ -17,7 +17,7 @@
 # n      - сколько акцентов реально предлагать (без дублей и серых, см.
 #          palette_lib.accents_for). n < 2 - выбирать не из чего, ряд не
 #          рисуется;
-# active - какой акцент сейчас действует. Если выбранный в theme/accent у
+# active - какой акцент сейчас действует. Если выбранный в ~/.config/bdi/accent у
 #          палитры отсутствует, действует primary (так же считает
 #          build_scheme), поэтому «активным» показываем реально применённый.
 #
@@ -28,8 +28,11 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
+mkdir -p "$BDI_CONFIG" "$BDI_STATE/schemes" 2>/dev/null || true
 
-exec python3 - "$ROOT" <<'PY'
+exec python3 - "$ROOT" "$BDI_CONFIG" "$BDI_STATE" <<'PY'
 import json
 import os
 import pathlib
@@ -40,11 +43,13 @@ import palette_lib as lib
 
 root = pathlib.Path(sys.argv[1])
 theme = root / "theme"
+cfg = pathlib.Path(sys.argv[2])
+state = pathlib.Path(sys.argv[3])
 
 
 def read_trim(name, default=""):
     try:
-        return (theme / name).read_text(encoding="utf-8").strip() or default
+        return (cfg / name).read_text(encoding="utf-8").strip() or default
     except OSError:
         return default
 
@@ -91,7 +96,7 @@ if current in ("default", "light"):
 elif current == "wallpaper":
     # У M3-схемы роли уже готовые цвета: берём их как посчитал noctalia и
     # пропускаем через тот же фильтр дублей/серых.
-    path = theme / "schemes" / "wallpaper.json"
+    path = state / "schemes" / "wallpaper.json"
     if path.exists():
         try:
             colors = json.loads(path.read_text(encoding="utf-8"))["colors"]

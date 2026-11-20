@@ -36,6 +36,12 @@
 - 14-portable (пути): в eww.yuck 126 путей `$HOME/eww-island` заменены на
   `$BDI_ROOT`, его экспортирует scripts/run-island.sh. timer.sh находит корень
   сам, если переменной нет.
+- Состояние вне репозитория (задание 16, шаг 1): выбор темы в `~/.config/bdi`,
+  сгенерированные схемы в `~/.local/state/bdi/schemes`, кэш в `~/.cache/bdi`.
+  Переменные `BDI_CONFIG`, `BDI_STATE`, `BDI_CACHE`. `colors.scss`, 19 SVG,
+  `theme/current`, `theme/mode` убраны из git и в `.gitignore`; их собирает
+  `theme/apply.sh` (run-island.sh зовёт на первом запуске). Старое состояние
+  переносит `scripts/migrate-state.sh`.
 
 ## В работе
 - Ulauncher в цвета острова [?] — сделано (прозрачность, rows), ждёт глаз
@@ -45,8 +51,8 @@
 1. Хаб рождается на y=230 и потом переносится на y=50 (642-707 мс от клика).
    Причина: xfwm4 игнорирует --pos для окна dock и центрирует сам.
    НЕ чинить без слова владельца.
-2. 14-portable: экран 1366x768 (пути к проекту уже сделаны)
-3. BDI: вынос состояния в ~/.config/bdi/, определение возможностей, install.sh
+2. 14-portable: экран 1366x768 (пути и состояние сделаны)
+3. 16-installer: шаг 2 (lib/ и deps/), затем check и doctor
 
 ## Идеи (без порядка)
 Тема Ulauncher, вкладка уведомлений, hover трея патчем Eww, анимация открытия хаба,
@@ -97,6 +103,23 @@
   по таймауту кнопки).
 
 ## Журнал (новые строки сверху: дата, коммит, что сделано)
+- 2026-11-20 Состояние вынесено из репозитория: `~/.config/bdi` (current,
+  mode, accent, wallpaper-scheme, hue-filter, состояние Plank и Ulauncher),
+  `~/.local/state/bdi/schemes` (22 сгенерированные схемы), `~/.cache/bdi`
+  (кэш, перенесён из `~/.cache/eww-island`). Переменные окружения `BDI_CONFIG`,
+  `BDI_STATE`, `BDI_CACHE` экспортирует `scripts/run-island.sh`; скрипты берут
+  те же значения по умолчанию, поэтому работают и при ручном запуске.
+  `eww/colors.scss`, 19 SVG из `theme/templates/assets`, `theme/current` и
+  `theme/mode` убраны из git и добавлены в `.gitignore` - на свежем клоне их
+  собирает `theme/apply.sh`, `run-island.sh` зовёт его до старта демона.
+  Миграция - `scripts/migrate-state.sh` (идемпотентная, оригиналы удаляет
+  только при совпадении байт в байт).
+  Проверено: остров 373,0 619x50, `eww logs` пуст, `colors-mode`=light,
+  `colors-now`=wallpaper, `colors-wall`=faithful, `colors-wall-name` и
+  `colors-wall-schemes` (10 схем) отвечают, `colors-list` строит каталог
+  (41 палитра сообщества), `colors.scss` после `apply.sh` совпал байт в байт,
+  `theme-save.sh --selftest` - ok, `$surface` в теме `#e5e3e8`, пиксель
+  острова (400,25) = `srgb(229,227,232)`.
 - 2026-11-20 14-portable (пути): 126 вхождений `$HOME/eww-island` в
   `eww/eww.yuck` заменены на `$BDI_ROOT`. `${...}` в defpoll/defvar движок
   запрещает ("cannot access variables here"), а `EWW_CONFIG_DIR` в окружение

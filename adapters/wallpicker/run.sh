@@ -24,7 +24,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 BIN="${WALLPICKER_BIN:-$HOME/src/hypr-wallpicker/wallpicker}"
 CLASS="wallpicker.wallpicker"
-LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOG="$LOG_DIR/wallpicker.log"
 
 # Радиус, число колонок и зазор: 85 px / 7 колонок / 5 px подобраны под

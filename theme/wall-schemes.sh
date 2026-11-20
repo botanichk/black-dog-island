@@ -5,11 +5,11 @@
 #
 # Печатает JSON для вкладки «Цвета»: ряд образцов под блоком «С обоев».
 # У каждой из десяти схем образец - цвет, который станет primary острова,
-# если по ней кликнуть (с учётом theme/accent и подгонки контраста).
+# если по ней кликнуть (с учётом ~/.config/bdi/accent и подгонки контраста).
 #
 # Расчёт один раз на картинку: `noctalia theme` вызывается десять раз (по
 # одному на схему), это ~1.3 с, поэтому результат кладётся в кэш по хэшу
-# файла обоев: ~/.cache/eww-island/wall-schemes/<sha1>.v2.json. Повторный
+# файла обоев: ~/.cache/bdi/wall-schemes/<sha1>.v2.json. Повторный
 # опрос (раз в 15 с) читает файл и стоит миллисекунды.
 #
 # Почему кэш по содержимому, а не по пути: владелец может перерисовать обои
@@ -23,7 +23,8 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/wall-schemes"
+CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}/wall-schemes"
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
 
 # Порядок и подписи. Подписи короткие: они уходят в tooltip образца.
 SCHEMES='m3-tonal-spot|Спокойная
@@ -51,16 +52,16 @@ WALL=$("$ROOT/theme/from-wallpaper.sh" --path 2>/dev/null) || empty
 ROOT_HASH=$(sha1sum -- "$WALL" 2>/dev/null | cut -d' ' -f1)
 [ -n "$ROOT_HASH" ] || empty
 
-MODE=$(tr -d ' \t\r\n' < "$ROOT/theme/mode" 2>/dev/null || true)
+MODE=$(tr -d ' \t\r\n' < "$BDI_CONFIG/mode" 2>/dev/null || true)
 case "$MODE" in light|dark) ;; *) MODE=dark ;; esac
 
-WALL_SCHEME=$(tr -d ' \t\r\n' < "$ROOT/theme/wallpaper-scheme" 2>/dev/null || true)
+WALL_SCHEME=$(tr -d ' \t\r\n' < "$BDI_CONFIG/wallpaper-scheme" 2>/dev/null || true)
 [ -n "$WALL_SCHEME" ] || WALL_SCHEME=m3-tonal-spot
-CURRENT=$(tr -d ' \t\r\n' < "$ROOT/theme/current" 2>/dev/null || true)
+CURRENT=$(tr -d ' \t\r\n' < "$BDI_CONFIG/current" 2>/dev/null || true)
 
 # --- 2. кэш ---------------------------------------------------------------
 # Формат кэша в имени: в v1 лежал только primary, а образец обязан совпадать
-# с тем, что реально применится (с учётом theme/accent - их три, плюс
+# с тем, что реально применится (с учётом ~/.config/bdi/accent - их три, плюс
 # подгонка контраста к surface). Старый файл тогда просто не найдётся и
 # пересоберётся сам.
 mkdir -p "$CACHE" 2>/dev/null || empty
@@ -142,7 +143,7 @@ fi
 # --- 3. JSON для вкладки --------------------------------------------------
 # Плоские поля k1..k10/l1..l10/c1..c10/a1..a10, а не массив: в этой сборке
 # индексы и поля вложенных объектов внутри (for) не читаются - так же
-# сделаны акценты (theme/accents.sh). Ряд из десяти слотов рисуется в yuck
+# сделаны акценты (~/.config/bdi/accents.sh). Ряд из десяти слотов рисуется в yuck
 # десятью виджетами с :visible по n.
 #
 # Цвет образца считается НЕ своей копией формул, а тем же кодом, что
@@ -152,7 +153,7 @@ fi
 # accents_for как дубль, и build_scheme откатился на primary, подогнанный по
 # контрасту; у «Монохрома» #3b3b3b против #000000). Образец обязан совпадать
 # с тем, что увидит человек после клика.
-python3 - "$FILE" "$MODE" "$WALL_SCHEME" "$CURRENT" "$ROOT_HASH" "$ROOT/theme/accent" "$ROOT/theme" <<'PY'
+python3 - "$FILE" "$MODE" "$WALL_SCHEME" "$CURRENT" "$ROOT_HASH" "$BDI_CONFIG/accent" "$ROOT/theme" <<'PY'
 import json, sys
 
 sys.path.insert(0, sys.argv[7])
@@ -161,7 +162,7 @@ import palette2scheme
 
 cache_path, mode, active, current, key = sys.argv[1:6]
 
-# Акцент, который станет primary острова (theme/accent) - та же роль, что
+# Акцент, который станет primary острова (~/.config/bdi/accent) - та же роль, что
 # читает from-wallpaper.sh.
 try:
     accent = open(sys.argv[6], encoding="utf-8").read().strip()

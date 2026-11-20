@@ -19,6 +19,9 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
+mkdir -p "$BDI_CONFIG" "$BDI_STATE/schemes" 2>/dev/null || true
 EWW="$ROOT/build/target/release/eww"
 PANEL="$ROOT/adapters/x11/panel.sh"
 THEME="$ROOT/theme"
@@ -38,34 +41,34 @@ MODE=${1:-}
 [ $# -eq 0 ] || { echo "лишний аргумент: $1" >&2; exit 2; }
 
 read_mode() {
-  m=$(tr -d ' \t\r\n' < "$THEME/mode" 2>/dev/null || true)
+  m=$(tr -d ' \t\r\n' < "$BDI_CONFIG/mode" 2>/dev/null || true)
   case "$m" in light) echo light ;; *) echo dark ;; esac
 }
 
-write_mode() { printf '%s\n' "$1" > "$THEME/mode"; }
+write_mode() { printf '%s\n' "$1" > "$BDI_CONFIG/mode"; }
 
-# Какой акцент выбран (theme/accent, вне git). Пусто = primary: без выбора
+# Какой акцент выбран (~/.config/bdi/accent, вне git). Пусто = primary: без выбора
 # внешний вид не меняется, как было до шага 1.
 read_accent() {
-  a=$(tr -d ' \t\r\n' < "$THEME/accent" 2>/dev/null || true)
+  a=$(tr -d ' \t\r\n' < "$BDI_CONFIG/accent" 2>/dev/null || true)
   case "$a" in secondary|tertiary) echo "$a" ;; *) echo primary ;; esac
 }
 
-write_accent() { printf '%s\n' "$1" > "$THEME/accent"; }
+write_accent() { printf '%s\n' "$1" > "$BDI_CONFIG/accent"; }
 
 read_current() {
-  tr -d ' \t\r\n' < "$THEME/current" 2>/dev/null || echo default
+  tr -d ' \t\r\n' < "$BDI_CONFIG/current" 2>/dev/null || echo default
 }
 
-# Какая m3-схема выбрана для обоев (theme/wallpaper-scheme). Нужна при смене
+# Какая m3-схема выбрана для обоев (~/.config/bdi/wallpaper-scheme). Нужна при смене
 # режима: иначе обои пересобираются со «Спокойной», затирая выбор.
 read_wall_scheme() {
-  s=$(tr -d ' \t\r\n' < "$THEME/wallpaper-scheme" 2>/dev/null || true)
+  s=$(tr -d ' \t\r\n' < "$BDI_CONFIG/wallpaper-scheme" 2>/dev/null || true)
   printf '%s\n' "${s:-m3-tonal-spot}"
 }
 
 # Путь к файлу палитры по id схемы: p-<слаг> -> theme/palettes, u-<слаг> ->
-# ~/.config/noctalia/palettes. Нужен при смене режима: theme/current хранит
+# ~/.config/noctalia/palettes. Нужен при смене режима: ~/.config/bdi/current хранит
 # id схемы, а неисходный файл, и без этого «перекрасить в светлую» не знает,
 # откуда брать палитру.
 resolve_source() {
@@ -167,14 +170,14 @@ case "$ACTION" in
     ;;
 
   # Фильтр оттенка каталога сообщества. Схему не трогает: пишет только
-  # theme/hue-filter и перечитывает список - reload не нужен (проверено,
+  # ~/.config/bdi/hue-filter и перечитывает список - reload не нужен (проверено,
   # eww poll colors-list обновляет ряды за 0.04 с).
   hue)
     case "$ARG" in
       all|green|blue|warm|gray) ;;
       *) echo "hue: ожидалось all, green, blue, warm или gray, получено '$ARG'" >&2; exit 2 ;;
     esac
-    printf '%s\n' "$ARG" > "$THEME/hue-filter"
+    printf '%s\n' "$ARG" > "$BDI_CONFIG/hue-filter"
     "$EWW" --config "$ROOT/eww" poll colors-list >/dev/null 2>&1 || true
     echo "оттенок: $ARG"
     exit 0
@@ -259,13 +262,13 @@ if [ -n "$NEED_BUILD" ]; then
     wallpaper)
       # from-wallpaper.sh с явным режимом уже применяет схему и пишет mode;
       # сюда попадаем при смене режима у действующих обоев - пересобрать
-      # ТУ ЖЕ m3-схему, что выбрана (theme/wallpaper-scheme), а не «Спокойную».
+      # ТУ ЖЕ m3-схему, что выбрана (~/.config/bdi/wallpaper-scheme), а не «Спокойную».
       "$THEME/from-wallpaper.sh" "$(read_wall_scheme)" "$(read_mode)" >/dev/null ;;
     palette:*)
       src=${NEED_BUILD#palette:}
       python3 "$THEME/palette2scheme.py" "$src" --mode "$(read_mode)" \
         --accent "$(read_accent)" \
-        --out "$THEME/schemes/$SCHEME.json" >/dev/null ;;
+        --out "$BDI_STATE/schemes/$SCHEME.json" >/dev/null ;;
   esac
 fi
 

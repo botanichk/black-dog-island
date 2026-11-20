@@ -4,7 +4,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-BIN="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/kbdlayout"
+BIN="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}/kbdlayout"
 
 if [ ! -x "$BIN" ] || [ "$ROOT/adapters/x11/kbdlayout.c" -nt "$BIN" ]; then
   mkdir -p "$(dirname -- "$BIN")"

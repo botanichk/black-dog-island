@@ -4,7 +4,7 @@
 # usage: theme/colors-list.sh
 #
 # Печатает JSON для вкладки «Цвета». Цвета уже подобраны под режим из
-# theme/mode: превью показывает ОДИН вариант палитры, тот, что сейчас выбран
+# ~/.config/bdi/mode: превью показывает ОДИН вариант палитры, тот, что сейчас выбран
 # (тёмный или светлый), а не оба сразу.
 #
 #   {"builtin": [[карточка, карточка, карточка], [...]],
@@ -38,8 +38,9 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
 
-exec python3 - "$ROOT" <<'PY'
+exec python3 - "$ROOT" "$BDI_CONFIG" <<'PY'
 import json
 import os
 import pathlib
@@ -50,33 +51,34 @@ import palette_lib as lib
 
 root = pathlib.Path(sys.argv[1])
 theme = root / "theme"
+cfg = pathlib.Path(sys.argv[2])
 
 mode = "dark"
 try:
-    mode = (theme / "mode").read_text(encoding="utf-8").strip() or "dark"
+    mode = (cfg / "mode").read_text(encoding="utf-8").strip() or "dark"
 except OSError:
     pass
 if mode not in ("dark", "light"):
     mode = "dark"
 
 try:
-    current = (theme / "current").read_text(encoding="utf-8").strip() or "default"
+    current = (cfg / "current").read_text(encoding="utf-8").strip() or "default"
 except OSError:
     current = "default"
 
-# Выбранный акцент (theme/accent, вне git). Пусто = primary, как до шага 1:
+# Выбранный акцент (~/.config/bdi/accent, вне git). Пусто = primary, как до шага 1:
 # без выбора внешний вид не меняется.
 try:
-    accent = (theme / "accent").read_text(encoding="utf-8").strip() or "primary"
+    accent = (cfg / "accent").read_text(encoding="utf-8").strip() or "primary"
 except OSError:
     accent = "primary"
 if accent not in ("primary", "secondary", "tertiary"):
     accent = "primary"
 
-# Фильтр оттенка для каталога сообщества. Состояние в theme/hue-filter
+# Фильтр оттенка для каталога сообщества. Состояние в ~/.config/bdi/hue-filter
 # (вне git): all / green / blue / warm / gray. Нет файла - all.
 try:
-    hue = (theme / "hue-filter").read_text(encoding="utf-8").strip() or "all"
+    hue = (cfg / "hue-filter").read_text(encoding="utf-8").strip() or "all"
 except OSError:
     hue = "all"
 if hue not in ("all", "green", "blue", "warm", "gray"):

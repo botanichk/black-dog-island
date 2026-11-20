@@ -3,7 +3,7 @@
 #
 # usage: theme/switch.sh              # следующая схема по кругу
 #        theme/switch.sh light        # конкретная схема
-#        theme/switch.sh --no-reload  # только файлы и theme/current
+#        theme/switch.sh --no-reload  # только файлы и ~/.config/bdi/current
 #
 # Почему не просто apply.sh: reload закрывает окно хаба и сбрасывает hub_tab
 # на 0 (проверено). Здесь после применения скрипт сам переоткрывает хаб на
@@ -16,6 +16,8 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
 EWW="$ROOT/build/target/release/eww"
 PANEL="$ROOT/adapters/x11/panel.sh"
 
@@ -36,7 +38,7 @@ SCHEMES=$( { echo default; ls "$ROOT/theme/schemes" \
   | sed 's/\.json$//' \
   | grep -v -e '^default$' -e '^p-' -e '^u-' -e '^wallpaper$' \
   | sort; } | tr '\n' ' ')
-CUR=$(tr -d ' \t\r\n' < "$ROOT/theme/current" 2>/dev/null || echo default)
+CUR=$(tr -d ' \t\r\n' < "$BDI_CONFIG/current" 2>/dev/null || echo default)
 [ -n "$CUR" ] || CUR=default
 
 # Следующая схема после CUR в списке (по кругу).
@@ -52,7 +54,7 @@ next_scheme() {
 }
 
 [ -n "$WANT" ] || WANT=$(next_scheme)
-[ -f "$ROOT/theme/schemes/$WANT.json" ] || {
+{ [ -f "$ROOT/theme/schemes/$WANT.json" ] || [ -f "$BDI_STATE/schemes/$WANT.json" ]; } || {
   echo "нет схемы: $WANT (есть: $SCHEMES)" >&2; exit 2; }
 
 # Что сейчас открыто: вкладка хаба и была ли панель вообще.

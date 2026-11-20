@@ -28,9 +28,10 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 THEME_NAME=EwwIsland
 USER_THEMES="$HOME/.local/share/plank/themes"
 SYS_THEMES="/usr/share/plank/themes"
-STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/eww-island"
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+STATE_DIR="$BDI_CONFIG"
 BASE_FILE="$STATE_DIR/plank-base-theme"
-LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOG="$LOG_DIR/plank.log"
 
 mkdir -p "$LOG_DIR" 2>/dev/null || true

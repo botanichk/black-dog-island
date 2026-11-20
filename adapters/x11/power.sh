@@ -28,7 +28,7 @@
 # Это защита от случайного нажатия при отладке.
 set -eu
 
-LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 LOG="$LOG_DIR/power.log"
 

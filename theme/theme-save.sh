@@ -14,7 +14,7 @@
 # даёт те же цвета по всем ролям).
 #
 # Выбранный акцент переносится в роль primary: иначе сохранённая тема
-# выглядела бы иначе при другом theme/accent. Так она воспроизводится ровно
+# выглядела бы иначе при другом ~/.config/bdi/accent. Так она воспроизводится ровно
 # так, как её видел человек в момент сохранения.
 #
 # Зависимости только из системы: sh, python3, noctalia (только для обоев).
@@ -22,6 +22,7 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 THEME="$ROOT/theme"
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
 # PALETTES_DIR/SAVE_SOURCE/SAVE_NO_APPLY - только для --selftest: пишем в
 # временный каталог и не трогаем действующую тему.
 DIR=${PALETTES_DIR:-$HOME/.config/noctalia/palettes}
@@ -67,12 +68,12 @@ case "$NAME" in
   */*|*\\*) echo "в названии не должно быть / или \\" >&2; exit 2 ;;
 esac
 
-CURRENT=$(tr -d ' \t\r\n' < "$THEME/current" 2>/dev/null || echo default)
-ACCENT=$(tr -d ' \t\r\n' < "$THEME/accent" 2>/dev/null || true)
+CURRENT=$(tr -d ' \t\r\n' < "$BDI_CONFIG/current" 2>/dev/null || echo default)
+ACCENT=$(tr -d ' \t\r\n' < "$BDI_CONFIG/accent" 2>/dev/null || true)
 case "$ACCENT" in secondary|tertiary) ;; *) ACCENT=primary ;; esac
-MODE=$(tr -d ' \t\r\n' < "$THEME/mode" 2>/dev/null || true)
+MODE=$(tr -d ' \t\r\n' < "$BDI_CONFIG/mode" 2>/dev/null || true)
 case "$MODE" in light|dark) ;; *) MODE=dark ;; esac
-WALL_SCHEME=$(tr -d ' \t\r\n' < "$THEME/wallpaper-scheme" 2>/dev/null || true)
+WALL_SCHEME=$(tr -d ' \t\r\n' < "$BDI_CONFIG/wallpaper-scheme" 2>/dev/null || true)
 
 case "$CURRENT" in
   default|light)

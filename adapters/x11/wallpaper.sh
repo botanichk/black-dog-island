@@ -14,7 +14,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOG="$LOG_DIR/wallpicker.log"
 
 XFCE_CLASS="xfdesktop-settings.Xfdesktop-settings"

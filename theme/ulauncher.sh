@@ -38,10 +38,10 @@ UL_CONFIG="$CONF_DIR/ulauncher"
 USER_THEMES="$UL_CONFIG/user-themes"
 SETTINGS="$UL_CONFIG/settings.json"
 SYS_THEMES="/usr/share/ulauncher/themes"
-STATE_DIR="$CONF_DIR/eww-island"
+STATE_DIR="${BDI_CONFIG:-$CONF_DIR/bdi}"
 STATE_FILE="$STATE_DIR/ulauncher-theme"
 MARKER=".eww-island"
-LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOG="$LOG_DIR/ulauncher.log"
 
 mkdir -p "$LOG_DIR" 2>/dev/null || true

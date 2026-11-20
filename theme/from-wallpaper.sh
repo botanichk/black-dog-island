@@ -2,7 +2,7 @@
 # from-wallpaper.sh - палитра из обоев текущего рабочего стола.
 #
 # usage: theme/from-wallpaper.sh [m3-схема] [dark|light] [--reload]
-#        theme/from-wallpaper.sh                      # m3-tonal-spot, режим из theme/mode
+#        theme/from-wallpaper.sh                      # m3-tonal-spot, режим из ~/.config/bdi/mode
 #        theme/from-wallpaper.sh vibrant light        # конкретная схема и режим
 #        theme/from-wallpaper.sh --name               # имя обоев, без обработки
 #        theme/from-wallpaper.sh --path               # полный путь обоев
@@ -30,6 +30,9 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
+mkdir -p "$BDI_CONFIG" "$BDI_STATE/schemes" 2>/dev/null || true
 
 SCHEME="m3-tonal-spot"
 MODE=""
@@ -67,7 +70,7 @@ dysfunctional, muted)" >&2; exit 2 ;;
 esac
 
 if [ -z "$MODE" ]; then
-  MODE=$(tr -d ' \t\r\n' < "$ROOT/theme/mode" 2>/dev/null || true)
+  MODE=$(tr -d ' \t\r\n' < "$BDI_CONFIG/mode" 2>/dev/null || true)
   MODE=${MODE:-dark}
 fi
 
@@ -112,13 +115,13 @@ rm -f "$TMP.err"
 [ -s "$TMP" ] || { echo "noctalia вернула пустой ответ для $WALL" >&2; exit 1; }
 
 # --- 3. схема -------------------------------------------------------------
-# Выбранный акцент (theme/accent) действует и для обоев: у M3-схемы есть все
+# Выбранный акцент (~/.config/bdi/accent) действует и для обоев: у M3-схемы есть все
 # три роли, и человек вправе взять secondary вместо primary.
-ACCENT=$(tr -d ' \t\r\n' < "$ROOT/theme/accent" 2>/dev/null || true)
+ACCENT=$(tr -d ' \t\r\n' < "$BDI_CONFIG/accent" 2>/dev/null || true)
 case "$ACCENT" in secondary|tertiary) ;; *) ACCENT=primary ;; esac
 python3 "$ROOT/theme/palette2scheme.py" --theme-json "$TMP" --mode "$MODE" \
   --accent "$ACCENT" \
-  --out "$ROOT/theme/schemes/wallpaper.json" >/dev/null
+  --out "$BDI_STATE/schemes/wallpaper.json" >/dev/null
 
 # --- 4. применить ---------------------------------------------------------
 if [ "$RELOAD" -eq 1 ]; then
@@ -126,10 +129,10 @@ if [ "$RELOAD" -eq 1 ]; then
 else
   "$ROOT/theme/apply.sh" wallpaper
 fi
-printf '%s\n' "$MODE" > "$ROOT/theme/mode"
+printf '%s\n' "$MODE" > "$BDI_CONFIG/mode"
 # Какая m3-схема выбрана: без этого смена режима пересобирала обои со
 # «Спокойной», затирая «Яркую»/«Мягкую»/«Тихую» (проверено).
-printf '%s\n' "$SCHEME" > "$ROOT/theme/wallpaper-scheme"
+printf '%s\n' "$SCHEME" > "$BDI_CONFIG/wallpaper-scheme"
 
 echo "обои: $WALL"
 echo "схема: $SCHEME, режим: $MODE"

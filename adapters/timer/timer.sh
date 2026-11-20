@@ -13,7 +13,7 @@
 # в плагине Noctalia секунды вычитались в update() сервиса - там отсчёт умирал
 # вместе с сервисом и шёл с ошибкой накопления.
 #
-# Состояние - файлы в ~/.cache/eww-island/timer/:
+# Состояние - файлы в ~/.cache/bdi/timer/:
 #   end      метка конца (unix-время, целые секунды); при паузе - пусто
 #   left     остаток на паузе в секундах
 #   total    длительность постановки (для полоски прогресса)
@@ -23,7 +23,7 @@
 
 set -eu
 
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/timer"
+CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}/timer"
 # Корень проекта: из окружения демона (run-island.sh, panel.sh) или рядом со скриптом.
 ROOT="${BDI_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)}"
 SOUNDS="$ROOT/adapters/timer/sounds"
@@ -139,7 +139,7 @@ ringing() {
 stop_sound() {
   _pid=$(read_int "$CACHE/alarm.pid")
   [ "$_pid" -gt 0 ] && kill "$_pid" 2>/dev/null || true
-  pkill -f 'pw-play.*eww-island/adapters/timer/sounds/' 2>/dev/null || true
+  pkill -f 'pw-play.*adapters/timer/sounds/' 2>/dev/null || true
   rm -f "$CACHE/ringing" "$CACHE/alarm.pid"
 }
 

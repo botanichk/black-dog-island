@@ -3,15 +3,15 @@
 
 (defpoll clock :interval "1s" "date +%H:%M")
 ;; Палитры для вкладки «Цвета» (шаг 11): JSON-массив карточек, цвета уже под
-;; режим из theme/mode. :initial обязателен - цикл for читает значение при
+;; режим из ~/.config/bdi/mode. :initial обязателен - цикл for читает значение при
 ;; сборке, до первого опроса переменная пуста и разбор JSON падает.
 ;; Опрос раз в 5 с: человек может добавить свою палитру файлом, список
 ;; должен это заметить без перезапуска острова.
 (defpoll colors-list :interval "5s" :initial "[]"
   "$BDI_ROOT/theme/colors-list.sh")
 ;; Действующие режим и схема - для подсветки выбранного.
-(defpoll colors-mode :interval "3s" :initial "dark" "cat $BDI_ROOT/theme/mode")
-(defpoll colors-now :interval "3s" :initial "default" "cat $BDI_ROOT/theme/current")
+(defpoll colors-mode :interval "3s" :initial "dark" "cat $BDI_CONFIG/mode")
+(defpoll colors-now :interval "3s" :initial "default" "cat $BDI_CONFIG/current")
 ;; Акценты действующей палитры: до трёх образцов под шапкой вкладки, плоскими
 ;; полями (n/r1..r3/h1..h3) - массивы внутри (for) в этой сборке не читаются
 ;; через индексы, ряд получался пустым. Опрос 3 с: акцент меняется кликом,
@@ -22,7 +22,7 @@
 ;; Какая m3-схема выбрана для обоев: нужно, чтобы подсветка стояла на той
 ;; кнопке, которую нажали, а не всегда на «Спокойной».
 (defpoll colors-wall :interval "3s" :initial "m3-tonal-spot"
-  "cat $BDI_ROOT/theme/wallpaper-scheme 2>/dev/null || echo m3-tonal-spot")
+  "cat $BDI_CONFIG/wallpaper-scheme 2>/dev/null || echo m3-tonal-spot")
 ;; Образцы M3-схем для текущих обоев: по одному primary на схему, плоскими
 ;; полями (n/k1..k10/l1..l10/c1..c10/a1..a10) - массивы внутри (for) в этой
 ;; сборке через индексы не читаются. Опрос 15 с: расчёт кэшируется по хэшу
@@ -40,7 +40,7 @@
 ;; Событийно: xprop -spy печатает индекс рабочего стола при каждом изменении.
 (deflisten cur_ws :initial "0" "xprop -spy -root _NET_CURRENT_DESKTOP | sed -u -n 's/.*= //p'")
 ;; Путь раскрывает shell при выполнении: ${...}-интерполяция в конфиге здесь недоступна.
-;; shortcut: путь привязан к ~/eww-island, при переносе конфига в ~/.config/eww его нужно обновить.
+;; Корень и каталоги состояния приходят переменными окружения из run-island.sh.
 
 ;; shortcut: громкость опрашивается раз в 2 с; при заметной нагрузке перейти на `pactl subscribe`.
 (defpoll volume :interval "2s" "pactl get-sink-mute @DEFAULT_SINK@ | grep -q yes && echo MUTE || pactl get-sink-volume @DEFAULT_SINK@ | grep -o '[0-9]*%' | head -1")
@@ -378,9 +378,9 @@
 ;; перерисовывается без перезапуска. Путь уникален для каждого снимка: Eww
 ;; кеширует картинку по пути и с постоянным именем показал бы старую.
 (defpoll shot_thumb :interval "1h" :initial ""
-  "ls -1t $HOME/.cache/eww-island/thumbs/last-*.png 2>/dev/null | head -1")
+  "ls -1t $BDI_CACHE/thumbs/last-*.png 2>/dev/null | head -1")
 (defpoll shot_stamp :interval "1h" :initial ""
-  "ls -1t $HOME/.cache/eww-island/thumbs/last-*.png 2>/dev/null | head -1 | sed 's#.*/last-##; s#\\.png$##'")
+  "ls -1t $BDI_CACHE/thumbs/last-*.png 2>/dev/null | head -1 | sed 's#.*/last-##; s#\\.png$##'")
 
 ;; Кнопка вкладки в левой колонке хаба: обновляет hub_tab напрямую.
 (defwidget hub-tab-btn [idx glyph]
@@ -870,7 +870,7 @@
                :visible {colors-list.community_all > 0}
                :text "Сообщество")
         ;; Фильтр по оттенку. «Зелёные» первыми - владелец просил их.
-        ;; Клик пишет theme/hue-filter и делает eww poll colors-list:
+        ;; Клик пишет ~/.config/bdi/hue-filter и делает eww poll colors-list:
         ;; reload не нужен, вкладка не пересоздаётся, позиция прокрутки цела.
         (box :orientation "horizontal" :space-evenly false :class "colors-hue"
              :halign "fill" :visible {colors-list.community_all > 0}

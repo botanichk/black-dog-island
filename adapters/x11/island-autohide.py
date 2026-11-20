@@ -46,7 +46,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 CONF = os.path.join(ROOT, "eww")
 EWW = os.path.join(ROOT, "build", "target", "release", "eww")
 
-CACHE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "eww-island")
+CACHE = os.environ.get("BDI_CACHE") or os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "bdi")
 PIDFILE = os.path.join(CACHE, "autohide.pid")
 LOGFILE = os.path.join(CACHE, "autohide.log")
 OFFFILE = os.path.join(CACHE, "autohide-off")

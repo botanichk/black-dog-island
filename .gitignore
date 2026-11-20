@@ -12,3 +12,9 @@ theme/hue-filter
 # владельца (попадались и на 42 МБ). Лежат в папке, но не в репозитории.
 adapters/timer/sounds/*
 !adapters/timer/sounds/alarm.wav
+# Генерируются theme/apply.sh; само состояние живёт в ~/.config/bdi и
+# ~/.local/state/bdi, в репозитории этих файлов нет.
+eww/colors.scss
+eww/assets/*.svg
+theme/current
+theme/mode

@@ -10,7 +10,7 @@
 #   d<N>sun | d<N>set
 set -eu
 
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island"
+CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOC="$HOME/.cache/noctalia/location.json"
 SNAP="$CACHE/weather.json"
 CITYF="$CACHE/city.txt"

@@ -133,11 +133,14 @@ def _band_bins():
     return out
 
 
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+
+
 def _playing():
     """Играет ли хоть один плеер MPRIS. Тихо: false, если busctl не ответил."""
     try:
         out = subprocess.run(
-            [os.path.expanduser("~/eww-island/adapters/media/mpris.sh"), "status"],
+            [os.path.join(ROOT, "adapters", "media", "mpris.sh"), "status"],
             capture_output=True,
             text=True,
             timeout=5,

@@ -12,7 +12,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 EWW="$ROOT/build/target/release/eww"
 CONF="$ROOT/eww"
 SHOTS="$HOME/Pictures/Screenshots"
-CACHE="$HOME/.cache/eww-island/thumbs"
+CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}/thumbs"
 LASTPATH="$CACHE/last_path.txt"
 
 # Обновление переменных Eww: демон может быть не запущен, это не ошибка снимка.

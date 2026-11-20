@@ -258,7 +258,7 @@ def read_community(limit=None):
 
 
 def slug(text):
-    """ASCII-slug: имя схемы попадает в theme/current и в комментарий
+    """ASCII-slug: имя схемы попадает в ~/.config/bdi/current и в комментарий
     eww/colors.scss, а тот обязан быть ASCII (иначе SCSS вставляет @charset
     и GTK выбрасывает весь stylesheet). Не-ASCII -> дефисы."""
     out = re.sub(r"[^a-z0-9]+", "-", str(text).lower()).strip("-")
@@ -519,7 +519,7 @@ def scheme_for_mode(palette, mode, theme_dir, accent="primary"):
     )
     scheme["_comment"] = (
         "Схема сгенерирована из палитры «%s» (%s) скриптом "
-        "theme/palette2scheme.py. Не править вручную: выбор живёт в theme/current."
+        "theme/palette2scheme.py. Не править вручную: выбор живёт в ~/.config/bdi/current."
         % (palette["name"], mode))
     scheme["name"] = "%s-%s" % (slug(palette["name"]), mode)
     return scheme
