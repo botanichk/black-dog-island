@@ -223,6 +223,11 @@ menu separator {
 // Bitcount font (as in the Noctalia sample). The time always shows "0:00"
 // when idle, so the chip width - and with it the island width - never changes.
 .timer {
+  // Ширина под самые длинные цифры ("166:39", замер Bitcount 14: 6 знаков =
+  // 50 px). В покое внутри только глиф, на ходу - цифры: плашка и остров
+  // не меняют ширину.
+  // shortcut: от 1000 минут цифры длиннее и плашка растянется.
+  min-width: 50px;
   margin-right: 8px;
   padding: 3px 8px;
   border-radius: $r-control;
@@ -243,17 +248,13 @@ menu separator {
 
 .timer-ic {
   font-family: "MesloLGSDZ Nerd Font Mono";
-  font-size: 13px;
+  font-size: 15px;
   color: $on-surface-variant;
-  margin-right: 4px;
 }
 
 .timer-txt {
   font-family: "Bitcount Prop Single Roman", "Noto Sans";
   font-size: 14px;
-  // Ширина под самое длинное "89:58" (замер Bitcount 14: 5 знаков = 43).
-  // Плашка не меняет ширину при смене цифр, поэтому остров не дёргается.
-  min-width: 54px;
   color: $on-surface;
 }
 
@@ -1712,54 +1713,68 @@ window.panel-power {
   padding: 0;
 }
 
-// --- timer panel (small plate under the island) ---
-// Not the island width: 280 px centred, so the timer does not look like a hub.
-// Same seam rule as the other panels - straight top, rounded bottom.
-.tmr-frame {
+// --- timer panel (plate like the power menu) ---
+// Full island width, straight top, rounded bottom: the same .pwr-frame and
+// .pwr-menu as the power menu, only the content differs.
+.tmr-row {
   background: transparent;
-  padding: 0 12px;
-}
-
-.tmr-menu {
-  background-color: $surface;
-  border: none;
-  border-radius: 0 0 $r-card $r-card;
-  padding: 10px 12px 12px;
-}
-
-.tmr-time {
-  font-family: "Bitcount Prop Single Roman", "Noto Sans";
-  font-size: 44px;
-  color: $primary;
-  padding: 2px 0 6px;
-}
-
-.tmr-time.ring {
-  color: $error;
 }
 
 .tmr-input {
-  margin: 12px 0 10px;
-  padding: 6px 8px;
+  margin-right: 10px;
+  padding: 8px 12px;
   border: none;
   border-radius: $r-control;
   background-color: $surface-container;
   color: $on-surface;
-  font-size: $t-secondary;
+  font-family: "Bitcount Prop Single Roman", "Noto Sans";
+  font-size: 24px;
 }
 
 .tmr-input:focus {
   box-shadow: 0 0 0 2px $primary;
 }
 
+.tmr-unit {
+  min-width: 48px;
+  min-height: 46px;
+  padding: 0;
+  margin-right: 10px;
+  border-radius: $r-control;
+  background-color: $surface-container;
+}
+
+.tmr-unit:last-child {
+  margin-right: 0;
+}
+
+.tmr-unit:hover {
+  background-color: $surface-container-high;
+}
+
+.tmr-unit.on {
+  background-color: $primary;
+}
+
+.tmr-unit-txt {
+  font-size: 18px;
+  color: $on-surface;
+}
+
+.tmr-unit.on .tmr-unit-txt {
+  color: $on-primary;
+}
+
 .tmr-actions {
+  margin-top: 10px;
   background: transparent;
 }
 
 .tmr-btn {
   min-width: 0;
+  min-height: 34px;
   padding: 5px 10px;
-  margin-right: 6px;
+  margin-right: 10px;
   border-radius: $r-control;
   background-color: $surface-container;
 }

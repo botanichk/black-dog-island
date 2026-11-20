@@ -1,37 +1,37 @@
 // GENERATED FILE - do not edit. Source: theme/templates/colors.scss.tpl
-// Scheme: p-ayu
+// Scheme: wallpaper
 // Regenerate: theme/apply.sh <scheme> [--reload]
 // Keep this file ASCII-only: the SCSS compiler emits "@charset" for non-ASCII
 // input and GTK rejects that rule, dropping the whole stylesheet.
 
 // --- palette roles ---
-$surface: #0b0e14;
-$surface-container: #1e222a;
-$surface-container-high: #272c36;
-$surface-highest: #2f3542;
-$outline: #565b66;
-$on-surface: #d1d1c7;
-$on-surface-variant: #8e959e;
-$primary: #e6b450;
-$primary-dim: #836935;
-$error: #d95757;
-$on-primary: #000000;
+$surface: #fce0cf;
+$surface-container: #f4bc9a;
+$surface-container-high: #f2b088;
+$surface-highest: #f0a475;
+$outline: #a17b64;
+$on-surface: #1b1918;
+$on-surface-variant: #595350;
+$primary: #aa480b;
+$primary-dim: #c16e3b;
+$error: #e9620f;
+$on-primary: #ffffff;
 // Text on the muted accent plate ($primary-dim): dark in the dark scheme
 // on light-blue, white in the light scheme on dark-blue.
-$on-primary-dim: #ffffff;
+$on-primary-dim: #000000;
 // Text drawn above photographs (player artwork, screenshot thumbnails):
 // stays light in every scheme, because the picture underneath is dark.
 $on-media: #ffffff;
-$weather-cloud: #90a4ae;
-$weather-snow: #b0bec5;
+$weather-cloud: #5d6b75;
+$weather-snow: #7b8790;
 
 // --- transparent roles (colour + alpha, assembled by apply.sh) ---
-$state-hover: rgba(255, 255, 255, 0.08);
-$state-press: rgba(255, 255, 255, 0.12);
-$state-selected: rgba(230, 180, 80, 0.14);
-$divider: rgba(255, 255, 255, 0.08);
-$on-surface-dim: rgba(209, 209, 199, 0.32);
-$text-shadow: rgba(0, 0, 0, 0.75);
+$state-hover: rgba(0, 0, 0, 0.08);
+$state-press: rgba(0, 0, 0, 0.12);
+$state-selected: rgba(170, 72, 11, 0.14);
+$divider: rgba(0, 0, 0, 0.08);
+$on-surface-dim: rgba(27, 25, 24, 0.32);
+$text-shadow: rgba(0, 0, 0, 0.55);
 $wx-shade: rgba(0, 0, 0, 0.35);
 $wx-scrim: rgba(0, 0, 0, 0.45);
 // Base colour for the per-scene darkening layer: its alpha comes from
