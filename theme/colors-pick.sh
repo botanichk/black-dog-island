@@ -24,7 +24,7 @@ THEME="$ROOT/theme"
 # --- разбор аргументов ----------------------------------------------------
 ACTION=${1:-}
 [ -n "$ACTION" ] || {
-  echo "usage: colors-pick.sh palette <id> [dark|light] | accent <primary|secondary|tertiary> | hue <all|green|blue|warm|gray> | mode <dark|light> | wallpaper [схема] | reset" >&2
+  echo "usage: colors-pick.sh palette <id> [dark|light] | accent <primary|secondary|tertiary> | hue <all|green|blue|warm|gray> | mode <dark|light> | wallpaper [схема] | reset | open-palettes" >&2
   exit 2
 }
 shift || true
@@ -106,6 +106,20 @@ SCHEME=""
 NEED_BUILD=""       # пусто | "palette:<файл>" | "wallpaper"
 
 case "$ACTION" in
+  # Открыть папку своих палитр: рядом с подсказкой «Свои» во вкладке «Цвета».
+  # Менеджер берём по умолчанию (xdg-open), а не наутилус жёстко: у разных
+  # людей разные файловые менеджеры. У владельца xdg-open ведёт в наутилус.
+  open-palettes)
+    dir="$HOME/.config/noctalia/palettes"
+    mkdir -p "$dir"
+    if command -v xdg-open >/dev/null 2>&1; then
+      setsid xdg-open "$dir" >/dev/null 2>&1 &
+    else
+      setsid nautilus "$dir" >/dev/null 2>&1 &
+    fi
+    echo "открыто: $dir"
+    exit 0 ;;
+
   reset)
     SCHEME="default"
     write_mode dark

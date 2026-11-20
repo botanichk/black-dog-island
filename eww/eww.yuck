@@ -821,8 +821,14 @@
         ;; Пустой список не прячем: иначе человек не знает, что свои палитры
         ;; вообще поддерживаются, и спрашивает «а где пользовательские?».
         (label :class "colors-sec" :xalign 0 :text "Свои")
-        (label :class "colors-hint" :xalign 0
-               :text "Положите файл палитры в папку настроек")
+        (box :orientation "horizontal" :space-evenly false :class "colors-hint-row" :halign "fill"
+          (label :class "colors-hint" :xalign 0 :hexpand true
+                 :text "Положите файл палитры в папку настроек")
+          (button :class "colors-chip colors-folder" :timeout "8s"
+                  :onclick "$HOME/eww-island/theme/colors-pick.sh open-palettes"
+            (box :orientation "horizontal" :space-evenly false :spacing 5
+              (label :class "colors-folder-ic" :text "󰉋")
+              (label :class "colors-folder-txt" :text "Папка"))))
         (for row in {colors-list.user}
           (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
             (for p in {row}

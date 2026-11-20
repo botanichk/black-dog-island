@@ -1488,11 +1488,28 @@ window.panel-hub {
   padding: 8px 0 0 0;
 }
 
-// Empty state for the "Свои" section: one wrapped line with the folder path.
+// Empty state for the "Свои" section: hint on the left, folder button on the
+// right. The button uses .colors-chip so it matches the hue chips.
 .colors-hint {
   color: $on-surface-variant;
   font-size: $t-caption;
+}
+
+.colors-hint-row {
   padding: 0 0 6px 0;
+}
+
+.colors-folder {
+  margin-left: 8px;
+}
+
+.colors-folder-ic {
+  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-size: 12px;
+}
+
+.colors-folder-txt {
+  font-size: $t-caption;
 }
 
 // Section captions ("Наша схема", "Встроенные", "Свои").
