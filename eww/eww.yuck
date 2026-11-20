@@ -834,10 +834,13 @@
           (input :class "colors-name" :hexpand true
                  :value {theme_name}
                  :onchange "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update theme_name={}"
-                 :onaccept "$HOME/eww-island/theme/theme-save.sh {theme_name}")
+                 :onaccept "$HOME/eww-island/theme/theme-save.sh '{}'")
           (button :class "colors-chip colors-save" :timeout "20s"
                   :tooltip "Сохранить палитру, режим и акцент в свои темы"
-                  :onclick "$HOME/eww-island/theme/theme-save.sh {theme_name}"
+                  ;; ${theme_name}, а не {theme_name}: в Eww подставляется
+                  ;; только ${...}, фигурные скобки без $ остаются текстом.
+                  ;; Из-за этого в имени файла оказался литерал {theme_name}.
+                  :onclick "$HOME/eww-island/theme/theme-save.sh '${theme_name}'"
             (label :class "colors-folder-txt" :text "Сохранить"))
           (button :class "colors-chip colors-folder" :timeout "8s"
                   :tooltip "Открыть папку своих палитр"
@@ -1063,7 +1066,10 @@
             (label :class "tmr-btn-txt" :text "Сброс"))
           (for t in {timer-state.state == "idle" ? "[1]" : "[]"}
             (button :class "tmr-btn main" :hexpand true :timeout "8s"
-              :onclick "$HOME/eww-island/adapters/timer/timer.sh start {tmr_num}"
+              ;; ${tmr_num}, а не {tmr_num}: у кнопки нет args, поэтому {}
+              ;; не подставляется, а фигурные скобки без $ остаются текстом -
+              ;; таймер получал литерал и отвечал usage (проверено).
+              :onclick "$HOME/eww-island/adapters/timer/timer.sh start '${tmr_num}'"
               (label :class "tmr-btn-txt" :text "Старт")))
           (for t in {timer-state.state == "run" ? "[1]" : "[]"}
             (button :class "tmr-btn main" :hexpand true :timeout "8s"
