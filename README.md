@@ -1,8 +1,41 @@
 # Black Dog Island
 
+<p align="center">
+  <img src="docs/logo.png" alt="Чёрный пёс" width="320">
+</p>
+
 Верхняя панель для X11-рабочего стола в стиле Noctalia: остров по центру
 экрана и выпадающий хаб с семью вкладками. Сделан под XFCE (xfwm4), экран
 1366x768, без compositor'а.
+
+## Установка
+
+Три команды. Ставится на Arch (CachyOS, Manjaro) и Void Linux, рабочий стол
+Xfce в сеансе X11.
+
+```
+git clone https://github.com/botanichk/black-dog-island
+cd black-dog-island
+./install.sh check
+```
+
+`check` только читает: ничего не устанавливает, пароль не спрашивает. Он
+печатает готовую команду для недостающих пакетов — её надо выполнить самому,
+потому что `sudo` есть только у владельца машины:
+
+```
+sudo xbps-install -S brightnessctl ImageMagick libpulseaudio NetworkManager
+```
+
+Потом одна команда — она соберёт движок, отключит панель Xfce и поставит
+автозапуск:
+
+```
+./install.sh install
+```
+
+Сборка идёт 10–25 минут и занимает около 2 ГБ в `build/`. Подробно, с
+проверками и откатом — в [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Что внутри
 
@@ -37,15 +70,10 @@ docs/      спеки, отчёты, доска задач
 
 ## Зависимости
 
-Arch / CachyOS:
-
-```
-sudo pacman -S --needed wmctrl xorg-xprop xorg-xrandr libpulse brightnessctl \
-  networkmanager bluez-utils imagemagick gcc curl jq python
-```
-
-Опционально: `noctalia` (палитры и координаты из обоев), `plank` (док),
-`ulauncher` (лаунчер). Rust (`rustc`/`cargo`) нужен для сборки движка.
+Ставить руками не нужно: `./install.sh check` скажет, чего не хватает, и
+напечатает готовую команду для Arch (`pacman`) или Void (`xbps-install`).
+Проверяются команды, а не имена пакетов, — таблицы `deps/arch.txt` и
+`deps/void.txt` в формате `команда | пакет | обязательна | зачем`.
 
 Без части пакетов интерфейс не падает, но врёт молча: без `nmcli` Wi-Fi
 показывается как «отключено», без `pactl` громкость равна нулю. Подробности
@@ -59,8 +87,8 @@ scripts/run-island.sh     # открыть остров по центру
 scripts/stop-island.sh    # закрыть
 ```
 
-Автозапуск: положить `.desktop` с `Exec=<путь>/scripts/run-island.sh` в
-`~/.config/autostart`.
+Эти команды нужны, если ставишь вручную, без `install.sh`. После
+`./install.sh install` остров запускается сам при входе.
 
 ## Известные пробелы
 
@@ -77,69 +105,14 @@ scripts/stop-island.sh    # закрыть
 
 ## Источники цветов
 
-Все палитры острова приходят из **Noctalia** или строятся по её правилам.
+Цвета взяты из [Noctalia](https://github.com/noctalia-dev/noctalia) (лицензия
+MIT, `Copyright (c) 2026 noctalia-dev`). Десять встроенных палитр лежат в
+`theme/palettes/*.json` без правок — из `builtin_palettes.cpp` тега `v5.4.1`;
+цвета с обоев считает `noctalia theme`.
 
-| Что | Откуда | Лицензия |
-|---|---|---|
-| 10 встроенных палитр (`theme/palettes/*.json`) | Noctalia, файл `src/theme/builtin_palettes.cpp` тега `v5.4.1` | MIT (`Copyright (c) 2026 noctalia-dev`) |
-| Цвета с обоев, 10 M3-схем | генератор Material 3 внутри Noctalia | MIT (пакет Noctalia) |
-| Светлая и тёмная схемы, акценты | наши, выводятся из палитры | MIT (этот репозиторий) |
-
-Проверено на машине (2026-11-20):
-
-```
-$ pacman -Qi noctalia
-Версия   : 5.5.0-1
-URL      : https://github.com/noctalia-dev/noctalia
-Лицензии : MIT
-$ head -4 /usr/share/licenses/noctalia/LICENSE
-MIT License
-Copyright (c) 2026 noctalia-dev
-```Ссылки: [Noctalia](https://github.com/noctalia-dev/noctalia) ·
-[LICENSE апстрима](https://github.com/noctalia-dev/noctalia/blob/main/LICENSE) ·
-[CREDITS.md](https://github.com/noctalia-dev/noctalia/blob/main/CREDITS.md) ·
-[builtin_palettes.cpp в v5.4.1](https://github.com/noctalia-dev/noctalia/blob/v5.4.1/src/theme/builtin_palettes.cpp).
-
-### Палитры
-
-| Файл | Палитра | Схема на острове |
-|---|---|---|
-| `ayu.json` | Ayu | `p-ayu` |
-| `catppuccin.json` | Catppuccin | `p-catppuccin` |
-| `dracula.json` | Dracula | `p-dracula` |
-| `eldritch.json` | Eldritch | `p-eldritch` |
-| `gruvbox.json` | Gruvbox | `p-gruvbox` |
-| `kanagawa.json` | Kanagawa | `p-kanagawa` |
-| `noctalia.json` | Noctalia | `p-noctalia` |
-| `nord.json` | Nord | `p-nord` |
-| `rosepine.json` | Rosé Pine | `p-rosepine` |
-| `tokyo-night.json` | Tokyo-Night | `p-tokyo-night` |
-
-Файлы скопированы из `builtin_palettes.cpp` **тега v5.4.1** и не правлены.
-Сверено 2026-11-20: у нас 32 цвета (16 ролей × 2 режима) на палитру, и все
-они есть в апстриме - лишних нет. Остальные цвета апстрима (76 на палитру) -
-это терминальная палитра, остров её не использует. Имена полей тоже из
-v5.4.1: в v5.5.0 `surfaceVariant`/`outline` переименованы в
-`surfaceContainer`/`outlineVariant`, значения те же, поэтому при обновлении
-палитр поля придётся сопоставлять, а не копировать вслепую.
-
-**Авторы отдельных палитр: [не подтверждено].** Noctalia не указывает
-авторство палитр ни в `builtin_palettes.cpp`, ни в `CREDITS.md` (там
-перечислены дизайнеры, библиотеки и вендоренные проекты, но не авторы
-схем). Сами названия - известные сообществу схемы, однако приписать их
-конкретным людям по исходникам пакета нельзя. Поэтому мы не пишем
-предполагаемых имён и не выдумываем ссылки. Копирование разрешено
-лицензией MIT самого Noctalia; если понадобится точное авторство, его надо
-брать у апстрима.
-
-### Палитры сообщества
-
-Каталог сообщества (41 палитра) читается **на месте** из
-`~/.local/state/noctalia/community-palettes/*.json` при каждом открытии
-вкладки «Цвета». В репозиторий эти файлы не копируются: у них нет ни
-автора, ни лицензии внутри файла (в JSON только ключи `dark`/`light`), так
-что распространять их мы не вправе и не будем. Нет каталога - нет раздела,
-вкладка остаётся целой.
+Подробности: какие палитры, почему не указаны авторы схем, почему палитры
+сообщества не копируются в репозиторий — в
+[docs/THEME.md](docs/THEME.md#откуда-цвета-и-лицензии).
 
 ## Лицензия
 

@@ -34,7 +34,7 @@ done
 OS_RELEASE=/tmp/bdi-os-void distro_detect
 check "команда void" "sudo xbps-install -S wmctrl" "$(distro_install_cmd wmctrl)"
 OS_RELEASE=/tmp/bdi-os-cachyos distro_detect
-check "команда arch" "sudo pacman -S --needed --noconfirm wmctrl" "$(distro_install_cmd wmctrl)"
+check "команда arch" "sudo pacman -S --needed wmctrl" "$(distro_install_cmd wmctrl)"
 
 # --- 2. журнал ---
 mkdir -p "$BDI_STATE"
