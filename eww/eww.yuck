@@ -8,21 +8,21 @@
 ;; Опрос раз в 5 с: человек может добавить свою палитру файлом, список
 ;; должен это заметить без перезапуска острова.
 (defpoll colors-list :interval "5s" :initial "[]"
-  "$HOME/eww-island/theme/colors-list.sh")
+  "$BDI_ROOT/theme/colors-list.sh")
 ;; Действующие режим и схема - для подсветки выбранного.
-(defpoll colors-mode :interval "3s" :initial "dark" "cat $HOME/eww-island/theme/mode")
-(defpoll colors-now :interval "3s" :initial "default" "cat $HOME/eww-island/theme/current")
+(defpoll colors-mode :interval "3s" :initial "dark" "cat $BDI_ROOT/theme/mode")
+(defpoll colors-now :interval "3s" :initial "default" "cat $BDI_ROOT/theme/current")
 ;; Акценты действующей палитры: до трёх образцов под шапкой вкладки, плоскими
 ;; полями (n/r1..r3/h1..h3) - массивы внутри (for) в этой сборке не читаются
 ;; через индексы, ряд получался пустым. Опрос 3 с: акцент меняется кликом,
 ;; который сам пересобирает схему и делает reload.
 (defpoll colors-accents :interval "3s"
   :initial "{\"id\":\"n-island\",\"n\":0,\"active\":\"primary\",\"r1\":\"\",\"h1\":\"#00000000\",\"r2\":\"\",\"h2\":\"#00000000\",\"r3\":\"\",\"h3\":\"#00000000\"}"
-  "$HOME/eww-island/theme/accents.sh 2>/dev/null || true")
+  "$BDI_ROOT/theme/accents.sh 2>/dev/null || true")
 ;; Какая m3-схема выбрана для обоев: нужно, чтобы подсветка стояла на той
 ;; кнопке, которую нажали, а не всегда на «Спокойной».
 (defpoll colors-wall :interval "3s" :initial "m3-tonal-spot"
-  "cat $HOME/eww-island/theme/wallpaper-scheme 2>/dev/null || echo m3-tonal-spot")
+  "cat $BDI_ROOT/theme/wallpaper-scheme 2>/dev/null || echo m3-tonal-spot")
 ;; Образцы M3-схем для текущих обоев: по одному primary на схему, плоскими
 ;; полями (n/k1..k10/l1..l10/c1..c10/a1..a10) - массивы внутри (for) в этой
 ;; сборке через индексы не читаются. Опрос 15 с: расчёт кэшируется по хэшу
@@ -30,12 +30,12 @@
 ;; незачем делать чаще - обои меняются руками.
 (defpoll colors-wall-schemes :interval "15s"
   :initial "{\"n\":0,\"active\":\"m3-tonal-spot\",\"active_label\":\"\"}"
-  "$HOME/eww-island/theme/wall-schemes.sh 2>/dev/null || true")
+  "$BDI_ROOT/theme/wall-schemes.sh 2>/dev/null || true")
 ;; Имя обоев текущего рабочего стола: показывается в ряду «С обоев», чтобы
 ;; было видно, с какой картинки снимается палитра. Опрос 5 с - человек
 ;; переключает столы сам, а лишний процесс на каждый тик ни к чему.
 (defpoll colors-wall-name :interval "5s" :initial ""
-  "$HOME/eww-island/theme/from-wallpaper.sh --name 2>/dev/null || true")
+  "$BDI_ROOT/theme/from-wallpaper.sh --name 2>/dev/null || true")
 
 ;; Событийно: xprop -spy печатает индекс рабочего стола при каждом изменении.
 (deflisten cur_ws :initial "0" "xprop -spy -root _NET_CURRENT_DESKTOP | sed -u -n 's/.*= //p'")
@@ -45,7 +45,7 @@
 ;; shortcut: громкость опрашивается раз в 2 с; при заметной нагрузке перейти на `pactl subscribe`.
 (defpoll volume :interval "2s" "pactl get-sink-mute @DEFAULT_SINK@ | grep -q yes && echo MUTE || pactl get-sink-volume @DEFAULT_SINK@ | grep -o '[0-9]*%' | head -1")
 ;; Раскладка событийно: адаптер слушает XkbStateNotify через собственный X11-хелпер.
-(deflisten panel_open :initial "false" "$HOME/eww-island/adapters/x11/panel-open.sh")
+(deflisten panel_open :initial "false" "$BDI_ROOT/adapters/x11/panel-open.sh")
 
 ;; "Хаб открывается прямо сейчас" - ставит adapters/x11/panel.sh до eww open,
 ;; снимает после того, как окно хаба реально появилось. Нужен, чтобы нижние
@@ -60,9 +60,9 @@
 ;; panel-power: deflisten следит за _NET_CLIENT_LIST, поэтому состояние
 ;; снимается и тогда, когда меню закрыли кликом по рабочему столу
 ;; (unfocus-close), а panel.sh при этом не вызывался.
-(deflisten power_open :initial "false" "$HOME/eww-island/adapters/x11/power-open.sh")
+(deflisten power_open :initial "false" "$BDI_ROOT/adapters/x11/power-open.sh")
 
-(deflisten layout :initial "" "$HOME/eww-island/adapters/x11/layout.sh")
+(deflisten layout :initial "" "$BDI_ROOT/adapters/x11/layout.sh")
 
 ;; Таймер: состояние (state/left/total/fmt/short) одной JSON-строкой.
 ;; tick раз в секунду двигает отсчёт и заводит будильник. Отсчёт живёт в
@@ -70,70 +70,70 @@
 ;; и при перезапуске Eww. Опрос заводит кнопка на острове - она есть всегда,
 ;; поэтому тик живёт всё время, пока открыт остров.
 (defpoll timer-state :interval "1s" :initial "{\"state\":\"idle\",\"left\":0,\"total\":0,\"pct\":0,\"fmt\":\"0:00\",\"short\":\"0:00\"}"
-  "$HOME/eww-island/adapters/timer/timer.sh tick")
+  "$BDI_ROOT/adapters/timer/timer.sh tick")
 
 ;; Имя текущего звука будильника - подпись на кнопке выбора в панели.
 ;; Опрос редкий: файл меняется только кнопкой или руками в папке.
-(defpoll timer-sound :interval "2s" "$HOME/eww-island/adapters/timer/timer.sh sound-name")
+(defpoll timer-sound :interval "2s" "$BDI_ROOT/adapters/timer/timer.sh sound-name")
 
 ;; Погода для выпадающей панели: Open-Meteo + координаты из Noctalia.
 ;; Данные кешируются адаптером на 10 минут, поэтому опрос чаще не нужен.
-(defpoll w-city :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh city")
-(defpoll w-temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh temp")
-(defpoll w-feels :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh feels")
-(defpoll w-desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh desc")
+(defpoll w-city :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh city")
+(defpoll w-temp :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh temp")
+(defpoll w-feels :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh feels")
+(defpoll w-desc :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh desc")
 ;; JPEG-фон верхней карточки: assets/wx-bg-<bg>.jpg, 16 видов
 ;; (ясно/переменно/облачно/морось/дождь/снег/туман/гроза, день и ночь).
 ;; Файлы делает scripts/build-weather-bg.sh из eww/assets/weather-src/.
 ;; :initial - чтобы до первого опроса не было пустого URL wx-bg-.jpg.
-(defpoll w-bg :interval "30m" :initial "cloud-day" "$HOME/eww-island/adapters/weather/forecast.sh bg")
+(defpoll w-bg :interval "30m" :initial "cloud-day" "$BDI_ROOT/adapters/weather/forecast.sh bg")
 ;; Затемнение фона под текстом: alpha 0.30-0.65, своё для каждого вида
 ;; (светлые сцены темнее, ночные почти без затемнения). См. shade_for в forecast.sh.
-(defpoll w-shade :interval "30m" :initial "0.45" "$HOME/eww-island/adapters/weather/forecast.sh shade")
+(defpoll w-shade :interval "30m" :initial "0.45" "$BDI_ROOT/adapters/weather/forecast.sh shade")
 ;; Вид фона верхней карточки (ясно/облачно/дождь/снег/туман/гроза + день/ночь).
 ;; Это запасной вариант: inline-стиль ниже перекрывает background-image класса.
 ;; Если inline-стиль убрать, градиент снова станет фоном карточки.
-(defpoll wx-kind :interval "30m" :initial "clear-day" "$HOME/eww-island/adapters/weather/forecast.sh kind")
-(defpoll w-wind :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh wind")
-(defpoll w-hum :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh hum")
-(defpoll w-d0name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0name")
-(defpoll w-d0desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0desc")
-(defpoll w-d0icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0icon")
-(defpoll w-d0temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0temp")
-(defpoll w-d0sun :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0sun")
-(defpoll w-d0set :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d0set")
-(defpoll w-d1name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1name")
-(defpoll w-d1desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1desc")
-(defpoll w-d1icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1icon")
-(defpoll w-d1temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d1temp")
-(defpoll w-d2name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2name")
-(defpoll w-d2desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2desc")
-(defpoll w-d2icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2icon")
-(defpoll w-d2temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d2temp")
-(defpoll w-d3name :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3name")
-(defpoll w-d3desc :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3desc")
-(defpoll w-d3icon :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3icon")
-(defpoll w-d3temp :interval "30m" "$HOME/eww-island/adapters/weather/forecast.sh d3temp")
+(defpoll wx-kind :interval "30m" :initial "clear-day" "$BDI_ROOT/adapters/weather/forecast.sh kind")
+(defpoll w-wind :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh wind")
+(defpoll w-hum :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh hum")
+(defpoll w-d0name :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d0name")
+(defpoll w-d0desc :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d0desc")
+(defpoll w-d0icon :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d0icon")
+(defpoll w-d0temp :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d0temp")
+(defpoll w-d0sun :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d0sun")
+(defpoll w-d0set :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d0set")
+(defpoll w-d1name :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d1name")
+(defpoll w-d1desc :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d1desc")
+(defpoll w-d1icon :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d1icon")
+(defpoll w-d1temp :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d1temp")
+(defpoll w-d2name :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d2name")
+(defpoll w-d2desc :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d2desc")
+(defpoll w-d2icon :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d2icon")
+(defpoll w-d2temp :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d2temp")
+(defpoll w-d3name :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d3name")
+(defpoll w-d3desc :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d3desc")
+(defpoll w-d3icon :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d3icon")
+(defpoll w-d3temp :interval "30m" "$BDI_ROOT/adapters/weather/forecast.sh d3temp")
 
 ;; Wi-Fi: список сетей через NetworkManager. Опрос раз в минуту, список меняется
 ;; медленно, а nmcli отвечает быстро.
 ;; :initial обязателен: цикл "for" читает значение при сборке, до первого опроса
 ;; переменная ещё пустая, и Eww спотыкается на разборе JSON.
-(defpoll wf-state :interval "1m" :initial "отключено" "$HOME/eww-island/adapters/x11/wifi.sh state")
-(defpoll wf-ssid :interval "1m" :initial "—" "$HOME/eww-island/adapters/x11/wifi.sh ssid")
-(defpoll wf-signal :interval "1m" :initial "0" "$HOME/eww-island/adapters/x11/wifi.sh signal")
-(defpoll wf-bars :interval "1m" :initial "▁" "$HOME/eww-island/adapters/x11/wifi.sh bars")
+(defpoll wf-state :interval "1m" :initial "отключено" "$BDI_ROOT/adapters/x11/wifi.sh state")
+(defpoll wf-ssid :interval "1m" :initial "—" "$BDI_ROOT/adapters/x11/wifi.sh ssid")
+(defpoll wf-signal :interval "1m" :initial "0" "$BDI_ROOT/adapters/x11/wifi.sh signal")
+(defpoll wf-bars :interval "1m" :initial "▁" "$BDI_ROOT/adapters/x11/wifi.sh bars")
 ;; Уровень сигнала словом: от него зависят иконка (веер из дуг) и её цвет.
-(defpoll wf-level :interval "1m" :initial "none" "$HOME/eww-island/adapters/x11/wifi.sh level")
-(defpoll wf-n :interval "1m" :initial "0" "$HOME/eww-island/adapters/x11/wifi.sh n")
-(defpoll wf-list :interval "1m" :initial "[]" "$HOME/eww-island/adapters/x11/wifi.sh list")
+(defpoll wf-level :interval "1m" :initial "none" "$BDI_ROOT/adapters/x11/wifi.sh level")
+(defpoll wf-n :interval "1m" :initial "0" "$BDI_ROOT/adapters/x11/wifi.sh n")
+(defpoll wf-list :interval "1m" :initial "[]" "$BDI_ROOT/adapters/x11/wifi.sh list")
 ;; Радио Wi-Fi опрашиваем чаще остальных: выключатель должен отзываться на
 ;; переключение извне (nm-applet, hotkey) за секунды, а не за минуту.
 ;; Один вызов nmcli radio, стоимость ~20 мс.
-(defpoll wf-radio :interval "3s" :initial "on" "$HOME/eww-island/adapters/x11/wifi.sh radio")
+(defpoll wf-radio :interval "3s" :initial "on" "$BDI_ROOT/adapters/x11/wifi.sh radio")
 ;; 1, если есть активное подключение. От этого зависит, спрашивать ли
 ;; подтверждение перед выключением радио.
-(defpoll wf-active :interval "1m" :initial "0" "$HOME/eww-island/adapters/x11/wifi.sh active")
+(defpoll wf-active :interval "1m" :initial "0" "$BDI_ROOT/adapters/x11/wifi.sh active")
 ;; 1 - показываем в шапке подтверждение "выключить Wi-Fi?". Ставит адаптер
 ;; (radio-toggle), снимает - кнопка "Отмена" или само выключение. defvar, а не
 ;; defpoll: значение живёт только в интерфейсе.
@@ -145,7 +145,7 @@
 ;; не работает и нагрузки нет.
 (defpoll media :interval "1s"
   :initial "{\"player\":\"\",\"status\":\"none\",\"title\":\"\",\"artist\":\"\",\"album\":\"\",\"art\":\"\",\"pos\":0,\"len\":0,\"posfmt\":\"0:00\",\"lenfmt\":\"0:00\",\"canseek\":false,\"canprev\":false,\"cannext\":false,\"canpause\":false,\"players\":[]}"
-  "$HOME/eww-island/adapters/media/mpris.sh json")
+  "$BDI_ROOT/adapters/media/mpris.sh json")
 
 ;; Медиа-визуализатор: массив из 16 уровней 0..1, кадр ~20 раз в секунду
 ;; (adapters/media/spectrum.py: parec + numpy FFT, cava не нужен).
@@ -154,7 +154,7 @@
 ;; она), при паузе плеера скрипт не держит parec и печатает гаснущие нули.
 (deflisten media-viz
   :initial "{\"v\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"p\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}"
-  "$HOME/eww-island/adapters/media/spectrum.py")
+  "$BDI_ROOT/adapters/media/spectrum.py")
 
 ;; Календарь: текущая дата для виджета calendar.
 (defpoll cal-day :interval "1h" "date +%d")
@@ -195,7 +195,7 @@
       :class {panel_open == "true" || hub_opening == "true" || power_open == "true" ? "island-root open" : "island-root"}
       ;; Колесо над точками листает столы. onscroll живёт только на eventbox,
       ;; аргумент приходит из патча eww-0001 ("up"/"down").
-      (eventbox :onscroll "$HOME/eww-island/adapters/x11/ws-scroll.sh {}"
+      (eventbox :onscroll "$BDI_ROOT/adapters/x11/ws-scroll.sh {}"
         :valign "center"
         (box :orientation "horizontal" :class "wsgroup"
           (wsdot :n "0")
@@ -222,15 +222,15 @@
         ;; убитым скриптом исчезал сам хаб.
         (button :class {panel_open == "true" && hub_tab == 0 ? "home-btn active" : "home-btn"}
           :timeout "8s"
-          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-hub home"
+          :onclick "$BDI_ROOT/adapters/x11/panel.sh panel-hub home"
           (label :class "home-btn-ic" :text ""))
-        (button :class "layout" :onclick "$HOME/eww-island/adapters/x11/layout.sh next" layout)
+        (button :class "layout" :onclick "$BDI_ROOT/adapters/x11/layout.sh next" layout)
         ;; Обои: глиф Meslo Nerd Font (картинка, U+F03E), как у остальных
         ;; кнопок острова. Команда запуска живёт в adapters/x11/wallpaper.sh:
         ;; она пробует выбор шестиугольниками (hypr-wallpicker), а если тот
         ;; не собран или упал - открывает родной настройщик XFCE.
         (button :class "wall" :timeout "5s"
-          :onclick "$HOME/eww-island/adapters/x11/wallpaper.sh"
+          :onclick "$BDI_ROOT/adapters/x11/wallpaper.sh"
           (label :class "wall-ic" :text ""))
         ;; Клик по Wi-Fi открывает список сетей. Иконка - свой SVG: веер из дуг,
         ;; уровень задаётся количеством дуг и цветом.
@@ -238,7 +238,7 @@
         ;; :timeout 8s - по той же причине, что у «Главной»: команда кнопки по
         ;; умолчанию убивается через 200 мс, а panel.sh живёт до ~4 с.
         (button :class "clock" :timeout "8s"
-          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-hub calendar"
+          :onclick "$BDI_ROOT/adapters/x11/panel.sh panel-hub calendar"
           (label :text clock))
         ;; Таймер: кнопка между часами и громкостью, как у звука - тональная
         ;; плашка. В покое - только песочные часы, на ходу - только цифры
@@ -248,21 +248,21 @@
         ;; (решает adapters/timer/click.sh).
         (button :class {timer-state.state == "ring" ? "timer ringing" : (timer-state.state == "run" || timer-state.state == "pause") ? "timer active" : "timer"}
           :timeout "8s"
-          :onclick "$HOME/eww-island/adapters/timer/click.sh"
+          :onclick "$BDI_ROOT/adapters/timer/click.sh"
           (box :orientation "horizontal" :space-evenly false :class "timer-inner" :halign "center"
             (for t in {timer-state.state == "idle" ? "[1]" : "[]"}
               (label :class "timer-ic" :text "󰔟"))
             (for t in {timer-state.state == "idle" ? "[]" : "[1]"}
               (label :class "timer-txt" :text {timer-state.short}))))
         ;; onscroll живёт только на eventbox: у button он удалён в Eww 0.6.
-        (eventbox :onscroll "$HOME/eww-island/adapters/audio/volume.sh {}"
-          (button :class "vol" :onclick "$HOME/eww-island/adapters/audio/volume.sh mute"
+        (eventbox :onscroll "$BDI_ROOT/adapters/audio/volume.sh {}"
+          (button :class "vol" :onclick "$BDI_ROOT/adapters/audio/volume.sh mute"
             (label :text volume)))
         ;; Питание: крайняя правая кнопка. Открывает меню под островом
         ;; (panel-power), повторный клик закрывает - логика в panel.sh.
         ;; Глиф U+23FB (символ питания), как у остальных кнопок - Nerd Font.
         (button :class {power_open == "true" ? "power active" : "power"} :timeout "8s"
-          :onclick "$HOME/eww-island/adapters/x11/panel.sh panel-power"
+          :onclick "$BDI_ROOT/adapters/x11/panel.sh panel-power"
           (label :class "power-ic" :text "⏻"))))
     ;; Второй слой overlay: вогнутые углы. Прижаты к верху и растянуты по ширине,
     ;; левый и правый - по краям окна. Через этот слой клики проходят (Eww ставит
@@ -305,7 +305,7 @@
 ;; :value читают значения при сборке, и отсутствующий ключ даёт ошибку разбора.
 (defpoll home :interval "2s"
   :initial "{\"wifi\":\"no\",\"bt\":\"no\",\"mute\":\"no\",\"volume\":0,\"brightness\":0,\"temp\":0,\"charging\":\"no\"}"
-  "$HOME/eww-island/adapters/system/home.sh all")
+  "$BDI_ROOT/adapters/system/home.sh all")
 
 ;; Плитка-переключатель: иконка сверху, подпись снизу, активное состояние -
 ;; плашка $primary. Клик уходит в adapters/system/home.sh set ...
@@ -340,21 +340,21 @@
     (box :orientation "horizontal" :space-evenly false :class "home-tiles" :halign "fill"
       (home-tile :glyph ""
                  :name "Wi-Fi" :on {home.wifi}
-                 :onclick "$HOME/eww-island/adapters/system/home.sh set wifi toggle")
+                 :onclick "$BDI_ROOT/adapters/system/home.sh set wifi toggle")
       (home-tile :glyph ""
                  :name "Bluetooth" :on {home.bt == "yes" ? "on" : "off"}
-                 :onclick "$HOME/eww-island/adapters/system/home.sh set bt toggle")
+                 :onclick "$BDI_ROOT/adapters/system/home.sh set bt toggle")
       (home-tile :glyph ""
                  :name "Звук" :on {home.mute == "no" ? "on" : "off"}
-                 :onclick "$HOME/eww-island/adapters/system/home.sh set mute toggle"))
+                 :onclick "$BDI_ROOT/adapters/system/home.sh set mute toggle"))
     ;; Ползунки: громкость и яркость, 0-100 (яркость не ниже 5 % - в скрипте).
     (box :orientation "vertical" :space-evenly false :class "home-sliders" :halign "fill"
       (home-slider :glyph ""
                    :value {home.volume}
-                   :onclick "$HOME/eww-island/adapters/system/home.sh set volume {}")
+                   :onclick "$BDI_ROOT/adapters/system/home.sh set volume {}")
       (home-slider :glyph "󰖨"
                    :value {home.brightness}
-                   :onclick "$HOME/eww-island/adapters/system/home.sh set brightness {}"))
+                   :onclick "$BDI_ROOT/adapters/system/home.sh set brightness {}"))
     ;; Блок системы: CPU, RAM, температура, батарея (со значком зарядки).
     (box :orientation "vertical" :space-evenly false :class "home-system" :halign "fill" :vexpand true :valign "start"
       (label :class "home-sub" :xalign 0 :text "Система")
@@ -386,7 +386,7 @@
 (defwidget hub-tab-btn [idx glyph]
   (button :class {hub_tab == idx ? "hub-tab-btn active" : "hub-tab-btn"}
           :timeout "3s"
-          :onclick "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update hub_tab=${idx}"
+          :onclick "$BDI_ROOT/build/target/release/eww --config $BDI_ROOT/eww update hub_tab=${idx}"
           (label :class "hub-ic" :text glyph)))
 
 ;; Левая колонка вкладок хаба (~56 px). Кнопка медиа - сразу после
@@ -519,10 +519,10 @@
     (for z in {wf_confirm == 1 ? "[1]" : "[]"}
       (box :orientation "horizontal" :space-evenly false :class "wf-ask-row" :halign "fill"
         (button :class "wf-btn danger" :hexpand true :timeout "5s"
-          :onclick "$HOME/eww-island/adapters/x11/wifi.sh radio off"
+          :onclick "$BDI_ROOT/adapters/x11/wifi.sh radio off"
           (label :text "Выключить"))
         (button :class "wf-btn ghost" :hexpand true :timeout "5s"
-          :onclick "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update wf_confirm=0"
+          :onclick "$BDI_ROOT/build/target/release/eww --config $BDI_ROOT/eww update wf_confirm=0"
           (label :text "Отмена"))))
     ;; --- 2. Радио выключено: списка нет, вместо него пустое состояние ---
     (for z in {wf-radio != "on" && wf_confirm == 0 ? "[1]" : "[]"}
@@ -531,7 +531,7 @@
         (label :class "wf-off-title" :text "Wi-Fi выключен")
         (label :class "wf-off-text" :text "Список сетей скрыт, пока радио выключено")
         (button :class "wf-btn accent" :timeout "5s"
-          :onclick "$HOME/eww-island/adapters/x11/wifi.sh radio on"
+          :onclick "$BDI_ROOT/adapters/x11/wifi.sh radio on"
           (label :text "Включить"))))
     ;; --- 3. Обычный режим: переключатель, активная сеть, список ---
     (for z in {wf-radio == "on" && wf_confirm == 0 ? "[1]" : "[]"}
@@ -544,16 +544,16 @@
           ;; Переключатель радио: клик уходит в адаптер, он сам решает -
           ;; выключить сразу или спросить подтверждение (есть активная сеть).
           (button :class "wf-radio on" :timeout "5s"
-            :onclick "$HOME/eww-island/adapters/x11/wifi.sh radio-toggle"
+            :onclick "$BDI_ROOT/adapters/x11/wifi.sh radio-toggle"
             (label :class "wf-radio-ic" :text "")))
         (box :orientation "horizontal" :space-evenly false :class "wf-actions" :halign "fill"
           ;; Отключение активной сети, профиль сохраняется.
           (button :class "wf-btn ghost" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/x11/wifi.sh disconnect"
+            :onclick "$BDI_ROOT/adapters/x11/wifi.sh disconnect"
             (label :text "Отключиться"))
           ;; Перечитать список без смены радио: принудительный опрос defpoll.
           (button :class "wf-btn ghost" :hexpand true :timeout "5s"
-            :onclick "$HOME/eww-island/adapters/x11/wifi.sh rescan"
+            :onclick "$BDI_ROOT/adapters/x11/wifi.sh rescan"
             (label :text "Обновить")))
         (box :orientation "horizontal" :space-evenly false :class "wf-sep")
         (scroll :vscroll true :hscroll false :height 200 :vexpand true :class "wf-scroll"
@@ -562,7 +562,7 @@
             ;; Кнопка в Eww принимает только одного ребёнка, поэтому строка - это box.
             ;; Высота строки - минимальная (CSS), сама не растягивается.
             (button :class {net.active ? "wf-net active" : "wf-net"}
-              :onclick "$HOME/eww-island/adapters/x11/wifi.sh connect ${net.idx}"
+              :onclick "$BDI_ROOT/adapters/x11/wifi.sh connect ${net.idx}"
               (box :orientation "horizontal" :space-evenly false :hexpand true
                 (image :class "wf-net-icon" :path "${EWW_CONFIG_DIR}/assets/wifi-${net.level}.svg" :image-width 14 :image-height 14)
                 (label :class "wf-net-name" :xalign 0 :halign "start" :hexpand true :text "${net.ssid}")
@@ -576,7 +576,7 @@
 (defwidget shot-delay-btn [sec]
   (button :class {shot_delay == sec ? "shot-seg active" : "shot-seg"}
           :timeout "3s"
-          :onclick "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update shot_delay=${sec}"
+          :onclick "$BDI_ROOT/build/target/release/eww --config $BDI_ROOT/eww update shot_delay=${sec}"
           (label :text "${sec} с")))
 
 (defwidget shot-content []
@@ -588,13 +588,13 @@
     ;; разные только подпись и подсказка.
     (box :orientation "horizontal" :space-evenly false :class "shot-modes" :halign "fill"
       (button :class "shot-btn" :hexpand true :timeout "10s"
-              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh area ${shot_delay} >/dev/null 2>&1"
+              :onclick "setsid -f $BDI_ROOT/adapters/x11/screenshot.sh area ${shot_delay} >/dev/null 2>&1"
         (label :text "Область"))
       (button :class "shot-btn" :hexpand true :timeout "10s"
-              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh window ${shot_delay} >/dev/null 2>&1"
+              :onclick "setsid -f $BDI_ROOT/adapters/x11/screenshot.sh window ${shot_delay} >/dev/null 2>&1"
         (label :text "Окно"))
       (button :class "shot-btn" :hexpand true :timeout "10s"
-              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh screen ${shot_delay} >/dev/null 2>&1"
+              :onclick "setsid -f $BDI_ROOT/adapters/x11/screenshot.sh screen ${shot_delay} >/dev/null 2>&1"
         (label :text "Весь экран")))
     ;; Задержка 0/3/5 с, выбранная подсвечена акцентом.
     (box :orientation "horizontal" :space-evenly false :class "shot-delay" :halign "fill"
@@ -614,15 +614,15 @@
            :text "Снимков ещё нет" :visible {shot_thumb == ""})
     (box :orientation "horizontal" :space-evenly false :class "shot-foot" :halign "fill"
       (button :class "shot-btn ghost" :hexpand true :timeout "5s"
-              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh open >/dev/null 2>&1"
+              :onclick "setsid -f $BDI_ROOT/adapters/x11/screenshot.sh open >/dev/null 2>&1"
         (label :text "Открыть"))
       ;; xclip остаётся в памяти и держит selection, поэтому кнопка отвязана:
       ;; иначе Eww убьёт команду по таймауту и буфер опустеет.
       (button :class "shot-btn ghost" :hexpand true :timeout "5s"
-              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh copy >/dev/null 2>&1"
+              :onclick "setsid -f $BDI_ROOT/adapters/x11/screenshot.sh copy >/dev/null 2>&1"
         (label :text "Копировать"))
       (button :class "shot-btn ghost" :hexpand true :timeout "5s"
-              :onclick "setsid -f $HOME/eww-island/adapters/x11/screenshot.sh folder >/dev/null 2>&1"
+              :onclick "setsid -f $BDI_ROOT/adapters/x11/screenshot.sh folder >/dev/null 2>&1"
         (label :text "Папка")))))
 
 ;; --- вкладка «Медиа» (MPRIS) ---
@@ -639,7 +639,7 @@
 (defwidget media-btn [glyph action cls disabled]
   (button :class {disabled ? cls + " off" : cls}
           :timeout "3s"
-          :onclick "setsid -f $HOME/eww-island/adapters/media/mpris.sh ${action} >/dev/null 2>&1"
+          :onclick "setsid -f $BDI_ROOT/adapters/media/mpris.sh ${action} >/dev/null 2>&1"
     (label :class "media-btn-ic" :text glyph)))
 
 ;; Почему обычные box с :width, а не progress: GtkProgressBar заливает не от
@@ -674,7 +674,7 @@
         (box :orientation "horizontal" :space-evenly false :class "media-head" :halign "fill"
           (label :class "media-cap" :text "ПЛЕЕР")
           (button :class "media-player-chip" :timeout "3s" :halign "end" :hexpand true
-                  :onclick "$HOME/eww-island/adapters/media/mpris.sh next-player >/dev/null"
+                  :onclick "$BDI_ROOT/adapters/media/mpris.sh next-player >/dev/null"
             (label :class "media-player-name" :text "${media.player}")))
         ;; Обложка по центру, крупно.
         (box :orientation "vertical" :space-evenly false :class "media-art-row" :halign "center"
@@ -701,7 +701,7 @@
             (box :orientation "horizontal" :space-evenly false :class "media-seekrow" :halign "fill"
               (scale :class "media-scale" :hexpand true :valign "center"
                      :value {media.pos} :min 0 :max {media.len > 0 ? media.len : 1} :round-digits 0
-                     :timeout "2s" :onchange "$HOME/eww-island/adapters/media/mpris.sh seek {}")
+                     :timeout "2s" :onchange "$BDI_ROOT/adapters/media/mpris.sh seek {}")
               (label :class "media-time" :text "${media.posfmt} / ${media.lenfmt}")))
           (for z in {media.canseek ? "[]" : "[1]"}
             (box :orientation "horizontal" :space-evenly false :class "media-seekrow" :halign "fill"
@@ -738,7 +738,7 @@
   ;; растягивается на все 509 px: hexpand тянет её на всю строку.
   (button :class {cur == 1 ? "palette-card active" : "palette-card"}
           :width w :timeout "8s"
-          :onclick "$HOME/eww-island/theme/colors-pick.sh palette ${id}"
+          :onclick "$BDI_ROOT/theme/colors-pick.sh palette ${id}"
     (box :orientation "vertical" :space-evenly false :class "palette-in"
          :hexpand true :halign "fill"
       ;; Полоски: цвета палитры как есть. height в CSS, не здесь: GTK3
@@ -758,7 +758,7 @@
 (defwidget wall-dot [k l c a]
   (button :class {a == 1 ? "ws-dot active" : "ws-dot"}
           :tooltip l :timeout "10s"
-          :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${k}"
+          :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${k}"
     (box :class "ws-fill" :style "background-color: ${c}")))
 
 (defwidget colors-content []
@@ -771,11 +771,11 @@
       (box :orientation "horizontal" :space-evenly false :class "colors-mode"
         (button :class {colors-mode == "dark" ? "colors-seg active" : "colors-seg"}
                 :timeout "8s"
-                :onclick "$HOME/eww-island/theme/colors-pick.sh mode dark"
+                :onclick "$BDI_ROOT/theme/colors-pick.sh mode dark"
           (label :text "Тёмная"))
         (button :class {colors-mode == "light" ? "colors-seg active" : "colors-seg"}
                 :timeout "8s"
-                :onclick "$HOME/eww-island/theme/colors-pick.sh mode light"
+                :onclick "$BDI_ROOT/theme/colors-pick.sh mode light"
           (label :text "Светлая"))))
     ;; Ряд акцентов: до трёх кружков палитры (primary/secondary/tertiary).
     ;; Клик делает выбранный акцент ролью primary острова; сама палитра не
@@ -793,15 +793,15 @@
       ;; не на тот акцент.
       (button :class {colors-accents.active == colors-accents.r1 ? "acc-dot active" : "acc-dot"}
               :visible {colors-accents.n > 0} :timeout "8s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh accent ${colors-accents.r1}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh accent ${colors-accents.r1}"
         (box :class "acc-fill" :style "background-color: ${colors-accents.h1}"))
       (button :class {colors-accents.active == colors-accents.r2 ? "acc-dot active" : "acc-dot"}
               :visible {colors-accents.n > 1} :timeout "8s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh accent ${colors-accents.r2}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh accent ${colors-accents.r2}"
         (box :class "acc-fill" :style "background-color: ${colors-accents.h2}"))
       (button :class {colors-accents.active == colors-accents.r3 ? "acc-dot active" : "acc-dot"}
               :visible {colors-accents.n > 2} :timeout "8s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh accent ${colors-accents.r3}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh accent ${colors-accents.r3}"
         (box :class "acc-fill" :style "background-color: ${colors-accents.h3}")))
     ;; Прокрутка: встроенных 10 карточек + свои, которые могут быть любые.
     ;; Высота вьюпорта 246 px - из расчёта docs/tasks/11-colors.md; при большем
@@ -833,18 +833,18 @@
         (box :orientation "horizontal" :space-evenly false :class "colors-hint-row" :halign "fill"
           (input :class "colors-name" :hexpand true
                  :value {theme_name}
-                 :onchange "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update theme_name={}"
-                 :onaccept "$HOME/eww-island/theme/theme-save.sh '{}'")
+                 :onchange "$BDI_ROOT/build/target/release/eww --config $BDI_ROOT/eww update theme_name={}"
+                 :onaccept "$BDI_ROOT/theme/theme-save.sh '{}'")
           (button :class "colors-chip colors-save" :timeout "20s"
                   :tooltip "Сохранить палитру, режим и акцент в свои темы"
                   ;; ${theme_name}, а не {theme_name}: в Eww подставляется
                   ;; только ${...}, фигурные скобки без $ остаются текстом.
                   ;; Из-за этого в имени файла оказался литерал {theme_name}.
-                  :onclick "$HOME/eww-island/theme/theme-save.sh '${theme_name}'"
+                  :onclick "$BDI_ROOT/theme/theme-save.sh '${theme_name}'"
             (label :class "colors-folder-txt" :text "Сохранить"))
           (button :class "colors-chip colors-folder" :timeout "8s"
                   :tooltip "Открыть папку своих палитр"
-                  :onclick "$HOME/eww-island/theme/colors-pick.sh open-palettes"
+                  :onclick "$BDI_ROOT/theme/colors-pick.sh open-palettes"
             (box :orientation "horizontal" :space-evenly false :spacing 5
               (label :class "colors-folder-ic" :text "󰉋")
               (label :class "colors-folder-txt" :text "Папка"))))
@@ -875,19 +875,19 @@
         (box :orientation "horizontal" :space-evenly false :class "colors-hue"
              :halign "fill" :visible {colors-list.community_all > 0}
           (button :class {colors-list.hue == "green" ? "colors-chip active" : "colors-chip"}
-                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue green"
+                  :timeout "8s" :onclick "$BDI_ROOT/theme/colors-pick.sh hue green"
             (label :text "Зелёные"))
           (button :class {colors-list.hue == "blue" ? "colors-chip active" : "colors-chip"}
-                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue blue"
+                  :timeout "8s" :onclick "$BDI_ROOT/theme/colors-pick.sh hue blue"
             (label :text "Синие"))
           (button :class {colors-list.hue == "warm" ? "colors-chip active" : "colors-chip"}
-                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue warm"
+                  :timeout "8s" :onclick "$BDI_ROOT/theme/colors-pick.sh hue warm"
             (label :text "Тёплые"))
           (button :class {colors-list.hue == "gray" ? "colors-chip active" : "colors-chip"}
-                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue gray"
+                  :timeout "8s" :onclick "$BDI_ROOT/theme/colors-pick.sh hue gray"
             (label :text "Серые"))
           (button :class {colors-list.hue == "all" ? "colors-chip active" : "colors-chip"}
-                  :timeout "8s" :onclick "$HOME/eww-island/theme/colors-pick.sh hue all"
+                  :timeout "8s" :onclick "$BDI_ROOT/theme/colors-pick.sh hue all"
             (label :text "Все")))
         (for row in {colors-list.community}
           (box :orientation "horizontal" :space-evenly false :class "colors-row" :halign "fill" :spacing 7
@@ -906,43 +906,43 @@
              :text colors-wall-name)
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a1 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 0} :tooltip {colors-wall-schemes.l1} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k1}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k1}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c1}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a2 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 1} :tooltip {colors-wall-schemes.l2} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k2}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k2}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c2}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a3 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 2} :tooltip {colors-wall-schemes.l3} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k3}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k3}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c3}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a4 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 3} :tooltip {colors-wall-schemes.l4} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k4}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k4}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c4}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a5 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 4} :tooltip {colors-wall-schemes.l5} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k5}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k5}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c5}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a6 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 5} :tooltip {colors-wall-schemes.l6} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k6}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k6}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c6}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a7 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 6} :tooltip {colors-wall-schemes.l7} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k7}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k7}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c7}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a8 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 7} :tooltip {colors-wall-schemes.l8} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k8}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k8}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c8}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a9 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 8} :tooltip {colors-wall-schemes.l9} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k9}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k9}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c9}"))
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a10 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 9} :tooltip {colors-wall-schemes.l10} :timeout "10s"
-              :onclick "$HOME/eww-island/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k10}"
+              :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k10}"
         (box :class "ws-fill" :style "background-color: ${colors-wall-schemes.c10}")))))
 
 ;; Хаб: вкладки calendar / weather / wifi / shot / media в одном окне. Содержимое - общие
@@ -1058,42 +1058,42 @@
                :xalign 0.5
                :text {timer-state.state == "idle" ? tmr_num : timer-state.fmt})
         (input :class "tmr-input" :hexpand true :placeholder "10, 6m, 1:30"
-               :onchange "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update tmr_num={}"
-               :onaccept "$HOME/eww-island/adapters/timer/timer.sh start {}")
+               :onchange "$BDI_ROOT/build/target/release/eww --config $BDI_ROOT/eww update tmr_num={}"
+               :onaccept "$BDI_ROOT/adapters/timer/timer.sh start {}")
         (box :orientation "horizontal" :space-evenly false :class "tmr-actions"
           (button :class "tmr-btn" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh reset"
+            :onclick "$BDI_ROOT/adapters/timer/timer.sh reset"
             (label :class "tmr-btn-txt" :text "Сброс"))
           (for t in {timer-state.state == "idle" ? "[1]" : "[]"}
             (button :class "tmr-btn main" :hexpand true :timeout "8s"
               ;; ${tmr_num}, а не {tmr_num}: у кнопки нет args, поэтому {}
               ;; не подставляется, а фигурные скобки без $ остаются текстом -
               ;; таймер получал литерал и отвечал usage (проверено).
-              :onclick "$HOME/eww-island/adapters/timer/timer.sh start '${tmr_num}'"
+              :onclick "$BDI_ROOT/adapters/timer/timer.sh start '${tmr_num}'"
               (label :class "tmr-btn-txt" :text "Старт")))
           (for t in {timer-state.state == "run" ? "[1]" : "[]"}
             (button :class "tmr-btn main" :hexpand true :timeout "8s"
-              :onclick "$HOME/eww-island/adapters/timer/timer.sh pause"
+              :onclick "$BDI_ROOT/adapters/timer/timer.sh pause"
               (label :class "tmr-btn-txt" :text "Пауза")))
           (for t in {timer-state.state == "pause" ? "[1]" : "[]"}
             (button :class "tmr-btn main" :hexpand true :timeout "8s"
-              :onclick "$HOME/eww-island/adapters/timer/timer.sh resume"
+              :onclick "$BDI_ROOT/adapters/timer/timer.sh resume"
               (label :class "tmr-btn-txt" :text "Продолжить")))
           (for t in {timer-state.state == "ring" ? "[1]" : "[]"}
             (button :class "tmr-btn stop" :hexpand true :timeout "8s"
-              :onclick "$HOME/eww-island/adapters/timer/timer.sh stop-sound"
+              :onclick "$BDI_ROOT/adapters/timer/timer.sh stop-sound"
               (label :class "tmr-btn-txt" :text "Стоп"))))
         ;; Звук будильника: папка (добавлять файлы) и выбор по кругу.
         ;; Клик по имени - следующий звук, сразу играет отрывок 3 с.
         ;; Клик по папке - наутилус на adapters/timer/sounds.
         (box :orientation "horizontal" :space-evenly false :class "tmr-sounds"
           (button :class "tmr-snd" :hexpand true :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh sound-next"
+            :onclick "$BDI_ROOT/adapters/timer/timer.sh sound-next"
             (box :orientation "horizontal" :space-evenly false :halign "center"
               (label :class "tmr-snd-ic" :text "󰓃")
               (label :class "tmr-snd-txt" :limit-width 22 :text {timer-sound})))
           (button :class "tmr-snd folder" :timeout "8s"
-            :onclick "$HOME/eww-island/adapters/timer/timer.sh open-sounds"
+            :onclick "$BDI_ROOT/adapters/timer/timer.sh open-sounds"
             (label :class "tmr-snd-ic" :text "󰉋")))))
     (box :orientation "horizontal" :space-evenly false :class "flare-row"
       :hexpand true :halign "fill" :valign "start"
@@ -1113,6 +1113,6 @@
        :hexpand true :vexpand true
     (box :orientation "horizontal" :space-evenly false :class "pwr-menu"
          :hexpand true :vexpand true
-      (power-btn :ic "󰍃" :cmd "$HOME/eww-island/adapters/x11/power.sh logout")
-      (power-btn :ic "󰜉" :cmd "$HOME/eww-island/adapters/x11/power.sh reboot")
-      (power-btn :ic "󰐥" :cmd "$HOME/eww-island/adapters/x11/power.sh poweroff"))))
+      (power-btn :ic "󰍃" :cmd "$BDI_ROOT/adapters/x11/power.sh logout")
+      (power-btn :ic "󰜉" :cmd "$BDI_ROOT/adapters/x11/power.sh reboot")
+      (power-btn :ic "󰐥" :cmd "$BDI_ROOT/adapters/x11/power.sh poweroff"))))

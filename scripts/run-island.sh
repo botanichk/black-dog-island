@@ -9,6 +9,11 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+# Корень проекта для конфига: в eww.yuck он подставляется как ${BDI_ROOT}.
+# EWW_CONFIG_DIR движок в defpoll/defvar не пускает ("cannot access variables
+# here"), а в окружение команд не экспортирует, поэтому передаём своё.
+BDI_ROOT="$ROOT"
+export BDI_ROOT
 EWW="$ROOT/build/target/release/eww"
 CONF="$ROOT/eww"
 GEOM="$ROOT/adapters/x11/island-geom.sh"

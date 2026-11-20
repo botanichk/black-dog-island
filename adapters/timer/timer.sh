@@ -24,7 +24,9 @@
 set -eu
 
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/eww-island/timer"
-SOUNDS="$HOME/eww-island/adapters/timer/sounds"
+# Корень проекта: из окружения демона (run-island.sh, panel.sh) или рядом со скриптом.
+ROOT="${BDI_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)}"
+SOUNDS="$ROOT/adapters/timer/sounds"
 mkdir -p "$CACHE"
 
 # Звук будильника: файлы из папки sounds/, выбранный - в $CACHE/sound (имя
