@@ -8,3 +8,7 @@ theme/wallpaper-scheme
 theme/accent
 theme/schemes/c-*.json
 theme/hue-filter
+# Звуки таймера: в git только штатный alarm.wav, остальное - личные файлы
+# владельца (попадались и на 42 МБ). Лежат в папке, но не в репозитории.
+adapters/timer/sounds/*
+!adapters/timer/sounds/alarm.wav

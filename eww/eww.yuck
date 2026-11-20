@@ -1018,13 +1018,13 @@
          :hexpand true :vexpand true
       (box :orientation "vertical" :space-evenly false :class "tmr-menu"
            :hexpand true :vexpand true
-        ;; Цифры показываются, только когда есть что показать: в покое их нет
-        ;; вовсе (поле ввода сверху), при наборе над полем появляется набранное,
-        ;; при отсчёте — остаток. Так в покое нет пустой полосы под цифры.
-        (for t in {(timer-state.state != "idle" || tmr_num != "") ? "[1]" : "[]"}
-          (label :class {timer-state.state == "ring" ? "tmr-time ring" : "tmr-time"}
-                 :xalign 0.5
-                 :text {timer-state.state == "idle" ? tmr_num : timer-state.fmt}))
+        ;; Цифры над полем ввода: пока печатаешь - набранное, при отсчёте -
+        ;; остаток. В покое строки нет совсем (класс quiet гасит min-height),
+        ;; чтобы не висела пустая полоса. Через "for" нельзя: он добавляет
+        ;; детей в конец бокса, и цифры уезжали под кнопки.
+        (label :class {timer-state.state == "ring" ? "tmr-time ring" : (timer-state.state == "idle" && tmr_num == "") ? "tmr-time quiet" : "tmr-time"}
+               :xalign 0.5
+               :text {timer-state.state == "idle" ? tmr_num : timer-state.fmt})
         (input :class "tmr-input" :hexpand true :placeholder "10, 6m, 1:30"
                :onchange "$HOME/eww-island/build/target/release/eww --config $HOME/eww-island/eww update tmr_num={}"
                :onaccept "$HOME/eww-island/adapters/timer/timer.sh start {}")
@@ -1056,7 +1056,7 @@
             :onclick "$HOME/eww-island/adapters/timer/timer.sh sound-next"
             (box :orientation "horizontal" :space-evenly false :halign "center"
               (label :class "tmr-snd-ic" :text "󰓃")
-              (label :class "tmr-snd-txt" :text {timer-sound})))
+              (label :class "tmr-snd-txt" :limit-width 22 :text {timer-sound})))
           (button :class "tmr-snd folder" :timeout "8s"
             :onclick "$HOME/eww-island/adapters/timer/timer.sh open-sounds"
             (label :class "tmr-snd-ic" :text "󰉋")))))
