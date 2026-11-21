@@ -179,15 +179,30 @@ check_all() {
   if [ -x "$ROOT/build/wallpicker-src/wallpicker" ]; then
     log_ok "соты обоев уже собраны"
   else
-    _hb=1
-    command -v cmake >/dev/null 2>&1 || { log_warn "нет cmake: соты обоев не собрать, кнопка откроет xfdesktop-settings"; _hb=0; }
-    command -v make >/dev/null 2>&1 || { log_warn "нет make: соты обоев не собрать"; _hb=0; }
-    # raylib собирается линкером, нужны заголовки X11 и OpenGL.
-    for _l in x11 gl; do
-      pkg-config --exists "$_l" 2>/dev/null ||
-        { log_warn "нет заголовков $_l: соты обоев не собрать"; _hb=0; }
-    done
-    [ "$_hb" -eq 1 ] && log_ok "для сот всё на месте"
+    # Пакеты копим отдельным списком, чтобы check сам печатал готовую
+    # команду: имена cmake/make одинаковы в обоих дистрибутивах, а GL
+    # заголовки разные (Void - libglvnd-devel, Arch - libglvnd).
+    _wplist=$(mktemp "${TMPDIR:-/tmp}/bdi-wp.XXXXXX")
+    # Имена заголовков GL/X11 разные: в Void пакеты с суффиксом -devel.
+    case "$BDI_DISTRO" in
+      void) _x11pkg=libX11-devel; _glpkg=libglvnd-devel ;;
+      *)    _x11pkg=libx11;       _glpkg=libglvnd ;;
+    esac
+    command -v cmake >/dev/null 2>&1 ||
+      { log_warn "нет cmake: соты обоев не собрать"; printf 'cmake\n' >> "$_wplist"; }
+    command -v make >/dev/null 2>&1 ||
+      { log_warn "нет make: соты обоев не собрать"; printf 'make\n' >> "$_wplist"; }
+    # raylib линкуется с X11 и OpenGL: нужны их заголовки.
+    pkg-config --exists x11 2>/dev/null ||
+      { log_warn "нет заголовков X11: соты обоев не собрать"; printf '%s\n' "${_x11pkg:-libx11}" >> "$_wplist"; }
+    pkg-config --exists gl 2>/dev/null ||
+      { log_warn "нет заголовков GL: соты обоев не собрать"; printf '%s\n' "${_glpkg:-libglvnd}" >> "$_wplist"; }
+    if [ -s "$_wplist" ]; then
+      check_pkg_cmd "$_wplist" "Для сот обоев (без них кнопка обоев откроет xfdesktop-settings):"
+    else
+      log_ok "для сот всё на месте"
+    fi
+    rm -f "$_wplist"
   fi
 
   log_step "Рабочий стол"
