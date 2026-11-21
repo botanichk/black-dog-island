@@ -106,8 +106,11 @@ Arch (`ID=cachyos`): `sudo pacman -S --needed ...`, те же пакеты по�
   `pulseaudio-devel` (не `libpulseaudio-devel`, его в индексе нет);
 - `gtk+3-devel`, `libdbusmenu-gtk3-devel`, `libX11-devel`, `cargo`, `gcc`,
   `pkgconf`, `git`, `setxkbmap` есть;
-- `noctalia` и шрифта Meslo в индексе нет — цвета с обоев и глифы кнопок
-  на Void недоступны без ручной установки, `check` скажет об этом `WARN`;
+- `noctalia` в индексе нет — цвета с обоев на Void недоступны без ручной
+  установки, `check` скажет об этом `WARN`;
+- шрифт с глифами Nerd Font есть: `nerd-fonts-symbols-ttf` (2.6 МБ, те же
+  глифы, что у Meslo). Проверка смотрит покрытие U+F03E, а не имя шрифта;
+- `cmake`, `make`, `libX11-devel` для сот обоев есть;
 - `gsettings` даёт пакет `glib` (на Arch — `glib2`).
 
 Проверка на заглушках с `ID=void` (2026-11-20). Обязательные:

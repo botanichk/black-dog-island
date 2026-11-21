@@ -53,15 +53,18 @@ check_os() {
 }
 
 # check_meslo [пакет] - шрифт с глифами кнопок. Без него вместо иконок квадраты.
+# Проверяем не имя шрифта, а покрытие глифа обоев (U+F03E), который есть
+# только в Nerd Font: Meslo есть не везде (в Void его нет), а Symbols Nerd
+# Font покрывает те же глифы и весит 2.6 МБ вместо 116.
 check_meslo() {
   command -v fc-list >/dev/null 2>&1 || return 0
-  if fc-list 2>/dev/null | grep -qi 'meslo'; then
-    log_ok "шрифт Meslo Nerd Font"
+  if [ -n "$(fc-list ':charset=f03e' family 2>/dev/null | head -1)" ]; then
+    log_ok "шрифт с глифами Nerd Font"
     return 0
   fi
   case "${1:-?}" in
-    '?') log_warn "шрифт Meslo Nerd Font не найден: глифы кнопок будут квадратами, ставь вручную" ;;
-    *)   log_warn "шрифт Meslo Nerd Font не найден (пакет $1): глифы кнопок будут квадратами"
+    '?') log_warn "нет шрифта с глифами Nerd Font: иконки кнопок будут квадратами, ставь вручную" ;;
+    *)   log_warn "нет шрифта с глифами Nerd Font (пакет $1): иконки кнопок будут квадратами"
          printf '%s\n' "$1" >> "$BDI_PKGS_OPT" ;;
   esac
 }
@@ -168,6 +171,23 @@ check_all() {
     log_ok "движок уже собран, пересборка не нужна"
   else
     [ -n "$BDI_DEPS" ] && check_dep_lines "$ROOT/deps/$BDI_DEPS" build
+  fi
+
+  # Соты обоев: без cmake/make/заголовков X11 их не собрать, и кнопка обоев
+  # молча открывала xfdesktop-settings вместо сетки.
+  log_step "Для выбора обоев"
+  if [ -x "$ROOT/build/wallpicker-src/wallpicker" ]; then
+    log_ok "соты обоев уже собраны"
+  else
+    _hb=1
+    command -v cmake >/dev/null 2>&1 || { log_warn "нет cmake: соты обоев не собрать, кнопка откроет xfdesktop-settings"; _hb=0; }
+    command -v make >/dev/null 2>&1 || { log_warn "нет make: соты обоев не собрать"; _hb=0; }
+    # raylib собирается линкером, нужны заголовки X11 и OpenGL.
+    for _l in x11 gl; do
+      pkg-config --exists "$_l" 2>/dev/null ||
+        { log_warn "нет заголовков $_l: соты обоев не собрать"; _hb=0; }
+    done
+    [ "$_hb" -eq 1 ] && log_ok "для сот всё на месте"
   fi
 
   log_step "Рабочий стол"

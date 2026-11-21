@@ -177,6 +177,79 @@ EOF
   return 0
 }
 
+# install_wallpicker - выбор обоев шестиугольниками: клон по пину, патчи, сборка,
+# хук под XFCE. Без этого кнопка обоев открывала родной xfdesktop-settings.
+# Не пересобирает, если бинарник новее пина и патчей.
+install_wallpicker() {
+  _bin="$ROOT/build/wallpicker-src/wallpicker"
+  _src="$ROOT/build/wallpicker-src"
+  . "$ROOT/deps/wallpicker.txt"
+  _pinfile="$ROOT/build/.wallpicker-pin"
+
+  if [ -x "$_bin" ] && [ -f "$_pinfile" ] && [ "$(cat "$_pinfile")" = "$WALLPICKER_PIN" ]; then
+    _newer=$(find "$ROOT/patches" -name 'hypr-wallpicker-*.patch' -newer "$_bin" 2>/dev/null | head -1)
+    if [ -z "$_newer" ]; then
+      log_ok "выбор обоев уже собран, пересборка не нужна"
+      _wcached=1
+    else
+      log_info "патчи новее бинарника - пересобираю"
+      _wcached=0
+    fi
+  else
+    _wcached=0
+  fi
+
+  if [ "$_wcached" -eq 0 ]; then
+    command -v cmake >/dev/null 2>&1 || {
+      log_warn "нет cmake - соты обоев не собрать, кнопка откроет xfdesktop-settings"
+      return 0; }
+    command -v make >/dev/null 2>&1 || {
+      log_warn "нет make - соты обоев не собрать"; return 0; }
+
+    if [ ! -d "$_src/.git" ]; then
+      log_info "клонирую выбор обоев (нужен интернет, ~10 МБ без raylib)"
+      mkdir -p "$ROOT/build"
+      run_indent git clone --quiet "$WALLPICKER_REPO" "$_src" || true
+      [ -d "$_src/.git" ] || {
+        log_warn "не удалось клонировать $WALLPICKER_REPO: соты не будут собраны"
+        return 0; }
+    fi
+
+    log_info "переключаю на коммит $WALLPICKER_PIN"
+    if ! git -C "$_src" checkout --quiet "$WALLPICKER_PIN" 2>/dev/null; then
+      log_warn "коммит $WALLPICKER_PIN не найден: соты останутся не собраны"
+      return 0
+    fi
+
+    log_info "собираю соты (raylib ~98 МБ, около 80 с)"
+    if ! sh "$ROOT/scripts/build-wallpicker.sh"; then
+      # Не валим установку: остров работает и без сот, кнопка обоев
+      # откроет xfdesktop-settings.
+      log_warn "соты не собрались (см. вывод выше), кнопка обоев откроет xfdesktop-settings"
+      return 0
+    fi
+    printf '%s\n' "$WALLPICKER_PIN" > "$_pinfile"
+    log_ok "выбор обоев собран: $_bin"
+  fi
+
+  # Бинарник лежит в build/, а run.sh ищет его в ~/src/hypr-wallpicker.
+  # Симлинк, а не копия: update пересобирает один файл.
+  _userbin="$HOME/src/hypr-wallpicker/wallpicker"
+  if [ "$(readlink -f "$_bin")" != "$(readlink -f "$_userbin" 2>/dev/null)" ]; then
+    mkdir -p "$(dirname "$_userbin")"
+    ln -sfn "$_bin" "$_userbin"
+    journal_add file "$_userbin" "" "$_bin"
+    log_ok "ссылка на соты: $_userbin"
+  fi
+
+  # Хук, который wallpicker зовёт после выбора обоев.
+  if "$ROOT/adapters/wallpicker/install.sh" >/dev/null 2>&1; then
+    log_ok "хук обоев на месте"
+  else
+    log_warn "хук обоев не поставлен: смотри adapters/wallpicker/install.sh"
+  fi
+}
+
 # install_start - поднять остров сейчас, не дожидаясь перезагрузки.
 install_start() {
   if "$ROOT/adapters/x11/island-geom.sh" xid >/dev/null 2>&1; then
@@ -218,6 +291,9 @@ install_all() {
   install_autostart || return 1
   install_extras
 
+  log_step "Выбор обоев"
+  install_wallpicker
+
   log_step "Запуск"
   install_start || true
 
@@ -251,6 +327,9 @@ update_all() {
 
   log_step "Движок"
   install_eww || return 1
+
+  log_step "Выбор обоев"
+  install_wallpicker
 
   log_step "Перезапуск острова"
   # Остановка только по нашему пути к eww (stop-island.sh), чужие демоны

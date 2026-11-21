@@ -12,16 +12,42 @@ set -eu
 
 CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOC="$HOME/.cache/noctalia/location.json"
+GEO="$CACHE/geo.json"
 SNAP="$CACHE/weather.json"
 CITYF="$CACHE/city.txt"
 mkdir -p "$CACHE"
 
 key=${1:-}
 
-# --- Координаты: сперва из Noctalia, иначе Город (по умолчанию) ---
+# --- Координаты: Noctalia -> свой кэш по IP -> ничего ---
+# Без координат Open-Meteo отдаёт 0.0,0.0 (Атлантика у экватора), и на чистой
+# машине остров показывал чужую погоду. Noctalia на Void нет, поэтому
+# запасной путь обязателен: один раз спрашиваем IP-геолокацию и кэшируем.
 if [ -r "$LOC" ]; then
   LAT=$(jq -r '.latitude // empty' "$LOC" 2>/dev/null || true)
   LON=$(jq -r '.longitude // empty' "$LOC" 2>/dev/null || true)
+fi
+if [ -z "${LAT:-}" ] || [ -z "${LON:-}" ]; then
+  # Кэш на 30 дней: координаты дома не меняются, а IP-сервисы лимитируют.
+  if [ ! -s "$GEO" ] || [ $(( $(date +%s) - $(stat -c %Y "$GEO") )) -gt 2592000 ]; then
+    for _u in https://ipinfo.io/json https://ipapi.co/json/; do
+      _r=$(curl -s --max-time 6 "$_u" 2>/dev/null || true)
+      _la=$(printf '%s' "$_r" | jq -r '.loc // empty' 2>/dev/null | cut -d, -f1)
+      _lo=$(printf '%s' "$_r" | jq -r '.loc // empty' 2>/dev/null | cut -d, -f2)
+      # ipapi.co отдаёт latitude/longitude отдельными полями, ipinfo - "loc".
+      [ -n "$_la" ] || _la=$(printf '%s' "$_r" | jq -r '.latitude // empty' 2>/dev/null)
+      [ -n "$_lo" ] || _lo=$(printf '%s' "$_r" | jq -r '.longitude // empty' 2>/dev/null)
+      if [ -n "$_la" ] && [ -n "$_lo" ]; then
+        printf '{"latitude":%s,"longitude":%s}\n' "$_la" "$_lo" > "$GEO.tmp.$$" &&
+          mv "$GEO.tmp.$$" "$GEO" || rm -f "$GEO.tmp.$$"
+        break
+      fi
+    done
+  fi
+  [ -s "$GEO" ] && [ -z "${LAT:-}" ] && {
+    LAT=$(jq -r '.latitude // empty' "$GEO" 2>/dev/null || true)
+    LON=$(jq -r '.longitude // empty' "$GEO" 2>/dev/null || true)
+  }
 fi
 [ -n "${LAT:-}" ] || LAT=0.0
 [ -n "${LON:-}" ] || LON=0.0

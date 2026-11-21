@@ -35,9 +35,17 @@ RADIUS=${WALLPICKER_RADIUS:-85}
 COLS=${WALLPICKER_COLS:-7}
 SPACING=${WALLPICKER_SPACING:-5}
 
-# Папка обоев: первым делом аргумент, потом WALLPAPER_DIR, потом ~/Изображения
-# (у владельца обои там), и только затем умолчание самой программы.
-DIR=${1:-${WALLPAPER_DIR:-$HOME/Изображения}}
+# Папка обоев: аргумент -> WALLPAPER_DIR -> картинки пользователя по XDG ->
+# ~/Изображения -> ~/Pictures. Зашивать одно имя нельзя: на чужой системе
+# папка называется по-английски (Pictures), и соты не открывались вовсе.
+wall_dir() {
+  for d in "${WALLPAPER_DIR:-}" "$(command -v xdg-user-dir >/dev/null 2>&1 && xdg-user-dir PICTURES 2>/dev/null)" \
+           "$HOME/Изображения" "$HOME/Pictures"; do
+    [ -n "$d" ] && [ -d "$d" ] && { printf '%s\n' "$d"; return 0; }
+  done
+  printf '%s\n' "${WALLPAPER_DIR:-$HOME/Изображения}"
+}
+DIR=${1:-$(wall_dir)}
 
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 log() {

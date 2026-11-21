@@ -38,6 +38,15 @@ $t-body: 13px;
 $t-title: 15px;
 $t-display: 20px;
 
+// --- glyphs: иконки кнопок это Nerd Font, одно место на весь файл ---
+// Список, а не одно имя: "MesloLGSDZ" есть только у Meslo, а в Void этого
+// шрифта нет и глифы превращаются в квадраты. Первое найденное в системе
+// семейство и рисует глиф (порядок - от самого узкого к запасным).
+$font-icons: "MesloLGSDZ Nerd Font Mono", "MesloLGLDZ Nerd Font Mono",
+  "MesloLGM Nerd Font Mono", "MesloLGS Nerd Font Mono",
+  "Symbols Nerd Font Mono", "Symbols Nerd Font",
+  "Noto Sans Symbols 2", monospace;
+
 // --- island ---
 // Window width is pinned to a constant: Eww sizes the window by content, so
 // after removing chips the width would float. The island-root box is inset by
@@ -247,7 +256,7 @@ menu separator {
 }
 
 .timer-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 13px;
   color: $on-surface-variant;
 }
@@ -297,7 +306,7 @@ menu separator {
 }
 
 .power-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 15px;
   color: $on-surface-variant;
 }
@@ -340,7 +349,7 @@ menu separator {
 }
 
 .home-btn-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 15px;
   color: $on-surface-variant;
 }
@@ -350,7 +359,7 @@ menu separator {
 }
 
 .wall-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 16px;
   color: $on-surface-variant;
 }
@@ -734,7 +743,7 @@ window.panel-hub {
 }
 
 .wf-radio-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 15px;
   color: $on-surface-variant;
 }
@@ -798,7 +807,7 @@ window.panel-hub {
 }
 
 .wf-off-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 34px;
   color: $on-surface-variant;
   padding-bottom: 10px;
@@ -869,7 +878,7 @@ window.panel-hub {
 
 // Tab icons are Nerd Font glyphs inside labels (no SVG for tab icons).
 .hub-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 16px;
   color: $on-surface-variant;
 }
@@ -935,7 +944,7 @@ window.panel-hub {
 }
 
 .home-tile-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 18px;
   color: $on-surface-variant;
   padding-bottom: 2px;
@@ -962,7 +971,7 @@ window.panel-hub {
 
 .home-glyph {
   min-width: 22px;
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 14px;
   color: $on-surface-variant;
   padding-right: 8px;
@@ -1237,7 +1246,7 @@ window.panel-hub {
 }
 
 .media-art-fallback-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 44px;
   color: $on-surface-variant;
 }
@@ -1342,7 +1351,7 @@ window.panel-hub {
 }
 
 .media-btn-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 16px;
   color: $on-surface;
 }
@@ -1381,7 +1390,7 @@ window.panel-hub {
 
 // Empty state: centred note, title, hint.
 .media-off-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 34px;
   color: $on-surface-variant;
   padding-bottom: 10px;
@@ -1518,7 +1527,7 @@ window.panel-hub {
 }
 
 .colors-folder-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 12px;
 }
 
@@ -1733,7 +1742,7 @@ window.panel-hub {
 }
 
 .pwr-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 84px;
   color: $on-surface;
 }
@@ -1893,7 +1902,7 @@ window.panel-power {
 }
 
 .tmr-snd-ic {
-  font-family: "MesloLGSDZ Nerd Font Mono";
+  font-family: $font-icons;
   font-size: 12px;
   color: $on-surface-variant;
   margin-right: 6px;

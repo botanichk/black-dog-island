@@ -1,0 +1,12 @@
+# Выбор обоев шестиугольниками (hypr-wallpicker) для BDI.
+#
+# Как движок Eww: код не копируется, установщик клонирует upstream в
+# build/wallpicker-src, переключает на этот коммит и накладывает
+# patches/hypr-wallpicker-*.patch через scripts/build-wallpicker.sh.
+#
+# Пин обязателен: наши патчи написаны под конкретный коммит, на более новом
+# HEAD второй патч не встаёт (проверено 2026-11-21: `git apply --check` падает
+# на include/app.h). Коммит 5d3abc2 - тот, на котором оба патча встают по
+# порядку: сперва size-and-cancel, потом blur-backdrop.
+WALLPICKER_REPO=https://github.com/Unixcraft-Studios/hypr-wallpicker
+WALLPICKER_PIN=5d3abc2ce09dae9dc068b88e1b5b440ba6c5f2db

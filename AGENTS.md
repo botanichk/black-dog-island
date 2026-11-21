@@ -103,13 +103,23 @@ XFCE. Каждый тест запускается так:
 Делать только по отдельной спеке.
 
 ## Обои
-Кнопка обоев на острове запускает выбор шестиугольниками (hypr-wallpicker
-из `~/src/hypr-wallpicker`), под сеткой лежат те же обои, размытые и
-затемнённые на 40 % (`-b`, `--blur 16`, `--scrim 40`). Хук
+Кнопка обоев на острове запускает выбор шестиугольниками (hypr-wallpicker),
+под сеткой лежат те же обои, размытые и затемнённые на 40 % (`-b`, `--blur 16`,
+`--scrim 40`). Собирается установщиком, как движок Eww: пин в
+`deps/wallpicker.txt`, патчи `patches/hypr-wallpicker-*.patch`,
+`scripts/build-wallpicker.sh`. Исходник и бинарник - `build/wallpicker-src/`,
+в `~/src/hypr-wallpicker/wallpicker` лежит ссылка (её ждёт `run.sh`).
+Пин обязателен: на более новом HEAD второй патч не встаёт. Хук
 `adapters/wallpicker/apply.sh` ставит обои через xfconf;
 `xfdesktop-settings` остался запасным путём. Правило выбора стола
 (single-workspace-mode) живёт в `theme/desktop.sh` - одно на всех.
 См. docs/WALLPICKER.md.
+
+## Шрифт иконок
+Иконки кнопок - глифы Nerd Font. В `eww.scss` они берутся из одного списка
+`$font-icons` (Meslo -> Symbols Nerd Font -> monospace), зашивать имя одного
+шрифта нельзя: в Void Meslo нет. Проверка в `check` смотрит покрытие глифа
+U+F03E через `fc-list`, а не имя файла.
 
 ## Plank
 Рамка дока берёт цвет из `$primary` острова: `theme/plank.sh` собирает тему
