@@ -26,6 +26,28 @@ EWW="$ROOT/build/target/release/eww"
 PANEL="$ROOT/adapters/x11/panel.sh"
 THEME="$ROOT/theme"
 
+# --- 0. отвязка от кнопки -------------------------------------------------
+# Eww выполняет :onclick синхронно и, если команда не уложилась в :timeout,
+# убивает её на середине. Для смены темы это худший момент: хаб уже закрыт
+# (шаг 4), reload не доехал, а переоткрыть его некому - снаружи это «выбор
+# темы всё повесил». На VM с Plank и Ulauncher шаг занимает около 6.5 с при
+# таймауте кнопки 8 с, то есть впритык.
+# Поэтому тяжёлые действия уходят в свой сеанс setsid: кнопка отвечает сразу
+# и ничего не может оборвать. path не отвязываем (его вывод читает
+# theme-save.sh), а внутренние вызовы ставят BDI_NO_DETACH=1.
+COLORS_CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
+if [ -z "${BDI_DETACHED:-}" ] && [ -z "${BDI_NO_DETACH:-}" ]; then
+  case "${1:-}" in
+    palette|mode|wallpaper|accent|hue|reset)
+      if command -v setsid >/dev/null 2>&1; then
+        mkdir -p "$COLORS_CACHE" 2>/dev/null || true
+        BDI_DETACHED=1 setsid -f sh "$0" "$@" \
+          >>"$COLORS_CACHE/colors-pick.log" 2>&1 </dev/null || true
+        exit 0
+      fi ;;
+  esac
+fi
+
 # --- разбор аргументов ----------------------------------------------------
 ACTION=${1:-}
 [ -n "$ACTION" ] || {

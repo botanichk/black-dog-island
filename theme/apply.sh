@@ -72,7 +72,9 @@ if [ ! -f "$JSON" ]; then
     p-*)
       if [ -f "$ROOT/theme/palettes/${SCHEME#p-}.json" ]; then
         echo "схема $SCHEME не отрендерена - собираю из палитры"
-        sh "$ROOT/theme/colors-pick.sh" palette "$SCHEME" \
+        # BDI_NO_DETACH: здесь нужен готовый файл схемы сразу после вызова,
+        # отвязка (она для кнопок) вернула бы управление до сборки.
+        BDI_NO_DETACH=1 sh "$ROOT/theme/colors-pick.sh" palette "$SCHEME" \
           "$(tr -d ' \t\r\n' < "$BDI_CONFIG/mode" 2>/dev/null || echo dark)" \
           >/dev/null 2>&1 || true
       fi ;;
@@ -207,6 +209,16 @@ if [ "$RELOAD" -eq 1 ]; then
     echo "eww reload: ок"
   else
     echo "eww reload: код 1 (демон не ответил, конфиг может быть уже перечитан)" >&2
+  fi
+  # reload пересоздаёт окно острова по :geometry из eww.yuck, а там x=0px -
+  # остров уезжает в левый угол. Центрирует его только scripts/run-island.sh,
+  # но сюда он не зовётся. Возвращаем позицию сами: ширина острова от темы не
+  # зависит и лежит в ~/.cache/bdi/island-width (её пишут run-island и демон).
+  _iw=$(tr -cd '0-9' < "${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}/island-width" 2>/dev/null || true)
+  [ -n "$_iw" ] || _iw=619
+  _sw=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f1)
+  if [ -n "${_sw:-}" ] && [ "$_iw" -gt 0 ] && [ "$_iw" -lt "$_sw" ]; then
+    "$EWW" --config "$ROOT/eww" --no-daemonize open island --pos "$(( (_sw - _iw) / 2 ))x0" >/dev/null 2>&1 || true
   fi
 fi
 
