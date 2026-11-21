@@ -41,7 +41,8 @@ SPACING=${WALLPICKER_SPACING:-5}
 wall_dir() {
   for d in "${WALLPAPER_DIR:-}" "$(command -v xdg-user-dir >/dev/null 2>&1 && xdg-user-dir PICTURES 2>/dev/null)" \
            "$HOME/Изображения" "$HOME/Pictures"; do
-    [ -n "$d" ] && [ -d "$d" ] && { printf '%s\n' "$d"; return 0; }
+    # xdg-user-dir без настроек отдаёт сам $HOME - это не папка картинок.
+    [ -n "$d" ] && [ "$d" != "$HOME" ] && [ -d "$d" ] && { printf '%s\n' "$d"; return 0; }
   done
   printf '%s\n' "${WALLPAPER_DIR:-$HOME/Изображения}"
 }
