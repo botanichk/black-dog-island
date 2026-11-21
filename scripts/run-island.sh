@@ -55,9 +55,32 @@ fi
 # дочернего по IPC, а чужой процесс на сокете не отвечает (см. client.rs:
 # do_server_call читает ответ до упора). Поэтому запускаем демон в фоне под
 # timeout и проверяем готовность ping'ом, тоже под timeout.
-if timeout 3 "$EWW" --config "$CONF" ping >/dev/null 2>&1; then
+# Проверяем: жив ли демон И пригоден ли он. Демон без BDI_ROOT бесполезен
+# (пути команд в eww.yuck становятся /adapters/...), его убиваем и идём
+# запускать свой - без рекурсии, одним проходом.
+#
+# Важно: смотрим /proc ПЕРЕД ping. Демон, поднятый с относительным --config,
+# слушает другой сокет, ping его не видит, а окно на экране он держит.
+_need_start=0
+. "$ROOT/lib/eww-proc.sh"
+_bad=""
+for _p in $(eww_daemon_pids "$CONF" 2>/dev/null || true); do
+  [ -n "$(eww_proc_root "$_p" 2>/dev/null || true)" ] || _bad="$_bad $_p"
+done
+if [ -n "$_bad" ]; then
+  echo "демон без BDI_ROOT (pid$_bad): пути кнопок ведут в /adapters - перезапускаю"
+  for _p in $_bad; do kill "$_p" 2>/dev/null || true; done
+  sleep 0.5
+  for _p in $_bad; do kill -9 "$_p" 2>/dev/null || true; done
+  sleep 0.3
+  _need_start=1
+elif timeout 3 "$EWW" --config "$CONF" ping >/dev/null 2>&1; then
   echo "демон Eww уже работает, использую существующий"
 else
+  _need_start=1
+fi
+
+if [ "$_need_start" -eq 1 ]; then
   echo "запускаю демон Eww"
   # Лог Eww дописывается между запусками: в хвосте копятся строки прошлых
   # сессий ("kill command" и т.п.) и путают проверки. Чистим только при

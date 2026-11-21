@@ -18,16 +18,14 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 CONF="$ROOT/eww"
 EWW="$ROOT/build/target/release/eww"
 
+. "$ROOT/lib/eww-proc.sh"
+
 # --- PID демона Eww для нашего конфига ---
+# Через lib/eww-proc.sh: он приводит --config к абсолютному пути, иначе демон,
+# запущенный как `eww --config eww daemon` (относительный путь), не находится,
+# и остров считается не запущенным при живом окне на экране.
 daemon_pid() {
-  for p in /proc/[0-9]*; do
-    [ -r "$p/cmdline" ] || continue
-    cmd=$(tr '\0' ' ' < "$p/cmdline" 2>/dev/null || true)
-    case "$cmd" in
-      *"--config $CONF daemon"*) echo "${p#/proc/}"; return 0 ;;
-    esac
-  done
-  return 1
+  eww_daemon_pids "$CONF" | head -1
 }
 
 # --- XID окна острова ---
@@ -78,12 +76,20 @@ island_xid_by_title() {
       done
 }
 
-# find_island_xid <pid> - сначала по PID+тип, потом по заголовку+тип.
+# find_island_xid <pid...> - XID окна острова у любого из демонов.
+# Несколько PID - не редкость: демон, запущенный с относительным --config,
+# слушает другой сокет, но окно на экране держит тоже. Тогда достаточно
+# найти хоть одно окно острова, чтобы знать геометрию.
 find_island_xid() {
-  _x=$(island_xid "$1")
-  [ -n "$_x" ] || _x=$(island_xid_by_title "$1")
-  [ -n "$_x" ] || return 1
-  printf '%s\n' "$_x"
+  for _pid in "$@"; do
+    _x=$(island_xid "$_pid")
+    [ -n "$_x" ] || _x=$(island_xid_by_title "$_pid")
+    if [ -n "$_x" ]; then
+      printf '%s\n' "$_x"
+      return 0
+    fi
+  done
+  return 1
 }
 
 pid=$(daemon_pid || true)
@@ -95,12 +101,12 @@ case "${1:-}" in
     exit 0
     ;;
   xid)
-    find_island_xid "$pid" || exit 1
+    find_island_xid $(eww_daemon_pids "$CONF") || exit 1
     exit 0
     ;;
 esac
 
-xid=$(find_island_xid "$pid") || exit 1
+xid=$(find_island_xid $(eww_daemon_pids "$CONF")) || exit 1
 
 # Геометрия окна: wmctrl отдаёт координаты клиентской области (рамка у окон Eww нулевая).
 # XID сравниваем как числа: xprop печатает 0x3200029, wmctrl - 0x03200029.

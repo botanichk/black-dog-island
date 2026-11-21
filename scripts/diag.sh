@@ -32,6 +32,23 @@ printf 'colors.scss %s\n' "$([ -f "$CONF/colors.scss" ] && echo есть || echo
 sec "демоны Eww (наши)"
 pgrep -af "$EWW --config $CONF daemon" 2>/dev/null | grep -v pgrep || echo 'нет'
 
+sec "BDI_ROOT у демонов"
+# Пустой BDI_ROOT - самая частая причина «кнопки не работают»: в eww.yuck он
+# подставляется в пути команд, и они превращаются в /adapters/... (нет такого).
+# Так бывает, если демон подняли руками: `eww --config eww daemon` без
+# окружения от run-island.sh.
+_n=0
+for _p in $(pgrep -f "$EWW --config .* daemon" 2>/dev/null); do
+  [ "$_p" = "$$" ] && continue
+  _r=$(tr '\0' '\n' < "/proc/$_p/environ" 2>/dev/null | sed -n 's/^BDI_ROOT=//p')
+  _c=$(tr '\0' ' ' < "/proc/$_p/cmdline" 2>/dev/null)
+  _n=$((_n + 1))
+  printf 'pid %s  BDI_ROOT=[%s]\n' "$_p" "${_r:-ПУСТО}"
+  printf '        cmd: %s\n' "$_c"
+  [ -n "$_r" ] || printf '        ^ ЭТОТ ДЕМОН ЗАПУЩЕН БЕЗ BDI_ROOT: кнопки не работают\n'
+done
+[ "$_n" -eq 0 ] && echo 'нет демонов Eww'
+
 sec "чужие демоны Eww"
 pgrep -af 'eww.*daemon' 2>/dev/null | grep -v pgrep | grep -v "$CONF" || echo 'нет'
 
