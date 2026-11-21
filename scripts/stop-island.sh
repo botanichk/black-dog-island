@@ -34,3 +34,20 @@ done
 for _p in $(eww_daemon_pids "$CONF" 2>/dev/null || true); do
   kill -9 "$_p" 2>/dev/null || true
 done
+
+# Дети deflisten (panel-open, power-open, layout) при жёстком kill демона
+# остаются сиротами: живут вечно, держат xprop -spy и плодят шум. Со временем
+# их накапливается по нескольку - отсюда «после выхода и входа не то, потом
+# опять по кругу». Убираем всех, кто остался от ЭТОГО конфига.
+for _s in panel-open power-open layout; do
+  _f="$ROOT/adapters/x11/$_s.sh"
+  for _p in $(pgrep -f "$_f" 2>/dev/null || true); do
+    [ "$_p" = "$$" ] && continue
+    # только осиротевшие (ppid 1) или с корнем этого проекта
+    _pp=$(awk '{print $4}' "/proc/$_p/stat" 2>/dev/null || echo 0)
+    _r=$(tr '\0' '\n' < "/proc/$_p/environ" 2>/dev/null | sed -n 's/^BDI_ROOT=//p' | head -1)
+    if [ "$_pp" = 1 ] || [ "$_r" = "$ROOT" ]; then
+      kill "$_p" 2>/dev/null || true
+    fi
+  done
+done
