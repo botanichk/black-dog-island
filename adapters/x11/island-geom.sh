@@ -48,6 +48,44 @@ island_xid() {
       done
 }
 
+# Запасной поиск: некоторые сборки Eww не выставляют _NET_WM_PID на окне, и
+# тогда первый путь не находит ничего (со стороны это «окно не появилось»,
+# хотя оно на экране). Ищем по заголовку из eww.yuck и типу DOCK, а PID
+# проверяем только если он вообще есть на окне: чужой DOCK с тем же
+# заголовком практически невозможен, а окно без PID - обычное дело.
+island_xid_by_title() {
+  pid=$1
+  xprop -root _NET_CLIENT_LIST 2>/dev/null \
+    | sed 's/.*# //; s/,//g' \
+    | tr ' ' '\n' \
+    | while read -r w; do
+        [ -n "$w" ] || continue
+        name=$(xprop -id "$w" WM_NAME 2>/dev/null || true)
+        case "$name" in
+          *'"Eww - island"'*) ;;
+          *) continue ;;
+        esac
+        wtype=$(xprop -id "$w" _NET_WM_WINDOW_TYPE 2>/dev/null || true)
+        case "$wtype" in
+          *_NET_WM_WINDOW_TYPE_DOCK*) ;;
+          *) continue ;;
+        esac
+        wpid=$(xprop -id "$w" _NET_WM_PID 2>/dev/null \
+          | sed -n 's/.*= *\([0-9]\+\)$/\1/p')
+        if [ -z "$wpid" ] || [ "$wpid" = "$pid" ]; then
+          echo "$w"; break
+        fi
+      done
+}
+
+# find_island_xid <pid> - сначала по PID+тип, потом по заголовку+тип.
+find_island_xid() {
+  _x=$(island_xid "$1")
+  [ -n "$_x" ] || _x=$(island_xid_by_title "$1")
+  [ -n "$_x" ] || return 1
+  printf '%s\n' "$_x"
+}
+
 pid=$(daemon_pid || true)
 [ -n "$pid" ] || exit 1
 
@@ -57,15 +95,12 @@ case "${1:-}" in
     exit 0
     ;;
   xid)
-    xid=$(island_xid "$pid")
-    [ -n "$xid" ] || exit 1
-    echo "$xid"
+    find_island_xid "$pid" || exit 1
     exit 0
     ;;
 esac
 
-xid=$(island_xid "$pid")
-[ -n "$xid" ] || exit 1
+xid=$(find_island_xid "$pid") || exit 1
 
 # Геометрия окна: wmctrl отдаёт координаты клиентской области (рамка у окон Eww нулевая).
 # XID сравниваем как числа: xprop печатает 0x3200029, wmctrl - 0x03200029.

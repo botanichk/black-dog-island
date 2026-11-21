@@ -101,11 +101,17 @@ if ! "$GEOM" xid >/dev/null 2>&1; then
   fi
   # --no-daemonize: демон только что запущен выше; если клиент не достучался -
   # ошибка и повтор, а не второй демон со своим окном-клоном.
-  timeout 10 "$EWW" --config "$CONF" --no-daemonize open island --pos "${OPEN_X}x0" >/dev/null 2>&1 || true
+  # Вывод НЕ выбрасываем: при неудаче именно здесь видно причину (битый
+  # конфиг, SCSS, разные ошибки), а без него остаётся «окно не появилось».
+  out=$(timeout 10 "$EWW" --config "$CONF" --no-daemonize open island --pos "${OPEN_X}x0" 2>&1) || true
+  [ -z "$out" ] || printf '%s\n' "$out" | sed 's/^/  eww: /'
   i=0
   until "$GEOM" xid >/dev/null 2>&1; do
     i=$((i + 1))
-    [ "$i" -lt $((OPEN_TIMEOUT * 20)) ] || err "окно острова не появилось за ${OPEN_TIMEOUT} с"
+    [ "$i" -lt $((OPEN_TIMEOUT * 20)) ] || {
+      [ -z "$out" ] || printf '%s\n' "$out" >&2
+      err "окно острова не появилось за ${OPEN_TIMEOUT} с"
+    }
     sleep 0.05
   done
   # Eww отдаёт размер окна по факту раскладки: первые ~200 мс он ещё "устаканивается",
