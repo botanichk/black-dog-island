@@ -54,6 +54,25 @@ backup_create >/dev/null
 [ -d "$BDI_BACKUP_DIR/.config_xfce4" ] && check "копия xfce4" "да" "да" || check "копия xfce4" "да" "нет"
 check "last-backup" "$BDI_BACKUP_DIR" "$(cat "$BDI_STATE/last-backup")"
 
+# --- 4. путь IPC-сокета Eww ---
+# Формула повторяет хэш Eww (paths.rs). Сверено с живым демоном: для
+# /home/ig_ro/eww-island/eww сокет был eww-server_5e929ad971167bef.
+# Зашивать этот путь в проверку нельзя - он зависит от каталога репозитория,
+# поэтому проверяем форму и стабильность: два вызова дают одно и то же,
+# а разные каталоги - разное.
+mkdir -p /tmp/bdi-socktest/a /tmp/bdi-socktest/b
+_s1=$(XDG_RUNTIME_DIR=/run/user/0 sh "$ROOT/lib/eww-socket.sh" /tmp/bdi-socktest/a)
+_s2=$(XDG_RUNTIME_DIR=/run/user/0 sh "$ROOT/lib/eww-socket.sh" /tmp/bdi-socktest/a)
+_s3=$(XDG_RUNTIME_DIR=/run/user/0 sh "$ROOT/lib/eww-socket.sh" /tmp/bdi-socktest/b)
+check "сокет: лежит в runtime" "/run/user/0" "$(dirname "$_s1")"
+check "сокет: имя как у Eww" "eww-server_" "$(basename "$_s1" | cut -c1-11)"
+check "сокет: стабилен" "$_s1" "$_s2"
+[ "$_s1" != "$_s3" ] && check "сокет: разные конфиги различаются" "да" "да" \
+  || check "сокет: разные конфиги различаются" "да" "нет"
+# без XDG_RUNTIME_DIR Eww берёт /tmp
+_s4=$(env -u XDG_RUNTIME_DIR sh "$ROOT/lib/eww-socket.sh" /tmp/bdi-socktest/a)
+check "сокет: без runtime -> /tmp" "/tmp" "$(dirname "$_s4")"
+
 echo
 if [ "$fail" -eq 0 ]; then echo "lib: всё ок"; else echo "lib: есть ошибки"; fi
 exit "$fail"

@@ -63,12 +63,26 @@ fi
 # слушает другой сокет, ping его не видит, а окно на экране он держит.
 _need_start=0
 . "$ROOT/lib/eww-proc.sh"
+# Демон годится, только если он ОТВЕЧАЕТ на наш сокет. Сам по себе процесс с
+# нужным BDI_ROOT - ещё не значит «наш»: сокет = хэш (XDG_RUNTIME_DIR +
+# каталог конфига), и демон, поднятый при другом XDG_RUNTIME_DIR, слушает
+# другой сокет. Такой живёт рядом, держит своё окно острова и перехватывает
+# половину команд - снаружи это «тема применилась, но остров завис».
+# Поэтому сверяем сокет процесса с тем, который вычислил бы наш клиент.
+_sock="$("$ROOT/lib/eww-socket.sh" "$CONF" 2>/dev/null || true)"
 _bad=""
 for _p in $(eww_daemon_pids "$CONF" 2>/dev/null || true); do
-  [ -n "$(eww_proc_root "$_p" 2>/dev/null || true)" ] || _bad="$_bad $_p"
+  _why=""
+  [ -n "$(eww_proc_root "$_p" 2>/dev/null || true)" ] || _why="без BDI_ROOT"
+  if [ -z "$_why" ] && [ -n "$_sock" ]; then
+    _psock=$(tr '\0' '\n' < "/proc/$_p/environ" 2>/dev/null | sed -n 's/^XDG_RUNTIME_DIR=//p' | head -1)
+    _psock="${_psock:-/tmp}/$(basename "$_sock")"
+    [ "$_psock" = "$_sock" ] || _why="сокет $_psock, а нужен $_sock"
+  fi
+  [ -z "$_why" ] || _bad="$_bad $_p"
 done
 if [ -n "$_bad" ]; then
-  echo "демон без BDI_ROOT (pid$_bad): пути кнопок ведут в /adapters - перезапускаю"
+  echo "непригодный демон (pid$_bad): пути кнопок ведут в /adapters либо чужой сокет - перезапускаю"
   for _p in $_bad; do kill "$_p" 2>/dev/null || true; done
   sleep 0.5
   for _p in $_bad; do kill -9 "$_p" 2>/dev/null || true; done
