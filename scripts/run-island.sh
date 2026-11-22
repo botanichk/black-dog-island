@@ -31,6 +31,14 @@ PING_TIMEOUT=10
 OPEN_TIMEOUT=10
 
 [ -x "$EWW" ] || { echo "eww не собран: $EWW" >&2; exit 1; }
+# Патчи новее бинарника: после `git pull` движок остаётся старым, и
+# исправления из patches/ не действуют (снаружи это «обновил, а баг тот же»).
+# Сам здесь не собираем - установка движка это ./install.sh update.
+_patch_new=$(find "$ROOT/patches" -name 'eww-*.patch' -newer "$EWW" 2>/dev/null | head -1)
+if [ -n "$_patch_new" ]; then
+  echo "предупреждение: движок собран без свежих патчей ($(basename "$_patch_new"))" >&2
+  echo "             пересобрать: sh $ROOT/install.sh update" >&2
+fi
 [ -x "$GEOM" ] || { echo "нет скрипта поиска окна: $GEOM" >&2; exit 1; }
 
 err() { echo "ошибка: $*" >&2; exit 1; }
