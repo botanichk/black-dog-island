@@ -52,13 +52,9 @@ printf '#!/bin/sh\nexit 1\n' > "$BASE/bin/pgrep"
 printf '#!/bin/sh\nexit 1\n' > "$BASE/bin/pkill"
 printf '#!/bin/sh\nexit 1\n' > "$BASE/bin/wmctrl"
 chmod +x "$BASE/bin"/*
-printf '\$primary: #787317;\n\$surface: #f6f8f8;\n' > "$ROOT/eww/colors.scss.tmp-test"
-
-# colors.scss в песочнице: подкладываем свой, чтобы скрипт дошёл до dconf.
-CSS="$ROOT/eww/colors.scss"
-_css_backup=""
-if [ -f "$CSS" ]; then _css_backup="$BASE/colors.scss.bak"; cp "$CSS" "$_css_backup"; fi
-printf '$primary: #787317;\n$surface: #f6f8f8;\n' > "$CSS"
+# Действующий eww/colors.scss не трогаем: зависание ловится на dconf read,
+# а он идёт раньше чтения CSS. Если бы тест упал посередине с подменённым
+# CSS, остров остался бы без темы - на машине владельца это недопустимо.
 
 _t0=$(date +%s)
 out=$(PATH="$BASE/bin:$PATH" timeout 40 sh "$ROOT/theme/plank.sh" apply 2>&1)
@@ -73,9 +69,6 @@ esac
 grep -q "dconf не ответил" "$BDI_CACHE/plank.log" &&
   printf 'ok   причина в plank.log\n' ||
   { printf 'FAIL причина не в plank.log\n'; fail=1; }
-
-rm -f "$ROOT/eww/colors.scss.tmp-test"
-[ -n "$_css_backup" ] && cp "$_css_backup" "$CSS"
 
 # --- 3. соты: бинарник падает сразу -> код 4 и причина в лог ---------------
 mk_sandbox
