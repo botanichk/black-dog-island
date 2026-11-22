@@ -27,13 +27,39 @@ CLASS="wallpicker.wallpicker"
 LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOG="$LOG_DIR/wallpicker.log"
 
-# Радиус, число колонок и зазор: 85 px / 7 колонок / 5 px подобраны под
-# 1366x768, чтобы 32 обои влезли целиком. Зазор 5 вместо апстримных 15:
-# на 1366x768 соты с большим зазором читаются как отдельные картинки, и
-# сетка расползается. Патч на -r и -b лежит в patches/.
-RADIUS=${WALLPICKER_RADIUS:-85}
-COLS=${WALLPICKER_COLS:-7}
+# --- сетка под экран и число обоев ----------------------------------------
+# Было жёстко 85 px / 7 колонок - под 32 обои. Стало 42: рядов 6, сетка
+# 832 px при экране 768, нижний ряд уходит за край - снаружи «соты видно, а
+# они слетают». Теперь радиус считается от числа обоев и экрана.
+# Зазор 5, а не апстримные 15: на 1366x768 большие зазоры расползаются.
 SPACING=${WALLPICKER_SPACING:-5}
+
+SW=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f1)
+SH=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f2)
+[ -n "${SW:-}" ] && [ -n "${SH:-}" ] || { SW=1366; SH=768; }
+
+# Обои папки: те же расширения, что понимает сам wallpicker.
+count_walls() {
+  find "$1" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) 2>/dev/null | wc -l
+}
+
+# Радиус и колонки под $1 обоев и экран ${2}x${3}: печатает "радиус колонки".
+# Шаг сетки по X 1.732*r+sp, по Y 1.5*r+sp (src/ui.c, BuildGridLayout).
+# Берём самое крупное из влезающих: сначала 7 колонок, потом 6 и 5.
+fit_grid() {
+  _n=$1 _sw=$2 _sh=$3
+  for _c in 7 6 5; do
+    [ "$_c" -le "$_n" ] || continue
+    _rows=$(( (_n + _c - 1) / _c ))
+    _r=$(( (_sh - 16 - SPACING * (_rows - 1)) * 1000 / (1500 * (_rows - 1) + 2000) ))
+    [ "$_r" -ge 40 ] || continue
+    _w=$(( 1732 * _r * (_c - 1) / 1000 + 1732 * _r / 1000 + SPACING * (_c - 1) ))
+    [ "$_w" -le $(( _sw - 16 )) ] || continue
+    printf '%s %s\n' "$_r" "$_c"
+    return 0
+  done
+  printf '70 5\n'
+}
 
 # Папка обоев: аргумент -> WALLPAPER_DIR -> картинки пользователя по XDG ->
 # ~/Изображения -> ~/Pictures. Зашивать одно имя нельзя: на чужой системе
@@ -91,6 +117,20 @@ command -v setsid >/dev/null 2>&1 || SPAWN=""
 . "$ROOT/theme/desktop.sh"
 CURRENT_WALL=$(xfce_current_wallpaper 2>/dev/null || true)
 
+# Размер экрана: xrandr даёт текущий режим. Без него - 1366x768, как у владельца.
+
+# Ручные значения хозяина главнее расчёта: WALLPICKER_RADIUS / WALLPICKER_COLS.
+NWALL=$(count_walls "$DIR")
+if [ -n "${WALLPICKER_RADIUS:-}" ] && [ -n "${WALLPICKER_COLS:-}" ]; then
+  RADIUS=$WALLPICKER_RADIUS
+  COLS=$WALLPICKER_COLS
+else
+  GRID=$(fit_grid "${NWALL:-0}" "$SW" "$SH")
+  RADIUS=${WALLPICKER_RADIUS:-${GRID% *}}
+  COLS=${WALLPICKER_COLS:-${GRID#* }}
+fi
+log "сетка: $NWALL обоев, радиус $RADIUS, колонок $COLS, экран ${SW}x${SH}"
+
 set -- -c "$COLS" -r "$RADIUS" -s "$SPACING" \
   --blur "${WALLPICKER_BLUR:-16}" --scrim "${WALLPICKER_SCRIM:-40}"
 
@@ -120,13 +160,13 @@ log "запуск: $BIN $*"
 # 4 ядрах, в виртуалке дольше), но окно появляется раньше - оно рисует
 # «Loading». Раньше ждали 5 с, и на медленной машине скрипт сдавался, хотя
 # окно вот-вот появлялось: кнопка выглядела мёртвой.
+#
+# Про док: разворот на весь экран включает _NET_WM_STATE_FULLSCREEN, по нему
+# остров прячется. Если док мешает, он прячется сам - его не трогаем.
 i=0
 while [ "$i" -lt 200 ]; do
   id=$(wmctrl -lx 2>/dev/null | awk -v c="$CLASS" '$3 == c {print $1; exit}')
   if [ -n "$id" ]; then
-    # Окно само просит 1366x718 (wmctrl -lG это показал). Разворот ставит
-    # его в 1366x768 и включает _NET_WM_STATE_FULLSCREEN - по нему остров
-    # понимает, что нужно спрятаться.
     wmctrl -i -r "$id" -b add,fullscreen 2>/dev/null || true
     log "окно $id развёрнуто"
     exit 0
