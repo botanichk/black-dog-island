@@ -101,6 +101,24 @@ fi
 sec "последние строки лога темы"
 [ -f "$BDI_CACHE/theme.log" ] && tail -5 "$BDI_CACHE/theme.log" 2>/dev/null || echo 'пусто'
 
+sec "композитор"
+# Без композитора не работают ни скруглённые углы острова, ни прозрачность
+# (Ulauncher, док): xfwm4 рисует окно плотным и прямоугольным. На живой
+# машине проверено, что прозрачный угол острова показывает обои, поэтому
+# тест такой: точка в углу окна острова не должна быть равна $surface.
+_comp=$(xfconf-query -c xfwm4 -p /general/use_compositing -v 2>/dev/null || echo '?')
+printf 'xfwm4 use_compositing  %s\n' "$_comp"
+_geo=$(wmctrl -lG 2>/dev/null | grep 'Eww - island' | head -1)
+if [ -n "${_geo:-}" ]; then
+  _x=$(printf '%s' "$_geo" | awk '{print $3}')
+  _y=$(printf '%s' "$_geo" | awk '{print $4}')
+  # Левый верхний пиксель окна лежит в прозрачном углу: там под островом
+  # должны виднеться обои, а не $surface.
+  _c=$(import -window root -crop "1x1+${_x}+${_y}" +repage txt:- 2>/dev/null | tail -1 | awk '{print substr($3,1,7)}')
+  printf 'угол острова (%s,%s)  %s\n' "$_x" "$_y" "${_c:-не снято}"
+  [ "$_comp" = true ] || printf 'ВЫКЛЮЧЕН: углы острова будут прямоугольными, прозрачности не будет\n'
+fi
+
 # Plank и Ulauncher красятся из того же apply.sh, но ломаются по-разному:
 # Plank требует схемы glib и перезапуска, Ulauncher - своей папки тем.
 # Без этих фактов с чужой машины причину не угадать.
