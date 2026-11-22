@@ -73,6 +73,45 @@ check "сокет: стабилен" "$_s1" "$_s2"
 _s4=$(env -u XDG_RUNTIME_DIR sh "$ROOT/lib/eww-socket.sh" /tmp/bdi-socktest/a)
 check "сокет: без runtime -> /tmp" "/tmp" "$(dirname "$_s4")"
 
+# --- 5. палитра из обоев без внешних программ ---
+# Считаем сами (theme/wp-palette.py), поэтому проверяем то, что легко
+# сломать: десять схем различимы, все роли на месте, без magick честный
+# отказ, а не тихий n=0.
+_wp=$(mktemp -d "${TMPDIR:-/tmp}/bdi-wp.XXXXXX")
+python3 - "$_wp/gradient.png" <<'PY'
+import subprocess, sys
+# Простая картинка: три цветные полосы. Без внешних файлов - magick сам
+# нарисует, проверка не зависит от картинок владельца.
+subprocess.run(["magick", "-size", "90x30", "xc:#2b6cb0",
+                "-fill", "#c05621", "-draw", "rectangle 30,0 59,29",
+                "-fill", "#2f855a", "-draw", "rectangle 60,0 89,29",
+                sys.argv[1]], check=False)
+PY
+if [ -f "$_wp/gradient.png" ]; then
+  python3 "$ROOT/theme/wp-palette.py" "$_wp/gradient.png" --all -o "$_wp/schemes" 2>/dev/null || true
+  check "палитра: десять схем" "10" "$(ls "$_wp/schemes" 2>/dev/null | wc -l | tr -d ' ')"
+  _first=$(python3 "$ROOT/theme/wp-palette.py" "$_wp/gradient.png" --scheme vibrant 2>/dev/null |
+           python3 -c 'import json,sys; print(json.load(sys.stdin)["dark"]["primary"])' 2>/dev/null || true)
+  case "$_first" in
+    "#"*) check "палитра: есть primary" "да" "да" ;;
+    *)    check "палитра: есть primary" "да" "нет" ;;
+  esac
+  # Три акцента не должны быть копиями друг друга: иначе ряд кружков
+  # показывает один цвет трижды.
+  _acc=$(python3 "$ROOT/theme/wp-palette.py" "$_wp/gradient.png" --scheme m3-tonal-spot 2>/dev/null |
+         python3 -c 'import json,sys; d=json.load(sys.stdin)["dark"]; print(len({d["primary"],d["secondary"],d["tertiary"]}))' 2>/dev/null || echo 0)
+  check "палитра: акценты разные" "3" "$_acc"
+  # Без magick - честный код 1, а не пустой JSON.
+  mkdir -p "$_wp/bin"
+  for _b in python3; do ln -sf "$(command -v $_b)" "$_wp/bin/$_b"; done
+  _rc=0
+  env PATH="$_wp/bin" python3 "$ROOT/theme/wp-palette.py" "$_wp/gradient.png" >/dev/null 2>&1 || _rc=$?
+  check "палитра: без magick отказ" "1" "$_rc"
+else
+  check "палитра: magick нарисовал картинку" "да" "нет"
+fi
+rm -rf "$_wp"
+
 echo
 if [ "$fail" -eq 0 ]; then echo "lib: всё ок"; else echo "lib: есть ошибки"; fi
 exit "$fail"

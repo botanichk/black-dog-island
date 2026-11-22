@@ -17,7 +17,7 @@
 # выглядела бы иначе при другом ~/.config/bdi/accent. Так она воспроизводится ровно
 # так, как её видел человек в момент сохранения.
 #
-# Зависимости только из системы: sh, python3, noctalia (только для обоев).
+# Зависимости только из системы: sh, python3, magick (только для обоев).
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -94,8 +94,8 @@ else
       trap 'rm -f "$TMP"' EXIT
       WALL=$("$THEME/from-wallpaper.sh" --path 2>/dev/null) || {
         echo "не нашёл обои текущего стола" >&2; exit 3; }
-      if ! noctalia theme "$WALL" --scheme "$WALL_SCHEME" --both >"$TMP" 2>"$TMP.err"; then
-        echo "noctalia не смогла прочитать обои: $WALL" >&2
+      if ! python3 "$THEME/wp-palette.py" "$WALL" --scheme "$WALL_SCHEME" >"$TMP" 2>"$TMP.err"; then
+        echo "не смог прочитать обои: $WALL" >&2
         sed 's/^/  /' "$TMP.err" >&2 || true
         rm -f "$TMP.err"
         exit 1

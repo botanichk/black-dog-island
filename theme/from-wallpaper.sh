@@ -7,12 +7,13 @@
 #        theme/from-wallpaper.sh --name               # имя обоев, без обработки
 #        theme/from-wallpaper.sh --path               # полный путь обоев
 #
-# Почему это работает без Noctalia-демона: `noctalia theme <картинка>` умеет
-# считать палитру отдельным вызовом, Wayland и демон ему не нужны (проверено,
-# мы на X11). Демона у нас нет, `noctalia msg` отвечает "not running".
+# Палитра считается своим кодом (theme/wp-palette.py): доминирующие цвета
+# картинки через magick, остальные роли - по формулам palette_lib. Раньше тут
+# был вызов `noctalia theme`, но её нет в индексе Void, и на свежей машине
+# весь раздел «С обоев» молчал.
 #
-# Список схем - из текста ошибки самого noctalia, других значений он не
-# принимает: m3-fidelity, m3-neutral, m3-vibrant, m3-expressive НЕ существуют.
+# Список схем (Спокойная, Яркая, Точная...) - наши профили обработки одной и
+# той же тройки цветов, см. PROFILES в wp-palette.py.
 #
 # Обои: у каждого стола в XFCE свой last-image, но есть режим
 # /backdrop/single-workspace-mode - «одни обои на все столы». Когда он
@@ -26,7 +27,7 @@
 # Монитор в ключе не хардкодим (monitorLVDS-1 может смениться) - перебираем
 # ключи и сверяем номер стола.
 #
-# Зависимости только из системы: sh, python3, xfconf-query, xprop, noctalia.
+# Зависимости только из системы: sh, python3, magick, xfconf-query, xprop.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -74,8 +75,10 @@ if [ -z "$MODE" ]; then
   MODE=${MODE:-dark}
 fi
 
-command -v noctalia >/dev/null 2>&1 || {
-  echo "нет команды noctalia (пакет noctalia не установлен)" >&2; exit 4; }
+# noctalia нужна только для расчёта палитры. Имя и путь обоев берутся из
+# xfconf, поэтому --name/--path работают без каких-либо внешних программ:
+# иначе на свежей машине вкладка «Цвета» показывала пустую строку рядом с
+# «С обоев», и было непонятно, что именно не работает.
 command -v xfconf-query >/dev/null 2>&1 || {
   echo "нет xfconf-query (пакет xfconf)" >&2; exit 4; }
 
@@ -99,20 +102,22 @@ if [ "$PATH_ONLY" -eq 1 ]; then
   exit 0
 fi
 
-# --- 2. палитра от noctalia ----------------------------------------------
+# --- 2. палитра из обоев ---------------------------------------------------
+# Считаем своим кодом (theme/wp-palette.py), а не noctalia: в индексе Void её
+# нет, и на свежей машине раздел «С обоев» молчал целиком. Нужны только
+# доминирующие цвета картинки, остальное (surface_variant, outline, контраст)
+# и так выводит palette_lib.build_scheme.
 TMP=$(mktemp "${TMPDIR:-/tmp}/eww-island-wall.XXXXXX.json")
 trap 'rm -f "$TMP"' EXIT
 
-# При ошибке noctalia пишет в stderr и оставляет stdout пустым, код 1 -
-# это проверено, поэтому пустой файл = провал (без разбора текста ошибки).
-if ! noctalia theme "$WALL" --scheme "$SCHEME" --both >"$TMP" 2>"$TMP.err"; then
-  echo "noctalia не смогла прочитать обои: $WALL" >&2
+if ! python3 "$ROOT/theme/wp-palette.py" "$WALL" --scheme "$SCHEME" >"$TMP" 2>"$TMP.err"; then
+  echo "не смог прочитать обои: $WALL" >&2
   sed 's/^/  /' "$TMP.err" >&2 || true
   rm -f "$TMP.err"
   exit 1
 fi
 rm -f "$TMP.err"
-[ -s "$TMP" ] || { echo "noctalia вернула пустой ответ для $WALL" >&2; exit 1; }
+[ -s "$TMP" ] || { echo "пустая палитра для $WALL" >&2; exit 1; }
 
 # --- 3. схема -------------------------------------------------------------
 # Выбранный акцент (~/.config/bdi/accent) действует и для обоев: у M3-схемы есть все

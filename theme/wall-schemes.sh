@@ -7,19 +7,19 @@
 # У каждой из десяти схем образец - цвет, который станет primary острова,
 # если по ней кликнуть (с учётом ~/.config/bdi/accent и подгонки контраста).
 #
-# Расчёт один раз на картинку: `noctalia theme` вызывается десять раз (по
-# одному на схему), это ~1.3 с, поэтому результат кладётся в кэш по хэшу
-# файла обоев: ~/.cache/bdi/wall-schemes/<sha1>.v2.json. Повторный
-# опрос (раз в 15 с) читает файл и стоит миллисекунды.
+# Расчёт один раз на картинку: theme/wp-palette.py считает все десять схем за
+# один вызов (~1.5 с), поэтому результат кладётся в кэш по хэшу файла обоев:
+# ~/.cache/bdi/wall-schemes/<sha1>.v2.json. Повторный опрос (раз в 15 с)
+# читает файл и стоит миллисекунды.
 #
 # Почему кэш по содержимому, а не по пути: владелец может перерисовать обои
 # под тем же именем, и старые образцы тогда врали бы.
 #
-# Схемы берутся из списка самого noctalia (см. from-wallpaper.sh): других
-# значений он не принимает. Если обоев нет или noctalia упала - печатается
-# n=0, и ряд не рисуется: вкладка при этом цела.
+# Схемы - профили обработки одной тройки цветов (theme/wp-palette.py). Если
+# обоев нет или картинка не читается - печатается n=0, и ряд не рисуется:
+# вкладка при этом цела.
 #
-# Зависимости только из системы: sh, python3, noctalia, sha1sum, xfconf-query.
+# Зависимости только из системы: sh, python3, magick, sha1sum, xfconf-query.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -84,33 +84,27 @@ fi
 
 if [ "$need_build" -eq 1 ]; then
   TMP="$FILE.tmp$$"
-  trap 'rm -f "$TMP" "$TMP".part.*' EXIT
+  trap 'rm -f "$TMP"; rm -rf "$TMP.parts"' EXIT
   # Каталог может оказаться недоступным для записи (чужой ~/.cache, полный
   # диск): тогда честно отдаём n=0, а не падаем с кодом 1 - вкладка должна
   # остаться целой. touch, а не `: >` - ошибка перенаправления у специальной
   # встроенной команды завершает весь скрипт до проверки.
   if ! touch "$TMP" 2>/dev/null; then empty; fi
-  # Отдельный файл на схему: вывод noctalia многострочный (pretty JSON),
-  # склеить десять ответов в один поток и разобрать по строкам нельзя -
-  # первая попытка сохранила пустой кэш именно так.
-  printf '%s\n' "$SCHEMES" | while IFS='|' read -r key label; do
-    [ -n "$key" ] || continue
-    # одна схема за вызов: --both отдаёт обе ветки, кэшу нужны обе - режим
-    # переключается кнопкой в шапке, и образцы должны следовать за ним.
-    noctalia theme "$WALL" --scheme "$key" --both -o "$TMP.part.$key" >/dev/null 2>&1 \
-      || : > "$TMP.part.$key"
-  done
+  # Одна картинка - десять схем: считает theme/wp-palette.py, по файлу на
+  # схему. Раньше здесь было десять вызовов `noctalia theme` (~1.3 с), а на
+  # Void её нет вовсе, и ряд не рисовался.
+  python3 "$ROOT/theme/wp-palette.py" "$WALL" --all -o "$TMP.parts" >/dev/null 2>&1 || empty
   # сборка: десять файлов -> один объект {схема: {dark: {роли+surface}, ...}}
-  python3 - "$TMP" "$TMP.build" <<'PY'
+  python3 - "$TMP" "$TMP.build" "$TMP.parts" <<'PY'
 import json, sys
 keys = ["m3-tonal-spot", "m3-content", "m3-fruit-salad", "m3-rainbow",
         "m3-monochrome", "vibrant", "faithful", "soft", "muted",
         "dysfunctional"]
-prefix = sys.argv[1]
+parts = sys.argv[3]
 result = {}
 for key in keys:
     try:
-        branch = json.load(open(prefix + ".part." + key, encoding="utf-8"))
+        branch = json.load(open("%s/%s.json" % (parts, key), encoding="utf-8"))
     except (OSError, ValueError):
         continue
     modes = {}
@@ -129,7 +123,7 @@ for key in keys:
 json.dump(result, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)
 PY
   mv "$TMP.build" "$TMP"
-  rm -f "$TMP".part.*
+  rm -rf "$TMP.parts"
   [ -s "$TMP" ] && mv "$TMP" "$FILE"
   trap - EXIT
   rm -f "$TMP"

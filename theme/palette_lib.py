@@ -4,7 +4,7 @@
 Одна логика для трёх мест, чтобы они не разъехались:
   palette2scheme.py  - палитра -> схема нашего формата (theme/schemes/*.json);
   colors-list.sh     - данные для вкладки «Цвета» (JSON для yuck);
-  from-wallpaper.sh  - палитра из обоев через `noctalia theme`.
+  from-wallpaper.sh  - палитра из обоев через wp-palette.py (magick).
 
 Формат палитры понимаем двух видов:
   1) наш файл theme/palettes/<слаг>.json:

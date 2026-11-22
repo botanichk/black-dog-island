@@ -69,7 +69,7 @@ rm -rf /tmp/tv && mkdir -p /tmp/tv/bin /tmp/tv/sys /tmp/tv/home
 for c in sed tr sort cut mktemp rm cat awk grep sh ls head dirname mkdir cp mv find; do
   ln -s "$(command -v $c)" /tmp/tv/sys/$c; done
 # всё «стоит», кроме magick, nmcli, pactl, brightnessctl
-for c in wmctrl xprop curl jq dconf plank ulauncher noctalia cargo pkg-config; do
+for c in wmctrl xprop curl jq dconf plank ulauncher magick cargo pkg-config; do
   printf '#!/bin/sh\nexit 0\n' > /tmp/tv/bin/$c; chmod +x /tmp/tv/bin/$c; done
 printf 'ID=void\n' > /tmp/tv/os
 env -u DBUS_SESSION_BUS_ADDRESS HOME=/tmp/tv/home PATH=/tmp/tv/bin:/tmp/tv/sys \
@@ -106,8 +106,9 @@ Arch (`ID=cachyos`): `sudo pacman -S --needed ...`, те же пакеты по�
   `pulseaudio-devel` (не `libpulseaudio-devel`, его в индексе нет);
 - `gtk+3-devel`, `libdbusmenu-gtk3-devel`, `libX11-devel`, `cargo`, `gcc`,
   `pkgconf`, `git`, `setxkbmap` есть;
-- `noctalia` в индексе нет — цвета с обоев на Void недоступны без ручной
-  установки, `check` скажет об этом `WARN`;
+- `noctalia` в индексе нет, но для цветов с обоев она больше не нужна:
+  палитру считает свой `theme/wp-palette.py` через `magick` (он обязателен,
+  `ImageMagick` в индексе есть);
 - шрифт с глифами Nerd Font есть: `nerd-fonts-symbols-ttf` (2.6 МБ, те же
   глифы, что у Meslo). Проверка смотрит покрытие U+F03E, а не имя шрифта;
 - `cmake`, `make`, `libX11-devel` для сот обоев есть;

@@ -148,7 +148,7 @@ xfce4-panel &
 | `$HOME/eww-island` | **0 вхождений** после шага 14-portable | **сделано**: пути в `eww.yuck` и `timer.sh` идут через `$BDI_ROOT` |
 | `eww-island` (кэш) | было ~15 мест | **сделано**: `$BDI_CACHE` (`~/.cache/bdi`) |
 | `intel_backlight` | не найдено | — |
-| имена Plank-тем, путь `noctalia`, число столов | берутся из `dconf` / по `command -v` / из `wmctrl -d` | оставить |
+| имена Plank-тем, число столов | берутся из `dconf` / из `wmctrl -d` | оставить |
 | город и координаты | **не в коде**: `~/.cache/noctalia/location.json` (`forecast.sh:14,23-24`) | оставить: личное вне репозитория |
 
 Вычисляется само: позиция острова (`run-island.sh:110-123`, `xrandr` ->
@@ -177,9 +177,9 @@ xfce4-panel &
 | Питание: reboot/poweroff | `systemctl` | `systemd 262.2-1` | без systemd **не работает** (B6) |
 | Снимки | `import`, `magick` | `imagemagick 7.1.2.35-1` | `[не проверено]`, запасной `-window` |
 | Обои | `hypr-wallpicker` (из `~/src`), `xfconf-query`, `xrandr` | `xfconf 4.20.0-2`, `xorg-xrandr 1.5.4-1` | кнопка молчит, запасной `xfdesktop-settings` |
-| Цвета с обоев | `noctalia` | `noctalia 5.5.0-1` | ряд «С обоев» не рисуется (`n=0`), вкладка цела |
+| Цвета с обоев | `magick` | `imagemagick 7.1.2.35-1` | ряд «С обоев» не рисуется (`n=0`), вкладка цела |
 | Plank-тема | `plank`, `dconf` | `plank 0.11.89-6` | `[не проверено]`, в лог «не применилась» |
-| Погода | `curl`, `jq`, `noctalia` | `curl 8.23.0-2`, `jq 1.8.2-1` | **громко**: `curl: command not found` в stderr, на выходе `—` |
+| Погода | `curl`, `jq` | `curl 8.23.0-2`, `jq 1.8.2-1` | **громко**: `curl: command not found` в stderr, на выходе `—` |
 | Медиа | `busctl` | `systemd 262.2-1` | `[не проверено]`, пустой JSON |
 
 Проверка «скрытой командой»: каталог со ссылками на 30 базовых утилит, кроме
@@ -191,7 +191,7 @@ xfce4-panel &
 - Wi-Fi без `nmcli`: **нельзя** просто скрыть - сейчас «отключено». Нужен
   честный признак «NetworkManager недоступен».
 - Громкость без `pactl`: `0` похоже на выключенный звук. Нужен признак.
-- «С обоев» без `noctalia`: ряд скрывается сам (`n=0`) - так и оставить.
+- «С обоев» без `magick`: ряд скрывается сам (`n=0`) - так и оставить.
 
 ## B6. systemd и D-Bus
 
@@ -381,7 +381,6 @@ $ ls -la build/target/release/eww
 | `pactl get-sink-volume @DEFAULT_SINK@` | звук доступен | код 0 и число процентов |
 | `brightnessctl -m` | яркость читается | код 0 |
 | `bluetoothctl show \| rg Powered` | Bluetooth есть | `Powered: yes` (только чтение) |
-| `command -v noctalia` | палитры с обоев доступны | путь |
 | `command -v xfconf-query xrandr wmctrl xprop magick` | базовые зависимости | пути |
 | `xfconf-query -c xfce4-panel -l 2>/dev/null \| wc -l` | панель не запущена | ключи есть, но `pgrep xfce4-panel` пуст |
 | `pgrep -a xfce4-panel` | панель XFCE не вернулась | пусто |

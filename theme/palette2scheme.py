@@ -4,7 +4,7 @@
 usage:
     palette2scheme.py <палитра.json> --mode dark|light [--out <файл>]
     palette2scheme.py <палитра.json> --list
-    palette2scheme.py --theme-json <json от `noctalia theme`> --mode dark --out ...
+    palette2scheme.py --theme-json <JSON палитры: от wp-palette.py или noctalia> --mode dark --out ...
 
 Печатает схему на stdout (или пишет в --out). Роли палитры переводятся в наши
 имена, отсутствующие роли выводятся по формулам Noctalia
@@ -29,7 +29,7 @@ def main(argv):
     ap = argparse.ArgumentParser(add_help=True, description=__doc__.splitlines()[0])
     ap.add_argument("palette", nargs="?", help="файл палитры (наш формат или Noctalia)")
     ap.add_argument("--theme-json",
-                    help="JSON от `noctalia theme --both` (ветки dark/light)")
+                    help="JSON палитры: от wp-palette.py или noctalia (ветки dark/light)")
     ap.add_argument("--mode", choices=("dark", "light"), default="dark")
     ap.add_argument("--accent", choices=("primary", "secondary", "tertiary"),
                     default="primary",
@@ -98,7 +98,7 @@ def main(argv):
 
 
 def _from_theme_json(branch, mode):
-    """74 токена от `noctalia theme` -> палитра в нашем разборе.
+    """74 токена палитры (wp-palette.py или noctalia) -> палитра в нашем разборе.
 
     У M3-схем роли называются snake_case и полнее, чем у палитры, но нам нужны
     те же 16. surface_variant -> surfaceVariant, outline -> outline.

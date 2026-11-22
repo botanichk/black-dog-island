@@ -16,7 +16,7 @@
 #   3. пишет всё в ~/.cache/bdi/wallpicker.log, а не в stdout:
 #      stdout принадлежит программе выбора, и мусор в нём не нужен.
 #
-# Зависимости только из системы: sh, xfconf-query, xrandr, xprop, noctalia.
+# Зависимости только из системы: sh, xfconf-query, xrandr, xprop, python3.
 set -eu
 
 # $0 - путь ССЫЛКИ (~/.config/hypr-wallpicker/apply-wallpaper.sh), а не

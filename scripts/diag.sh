@@ -133,6 +133,22 @@ for _t in plank ulauncher; do
   [ -f "$BDI_CACHE/$_t.log" ] && tail -8 "$BDI_CACHE/$_t.log" 2>/dev/null || echo 'пусто'
 done
 
+sec "соты обоев (wallpicker)"
+# Кнопка обоев при провале молча открывает xfdesktop-settings, и снаружи это
+# выглядит как «соты не работают». Причина всегда одна из трёх: нет бинарника,
+# нет ссылки в ~/src/hypr-wallpicker (её ждёт run.sh), нет папки обоев.
+_wpbin="$ROOT/build/wallpicker-src/wallpicker"
+_wplink="$HOME/src/hypr-wallpicker/wallpicker"
+printf 'бинарник   %s\n' "$([ -x "$_wpbin" ] && echo "есть ($(stat -c %s "$_wpbin" 2>/dev/null) байт)" || echo 'НЕТ - кнопка откроет xfdesktop-settings')"
+printf 'ссылка     %s\n' "$([ -x "$_wplink" ] && echo "есть -> $(readlink -f "$_wplink" 2>/dev/null)" || echo "НЕТ ($_wplink)")"
+printf 'пин        %s\n' "$(cat "$ROOT/build/.wallpicker-pin" 2>/dev/null || echo 'не записан')"
+_wpdir=""
+for _d in "$(command -v xdg-user-dir >/dev/null 2>&1 && xdg-user-dir PICTURES 2>/dev/null)" "$HOME/Изображения" "$HOME/Pictures"; do
+  [ -n "$_d" ] && [ "$_d" != "$HOME" ] && [ -d "$_d" ] && { _wpdir=$_d; break; }
+done
+printf 'папка обоев %s\n' "${_wpdir:-НЕТ - ни xdg-user-dir PICTURES, ни ~/Изображения, ни ~/Pictures}"
+[ -f "$BDI_CACHE/wallpicker.log" ] && tail -8 "$BDI_CACHE/wallpicker.log" 2>/dev/null || echo 'лог: пусто'
+
 sec "Plank: схема glib и doc-ключи"
 gsettings list-schemas 2>/dev/null | grep -i plank || echo 'схем glib для plank нет'
 gsettings get net.launchpad.plank enabled-docks 2>&1
