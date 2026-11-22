@@ -68,8 +68,23 @@ else
 fi
 
 sec "open island (вывод как есть)"
-timeout 15 "$EWW" --config "$CONF" --no-daemonize open island 2>&1
-printf 'код: %s\n' "$?"
+# open island ПЕРЕСОЗДАЁТ окно, а у defwindow island в eww.yuck прописан
+# :x "0px": голый open ставит остров к левому краю. diag обязан ничего не
+# менять, поэтому если окно уже есть - только сообщаем это и не трогаем;
+# если окна нет - открываем сразу по центру через --pos, как run-island.sh.
+if "$GEOM" xid >/dev/null 2>&1; then
+  echo 'окно уже открыто - open не нужен (иначе остров уедет в x=0)'
+  printf 'код: 0\n'
+else
+  _w=$(tr -cd '0-9' < "$BDI_CACHE/island-width" 2>/dev/null)
+  _sw=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f1)
+  _x=0
+  if [ -n "$_w" ] && [ -n "$_sw" ] && [ "$_w" -gt 0 ] && [ "$_w" -lt "$_sw" ]; then
+    _x=$(( (_sw - _w) / 2 ))
+  fi
+  timeout 15 "$EWW" --config "$CONF" --no-daemonize open island --pos "${_x}x0" 2>&1
+  printf 'код: %s\n' "$?"
+fi
 
 sec "окна Eww после open"
 wmctrl -l 2>/dev/null | grep -i eww || echo 'нет ни одного'
