@@ -11,6 +11,16 @@
 # это остров: заливка $surface с лёгкой прозрачностью (FILL_ALPHA), рамка
 # $primary, радиусы $r-surface (18 px), внутренняя обводка убрана.
 #
+# Форму берём у системной темы Matte, а не у той, что стояла у человека
+# (Tokyonight-Storm-B и подобные копии Default). У Default поля вокруг
+# значков большие (TopPadding=2.5 против 1.5, плюс IconShadowSize=1): рамка
+# уезжает ниже значков и нижним краем режется краем экрана. У Matte
+# HorizPadding=1, TopPadding=1.5, BottomPadding=2, IconShadowSize=0 -
+# подложка облегает значки. Цвета и радиусы всё равно наши.
+#
+# Откуда Matte: /usr/share/plank/themes (пакет plank). Нет её - берём
+# Default, он есть в любом пакете.
+#
 # Почему копия темы, а не правка твоей: тема Plank - это файл dock.theme из
 # чужого набора, и правка в нём затрётся при любом обновлении набора.
 # Поэтому рядом кладётся своя тема EwwIsland: полная копия исходной, в
@@ -176,19 +186,36 @@ SURFACE=$(sed -n 's/^\$surface: *\(#[0-9a-fA-F]\{6\}\).*/\1/p' "$CSS" | head -1)
 # (как $r-surface у острова). Отличается только прозрачность: заливка чуть
 # просвечивает (FILL_ALPHA), чтобы док не выглядел глухим пятном на светлых
 # обоях. Раньше менялась одна строка (OuterStrokeColor), теперь - весь набор.
+#
+# Форму (поля вокруг значков) берём у системной Matte, а не у темы, которая
+# стояла у владельца. Копии Default (Tokyonight-*, Catppuccin-* и прочие)
+# оставляют вокруг значков большие поля и тень (IconShadowSize=1), поэтому
+# подложка уходит ниже значков и её низ режется краем экрана. У Matte
+# HorizPadding=1, TopPadding=1.5, BottomPadding=2, IconShadowSize=0 -
+# подложка облегает значки. Цвета и радиусы при этом наши.
 OUTDIR="$USER_THEMES/$THEME_NAME"
 mkdir -p "$OUTDIR"
 
+SHAPE_DIR=$(theme_dir Matte 2>/dev/null || true)
+if [ -z "$SHAPE_DIR" ]; then
+  log "нет темы Matte - беру форму у $BASE"
+  SHAPE_DIR=$BASE_DIR
+fi
+
 # Лёгкая прозрачность заливки: 255 - непрозрачно. 230 = ~90 %, обои под доком
-# угадываются, но текст и иконки не теряют контраст.
+# угадываются, но текст и иконки не теряют контраст. 0 (полное стекло) владелец
+# забраковал 2026-11-22: док читается только по рамке, значки висят в воздухе.
 FILL_ALPHA=230
 # Радиус углов дока = $r-surface острова (18 px), чтобы скругления совпадали.
 ROUND=18
+# Толщина рамки = 2 px, как обводка острова. У Matte этой строки нет вовсе,
+# и Plank взял бы свою единицу - рамка была бы в два раза тоньше острова.
+LINE_W=2
 
-python3 - "$BASE_DIR/dock.theme" "$OUTDIR/dock.theme" "$PRIMARY" "$SURFACE" "$FILL_ALPHA" "$ROUND" <<'PY'
+python3 - "$SHAPE_DIR/dock.theme" "$OUTDIR/dock.theme" "$PRIMARY" "$SURFACE" "$FILL_ALPHA" "$ROUND" "$LINE_W" <<'PY'
 import sys, re
 
-src, dst, primary, surface, fill_alpha, round_px = sys.argv[1:7]
+src, dst, primary, surface, fill_alpha, round_px, line_w = sys.argv[1:8]
 
 def rgb(hexv):
     hexv = hexv.lstrip("#")
@@ -201,15 +228,23 @@ alpha_fill = int(fill_alpha)
 
 text = open(src, encoding="utf-8", errors="replace").read()
 
-def set_line(text, key, value):
-    """Заменить строку key=... в секции PlankTheme, иначе вставить после LineWidth."""
+def set_line(text, key, value, section="PlankTheme"):
+    """Заменить ключ, иначе вставить его в нужную секцию.
+
+    Вставка именно в секцию, а не в начало файла: у Matte в [PlankTheme]
+    нет ни одной строки, и ключ, положенный перед заголовком, Plank просто
+    проигнорировал бы - док остался бы без цвета.
+    """
     pat = re.compile(r"^" + key + r"=.*$", re.M)
     if pat.search(text):
         return pat.sub(key + "=" + value, text, count=1)
+    head = re.search(r"^\[" + section + r"\]\s*$", text, re.M)
+    if head:
+        return text[:head.end()] + "\n" + key + "=" + value + text[head.end():]
     lm = re.search(r"^LineWidth=.*$", text, re.M)
     if lm:
         return text[:lm.end()] + "\n" + key + "=" + value + text[lm.end():]
-    return key + "=" + value + "\n" + text
+    return "[" + section + "]\n" + key + "=" + value + "\n" + text
 
 m = re.search(r"^OuterStrokeColor=(\d+);;(\d+);;(\d+);;(\d+)\s*$", text, re.M)
 if m:
@@ -220,14 +255,17 @@ text = set_line(text, "FillStartColor", "%d;;%d;;%d;;%d" % (sr, sg, sb, alpha_fi
 text = set_line(text, "FillEndColor", "%d;;%d;;%d;;%d" % (sr, sg, sb, alpha_fill))
 # Внутреннюю обводку убираем: у острова её нет, остаётся только рамка.
 text = set_line(text, "InnerStrokeColor", "%d;;%d;;%d;;0" % (sr, sg, sb))
+text = set_line(text, "LineWidth", line_w)
 text = set_line(text, "TopRoundness", round_px)
 text = set_line(text, "BottomRoundness", round_px)
 
 open(dst, "w", encoding="utf-8").write(text)
 PY
 # Подпись темы для сравнения: все строки, которые мы задаём. Раньше сравнивали
-# только рамку - с новой заливкой этого мало, док остался бы старым.
-NEWLINE=$(grep -E '^(OuterStrokeColor|FillStartColor|FillEndColor|InnerStrokeColor|TopRoundness|BottomRoundness)=' "$OUTDIR/dock.theme" | tr '\n' ' ')
+# только рамку - с новой заливкой этого мало, док остался бы старым. Поля
+# вокруг значков тоже в подписи: со сменой формы док обязан перезапуститься.
+SIG_KEYS='^(OuterStrokeColor|FillStartColor|FillEndColor|InnerStrokeColor|LineWidth|TopRoundness|BottomRoundness|HorizPadding|TopPadding|BottomPadding|ItemPadding|IconShadowSize)='
+NEWLINE=$(grep -E "$SIG_KEYS" "$OUTDIR/dock.theme" | tr '\n' ' ')
 
 # --- 4. выбрать тему и перезапустить Plank --------------------------------
 # Сравнивать надо с ПРЕДЫДУЩИМ содержимым, но снимок сделать уже поздно:
@@ -238,8 +276,7 @@ STATE_COLOR="$STATE_DIR/plank-color"
 SHOWN=$(cat "$STATE_COLOR" 2>/dev/null || true)
 if [ "$CUR" != "$THEME_NAME" ]; then
   # Показывается исходная тема - её набор и есть текущий.
-  SHOWN=$(grep -E '^(OuterStrokeColor|FillStartColor|FillEndColor|InnerStrokeColor|TopRoundness|BottomRoundness)=' \
-    "$BASE_DIR/dock.theme" | tr '\n' ' ' || true)
+  SHOWN=$(grep -E "$SIG_KEYS" "$BASE_DIR/dock.theme" | tr '\n' ' ' || true)
 fi
 
 if [ "$CUR" = "$THEME_NAME" ] && [ "$NEWLINE" = "$SHOWN" ] && plank_running; then
