@@ -75,7 +75,7 @@ if run_to 5 wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub'; then
 fi
 
 if [ "$RELOAD" -eq 1 ]; then
-  run_to 60 "$ROOT/theme/apply.sh" "$WANT" --reload || true
+  run_to 120 "$ROOT/theme/apply.sh" "$WANT" --reload || true
 else
   run_to 60 "$ROOT/theme/apply.sh" "$WANT" || true
 fi

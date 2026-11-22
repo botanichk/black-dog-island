@@ -325,9 +325,9 @@ if [ "$was_open" = true ]; then
 fi
 
 # --- 5. применить ---------------------------------------------------------
-# run_to 90: apply.sh зовёт reload, Plank и Ulauncher; без таймаута зависший
-# демон держит кнопку до конца сеанса (см. theme/guard.sh).
-run_to 90 "$THEME/apply.sh" "$SCHEME" --reload || true
+# run_to 120: apply.sh зовёт reload, перезапуск демона, Plank и Ulauncher;
+# без таймаута зависший демон держит кнопку до конца сеанса (см. theme/guard.sh).
+run_to 120 "$THEME/apply.sh" "$SCHEME" --reload || true
 
 # --- 6. открыть хаб на прежней вкладке ------------------------------------
 if [ "$was_open" = true ]; then

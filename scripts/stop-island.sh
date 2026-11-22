@@ -10,12 +10,18 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 CONF="$ROOT/eww"
 EWW="$ROOT/build/target/release/eww"
 
+# run_to: этот скрипт - аварийный путь после зависшего reload, поэтому он сам
+# не имеет права висеть. `eww kill` идёт по сокету и на зависшем демоне не
+# отвечает никогда (client.rs: do_server_call), автоскрытие тоже может ждать
+# X11. Без таймаутов остров нельзя было разморозить иначе как перелогином.
+. "$ROOT/theme/guard.sh"
+
 # Сначала автоскрытие: он вернёт остров, если держал его скрытым.
 AUTOHIDE="$ROOT/adapters/x11/island-autohide.py"
-[ -x "$AUTOHIDE" ] && "$AUTOHIDE" stop >/dev/null 2>&1 || true
+[ -x "$AUTOHIDE" ] && run_to 5 "$AUTOHIDE" stop >/dev/null 2>&1 || true
 
 # Штатный путь. Код не проверяем: демона могло не быть вовсе.
-"$EWW" --config "$CONF" kill >/dev/null 2>&1 || true
+run_to 5 "$EWW" --config "$CONF" kill >/dev/null 2>&1 || true
 
 # Хвост: демоны того же конфига, до которых kill не достал.
 . "$ROOT/lib/eww-proc.sh"
@@ -41,9 +47,10 @@ done
 # опять по кругу». Убираем всех, кто остался от ЭТОГО конфига.
 for _s in panel-open power-open layout; do
   _f="$ROOT/adapters/x11/$_s.sh"
-  for _p in $(pgrep -f "$_f" 2>/dev/null || true); do
+  for _p in $(run_to 5 pgrep -f "$_f" 2>/dev/null || true); do
     [ "$_p" = "$$" ] && continue
     # только осиротевшие (ppid 1) или с корнем этого проекта
+    [ -r "/proc/$_p/environ" ] || continue   # процесс уже вышел - не шумим в stderr
     _pp=$(awk '{print $4}' "/proc/$_p/stat" 2>/dev/null || echo 0)
     _r=$(tr '\0' '\n' < "/proc/$_p/environ" 2>/dev/null | sed -n 's/^BDI_ROOT=//p' | head -1)
     if [ "$_pp" = 1 ] || [ "$_r" = "$ROOT" ]; then

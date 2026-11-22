@@ -11,7 +11,8 @@
 #   1. читает схему: theme/schemes (встроенные) или ~/.local/state/bdi/schemes;
 #   2. рендерит theme/templates/colors.scss.tpl -> eww/colors.scss;
 #   3. рендерит theme/templates/assets/*.svg -> eww/assets/ (те же имена);
-#   4. с --reload: build/target/release/eww --config eww reload.
+#   4. с --reload: build/target/release/eww --config eww reload; если демон
+#      не ответил - перезапуск (scripts/stop-island.sh + run-island.sh).
 #
 # Зависимости только из системы: sh, python3 (уже стоят). Ничего не ставим.
 set -eu
@@ -207,29 +208,76 @@ if [ "$RELOAD" -eq 1 ]; then
   EWW="$ROOT/build/target/release/eww"
   [ -x "$EWW" ] || { echo "eww не собран: $EWW" >&2; exit 1; }
   # reload возвращает 1, когда демон не успевает ответить ("os error 11"),
-  # хотя конфиг уже перечитан; поэтому код 1 не считаем провалом, но
-  # предупреждаем - проверять надо пикселями.
+  # хотя конфиг уже перечитан; поэтому код 1 не считаем провалом.
   #
   # run_to обязателен: клиент Eww читает ответ демона до упора (client.rs:
-  # do_server_call), поэтому зависший или чужой демон на сокете вешает
-  # смену темы навсегда. 20 с - с запасом: обычный reload занимает 0.07 с.
-  if run_to 20 "$EWW" --config "$ROOT/eww" reload; then
+  # do_server_call). 10 с - с запасом: обычный reload занимает 0.07 с.
+  RESTARTED=0
+  _stuck=0
+  if run_to 10 "$EWW" --config "$ROOT/eww" reload; then
     echo "eww reload: ок"
   elif timed_out $?; then
-    log "ошибка: eww reload не ответил за 20 с (демон завис?)"
-    echo "eww reload не ответил за 20 с: конфиг перечитан не был, см. $LOG" >&2
+    log "eww reload не ответил за 10 с - демон завис"
+    echo "eww reload завис: перезапускаю остров (см. $LOG)" >&2
+    _stuck=1
   else
     echo "eww reload: код 1 (демон не ответил, конфиг может быть уже перечитан)" >&2
+  fi
+  # Успешный reload ничего не доказывает: сервер ждёт ответ главного цикла
+  # всего 100 мс (ipc_server.rs) и закрывает поток, а пустой ответ клиент
+  # считает успехом (client.rs: Ok(None)). Поэтому проверяем сам главный
+  # цикл: `state` отвечает через него (app.rs:287). Пока идёт load_config,
+  # ответ пустой - это нормальные доли секунды, поэтому повторяем до 10 с.
+  # Пусто всё время = остров залип и сам не очнётся.
+  if [ "$_stuck" -eq 0 ]; then
+    _alive=0
+    _i=0
+    while [ "$_i" -lt 10 ]; do
+      if [ -n "$(run_to 3 "$EWW" --config "$ROOT/eww" state --all 2>/dev/null || true)" ]; then
+        _alive=1
+        break
+      fi
+      sleep 1
+      _i=$((_i + 1))
+    done
+    if [ "$_alive" -eq 0 ]; then
+      log "демон не ответил на state за 10 с после reload - перезапускаю"
+      echo "остров не отвечает после reload: перезапускаю (см. $LOG)" >&2
+      _stuck=1
+    fi
+  fi
+  if [ "$_stuck" -eq 1 ]; then
+    # load_config идёт на главном контексте GLib (app.rs:566): stop_all()
+    # глушит каждый deflisten через join_thread, до 10 с на ребёнка, и всё
+    # это время остров не перерисовывается и не отвечает. Клиент к такому
+    # демону больше не достучится, поэтому остаётся перезапуск - ровно то,
+    # что раньше делал перелогин. Тема уже на диске, новый демон её прочтёт.
+    if run_to 15 "$ROOT/scripts/stop-island.sh" >>"$BDI_CACHE/island-restart.log" 2>&1; then
+      log "демон остановлен"
+    else
+      log "предупреждение: stop-island.sh не уложился в 15 с"
+    fi
+    if run_to 30 "$ROOT/scripts/run-island.sh" >>"$BDI_CACHE/island-restart.log" 2>&1; then
+      log "остров поднят заново"
+      echo "остров перезапущен с новой темой"
+    else
+      log "ошибка: остров не поднялся после перезапуска"
+      echo "остров не поднялся после перезапуска, см. $BDI_CACHE/island-restart.log" >&2
+    fi
+    RESTARTED=1
   fi
   # reload пересоздаёт окно острова по :geometry из eww.yuck, а там x=0px -
   # остров уезжает в левый угол. Центрирует его только scripts/run-island.sh,
   # но сюда он не зовётся. Возвращаем позицию сами: ширина острова от темы не
   # зависит и лежит в ~/.cache/bdi/island-width (её пишут run-island и демон).
-  _iw=$(tr -cd '0-9' < "${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}/island-width" 2>/dev/null || true)
-  [ -n "$_iw" ] || _iw=619
-  _sw=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f1)
-  if [ -n "${_sw:-}" ] && [ "$_iw" -gt 0 ] && [ "$_iw" -lt "$_sw" ]; then
-    run_to 10 "$EWW" --config "$ROOT/eww" --no-daemonize open island --pos "$(( (_sw - _iw) / 2 ))x0" >/dev/null 2>&1 || true
+  # После перезапуска позицию уже выставил run-island.sh - не спорим с ним.
+  if [ "$RESTARTED" -eq 0 ]; then
+    _iw=$(tr -cd '0-9' < "${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}/island-width" 2>/dev/null || true)
+    [ -n "$_iw" ] || _iw=619
+    _sw=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f1)
+    if [ -n "${_sw:-}" ] && [ "$_iw" -gt 0 ] && [ "$_iw" -lt "$_sw" ]; then
+      run_to 10 "$EWW" --config "$ROOT/eww" --no-daemonize open island --pos "$(( (_sw - _iw) / 2 ))x0" >/dev/null 2>&1 || true
+    fi
   fi
 fi
 

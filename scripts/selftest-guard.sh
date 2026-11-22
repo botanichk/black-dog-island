@@ -28,7 +28,6 @@ mk_sandbox() {
   mkdir -p "$BASE/home/.config/bdi" "$BASE/home/.cache/bdi" \
            "$BASE/bin" "$BASE/home/.local/share/plank/themes"
   cp -r /usr/share/plank/themes/Default "$BASE/home/.local/share/plank/themes/" 2>/dev/null || true
-  SW=$(( $(date +%S) + 10 ))   # уникальное число, чтобы ловить именно наши вызовы
   export HOME="$BASE/home"
   export BDI_CONFIG="$BASE/home/.config/bdi"
   export BDI_CACHE="$BASE/home/.cache/bdi"
@@ -125,6 +124,83 @@ check "кнопка обоев: без сот отвечает 0" 0 "$_rc"
 grep -q "wallpicker не запустился" "$BDI_CACHE/wallpicker.log" &&
   printf 'ok   причина записана в лог\n' ||
   { printf 'FAIL причины нет в логе\n'; fail=1; }
+
+# --- 6. apply.sh: reload «ответил», а главный цикл залип -> перезапуск ------
+# Дерево-двойник: настоящие theme/*, но scripts/stop-island.sh и run-island.sh
+# - заглушки, а eww изображает настоящий IPC: reload отвечает 0 сразу (сервер
+# ждёт главный цикл лишь 100 мс), state - пусто, пока цикл занят.
+mk_sandbox
+FAKE="$BASE/root"
+mkdir -p "$FAKE/theme" "$FAKE/scripts" "$FAKE/eww/assets" "$FAKE/build/target/release"
+cp "$ROOT/theme/apply.sh" "$ROOT/theme/guard.sh" "$FAKE/theme/"
+ln -s "$ROOT/theme/schemes" "$FAKE/theme/schemes"
+ln -s "$ROOT/theme/templates" "$FAKE/theme/templates"
+printf '#!/bin/sh\nexit 0\n' > "$FAKE/theme/plank.sh"
+printf '#!/bin/sh\nexit 0\n' > "$FAKE/theme/ulauncher.sh"
+printf '#!/bin/sh\necho stop >> "$BDI_CACHE/restart.called"\n' > "$FAKE/scripts/stop-island.sh"
+printf '#!/bin/sh\necho start >> "$BDI_CACHE/restart.called"\n' > "$FAKE/scripts/run-island.sh"
+printf '#!/bin/sh\ncase "$*" in *reload*) exit 0 ;; *state*) exit 0 ;; esac\nexit 0\n' \
+  > "$FAKE/build/target/release/eww"
+chmod +x "$FAKE/theme/apply.sh" "$FAKE/theme/plank.sh" "$FAKE/theme/ulauncher.sh" \
+         "$FAKE/scripts/stop-island.sh" "$FAKE/scripts/run-island.sh" \
+         "$FAKE/build/target/release/eww"
+
+_t0=$(date +%s)
+out=$(timeout 90 sh "$FAKE/theme/apply.sh" default --reload 2>&1)
+_rc=$?
+_t1=$(date +%s)
+check "apply.sh не виснет на залипшем reload" 0 "$_rc"
+check "apply.sh уложился в 60 с" 1 "$(( (_t1 - _t0) < 60 ? 1 : 0 ))"
+check "демон остановлен и поднят заново" "stop start" \
+  "$(tr '\n' ' ' < "$BDI_CACHE/restart.called" 2>/dev/null | sed 's/ $//')"
+grep -q "не ответил на state" "$BDI_CACHE/theme.log" &&
+  printf 'ok   причина в theme.log\n' ||
+  { printf 'FAIL причины нет в theme.log\n'; fail=1; }
+
+# --- 7. apply.sh: живой главный цикл -> перезапуска нет --------------------
+mk_sandbox
+FAKE="$BASE/root"
+mkdir -p "$FAKE/theme" "$FAKE/scripts" "$FAKE/eww/assets" "$FAKE/build/target/release"
+cp "$ROOT/theme/apply.sh" "$ROOT/theme/guard.sh" "$FAKE/theme/"
+ln -s "$ROOT/theme/schemes" "$FAKE/theme/schemes"
+ln -s "$ROOT/theme/templates" "$FAKE/theme/templates"
+printf '#!/bin/sh\nexit 0\n' > "$FAKE/theme/plank.sh"
+printf '#!/bin/sh\nexit 0\n' > "$FAKE/theme/ulauncher.sh"
+printf '#!/bin/sh\necho stop >> "$BDI_CACHE/restart.called"\n' > "$FAKE/scripts/stop-island.sh"
+printf '#!/bin/sh\necho start >> "$BDI_CACHE/restart.called"\n' > "$FAKE/scripts/run-island.sh"
+printf '#!/bin/sh\ncase "$*" in *state*) echo "hub_tab: 0"; exit 0 ;; esac\nexit 0\n' \
+  > "$FAKE/build/target/release/eww"
+chmod +x "$FAKE/theme/apply.sh" "$FAKE/theme/plank.sh" "$FAKE/theme/ulauncher.sh" \
+         "$FAKE/scripts/stop-island.sh" "$FAKE/scripts/run-island.sh" \
+         "$FAKE/build/target/release/eww"
+
+_t0=$(date +%s)
+timeout 60 sh "$FAKE/theme/apply.sh" default --reload >/dev/null 2>&1
+_rc=$?
+_t1=$(date +%s)
+check "живой reload не перезапускает демон" 0 "$_rc"
+[ -f "$BDI_CACHE/restart.called" ] &&
+  { printf 'FAIL демон перезапущен зря\n'; fail=1; } ||
+  printf 'ok   перезапуска нет\n'
+check "живой reload быстрый" 1 "$(( (_t1 - _t0) < 10 ? 1 : 0 ))"
+
+# --- 8. stop-island.sh: висящий `eww kill` не держит аварийный путь --------
+mk_sandbox
+STOPROOT="$BASE/stoproot"
+mkdir -p "$STOPROOT/scripts" "$STOPROOT/lib" "$STOPROOT/theme" "$STOPROOT/eww" \
+         "$STOPROOT/build/target/release"
+cp "$ROOT/scripts/stop-island.sh" "$STOPROOT/scripts/"
+cp "$ROOT/lib/eww-proc.sh" "$STOPROOT/lib/"
+cp "$ROOT/theme/guard.sh" "$STOPROOT/theme/"
+printf '#!/bin/sh\nsleep 600\n' > "$STOPROOT/build/target/release/eww"
+chmod +x "$STOPROOT/build/target/release/eww" "$STOPROOT/scripts/stop-island.sh"
+
+_t0=$(date +%s)
+timeout 40 sh "$STOPROOT/scripts/stop-island.sh" >/dev/null 2>&1
+_rc=$?
+_t1=$(date +%s)
+check "stop-island.sh не виснет на eww kill" 0 "$_rc"
+check "stop-island.sh уложился в 20 с" 1 "$(( (_t1 - _t0) < 20 ? 1 : 0 ))"
 
 printf '\n'
 if [ "$fail" -eq 0 ]; then echo "всё сошлось"; else echo "есть провалы"; fi
