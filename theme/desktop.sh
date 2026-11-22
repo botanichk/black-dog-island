@@ -11,16 +11,29 @@
 # Почему xfconf, а не feh/xsetroot: обои рисует xfdesktop, и он читает
 # /backdrop/.../last-image. feh писал бы поверх, и xfdesktop при любом
 # обновлении стола возвращал бы свои.
+#
+# Почему все вызовы через run_to: xfconf-query и xprop ходят в чужие службы
+# (xfconfd, X-сервер). На машине, где служба не отвечает, они висят вечно, а
+# этим файлом пользуется и смена темы, и хук выбора обоев - остров замирал бы
+# вместе с ними. См. theme/guard.sh.
+if ! command -v run_to >/dev/null 2>&1; then
+  if [ -n "${ROOT:-}" ] && [ -f "$ROOT/theme/guard.sh" ]; then
+    . "$ROOT/theme/guard.sh"
+  else
+    # Без ROOT (файл подключили вручную) таймаута нет, но и падать нечему.
+    run_to() { shift; "$@"; }
+  fi
+fi
 
 # Номер стола, чьи обои РЕАЛЬНО на экране.
 # При /backdrop/single-workspace-mode=true это /backdrop/single-workspace-number
 # (xfdesktop рисует его на всех столах), иначе текущий стол.
 xfce_desktop_workspace() {
-  _single=$(xfconf-query -c xfce4-desktop -p /backdrop/single-workspace-mode 2>/dev/null || true)
-  _ws=$(xprop -root _NET_CURRENT_DESKTOP 2>/dev/null | sed -n 's/.*= *//p')
+  _single=$(run_to 5 xfconf-query -c xfce4-desktop -p /backdrop/single-workspace-mode 2>/dev/null || true)
+  _ws=$(run_to 5 xprop -root _NET_CURRENT_DESKTOP 2>/dev/null | sed -n 's/.*= *//p')
   _ws=${_ws:-0}
   if [ "$_single" = "true" ]; then
-    _num=$(xfconf-query -c xfce4-desktop -p /backdrop/single-workspace-number 2>/dev/null || true)
+    _num=$(run_to 5 xfconf-query -c xfce4-desktop -p /backdrop/single-workspace-number 2>/dev/null || true)
     [ -n "$_num" ] && _ws=$_num
   fi
   printf '%s\n' "$_ws"
@@ -28,14 +41,14 @@ xfce_desktop_workspace() {
 
 # Ключи last-image этого стола (по одному на монитор), по одному в строке.
 xfce_wallpaper_keys() {
-  xfconf-query -c xfce4-desktop -l 2>/dev/null \
+  run_to 5 xfconf-query -c xfce4-desktop -l 2>/dev/null \
     | grep "/workspace$1/last-image$" || true
 }
 
 # Первый существующий файл обоев стола $1. Пусто, если у стола нет обоев.
 xfce_wallpaper_of() {
   xfce_wallpaper_keys "$1" | while read -r _prop; do
-    _value=$(xfconf-query -c xfce4-desktop -p "$_prop" 2>/dev/null || true)
+    _value=$(run_to 5 xfconf-query -c xfce4-desktop -p "$_prop" 2>/dev/null || true)
     if [ -n "$_value" ] && [ -f "$_value" ]; then
       printf '%s\n' "$_value"
       break
@@ -58,13 +71,13 @@ xfce_current_wallpaper() {
 # чтобы не хардкодить monitorLVDS-1. Если ключей нет вообще (свежий профиль),
 # берём первый подключённый выход xrandr: XFCE зовёт его monitor<ИМЯ>.
 xfce_backdrop_prefix() {
-  _key=$(xfconf-query -c xfce4-desktop -l 2>/dev/null \
+  _key=$(run_to 5 xfconf-query -c xfce4-desktop -l 2>/dev/null \
     | grep -m1 "/workspace[0-9]*/last-image$" || true)
   if [ -n "$_key" ]; then
     printf '%s\n' "${_key%/workspace*/last-image*}"
     return 0
   fi
-  _out=$(xrandr --query 2>/dev/null | awk '/ connected/{print $1; exit}')
+  _out=$(run_to 5 xrandr --query 2>/dev/null | awk '/ connected/{print $1; exit}')
   if [ -n "$_out" ]; then
     printf '/backdrop/screen0/monitor%s\n' "$_out"
     return 0
@@ -82,11 +95,11 @@ xfce_set_wallpaper() {
   _prefix=$(xfce_backdrop_prefix) || return 1
   _key="$_prefix/workspace$_ws/last-image"
 
-  if xfconf-query -c xfce4-desktop -p "$_key" >/dev/null 2>&1; then
-    xfconf-query -c xfce4-desktop -p "$_key" -s "$_path" || return 1
+  if run_to 5 xfconf-query -c xfce4-desktop -p "$_key" >/dev/null 2>&1; then
+    run_to 5 xfconf-query -c xfce4-desktop -p "$_key" -s "$_path" || return 1
   else
     # Ключа нет (стол новый или профиль пустой) - создаём.
-    xfconf-query -c xfce4-desktop -p "$_key" -n -t string -s "$_path" || return 1
+    run_to 5 xfconf-query -c xfce4-desktop -p "$_key" -n -t string -s "$_path" || return 1
   fi
 
   printf '%s\n' "$_key"

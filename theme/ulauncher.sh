@@ -49,24 +49,28 @@ log() {
   printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG" 2>/dev/null || true
 }
 
+# run_to: внешние вызовы под таймаутом (см. theme/guard.sh). Без него
+# зависший D-Bus/pgrep с одинаковым успехом вешает смену темы.
+. "$ROOT/theme/guard.sh"
+
 # PID демона. Окно скрыто, поэтому ищем по строке запуска, а не по окну.
 ul_pid() {
-  pgrep -f '[/]usr/bin/ulauncher' 2>/dev/null | head -1 || true
+  run_to 3 pgrep -f '[/]usr/bin/ulauncher' 2>/dev/null | head -1 || true
 }
 
 # Перезапуск нужен только когда меняется settings.json (см. rows).
 restart_ul() {
   _pid=$(ul_pid)
   if [ -n "$_pid" ]; then
-    kill -TERM "$_pid" 2>/dev/null || true
+    run_to 3 kill -TERM "$_pid" 2>/dev/null || true
     _i=0
     while [ "$_i" -lt 40 ] && [ -n "$(ul_pid)" ]; do
       sleep 0.05
       _i=$((_i + 1))
     done
-    [ -z "$(ul_pid)" ] || { kill -KILL "$_pid" 2>/dev/null || true; sleep 0.1; }
+    [ -z "$(ul_pid)" ] || { run_to 3 kill -KILL "$_pid" 2>/dev/null || true; sleep 0.1; }
   fi
-  setsid -f ulauncher --hide-window >/dev/null 2>&1 || {
+  run_to 10 setsid -f ulauncher --hide-window >/dev/null 2>&1 || {
     log "ошибка: ulauncher не запустился"
     return 1
   }
@@ -180,7 +184,7 @@ if [ "$ACTION" = "restore" ]; then
   rm -f "$STATE_FILE"
   [ "$REMOVED" -eq 0 ] && { echo "нечего возвращать: нашей темы нет" >&2; exit 1; }
   _p=$(ul_pid)
-  [ -n "$_p" ] && kill -HUP "$_p" 2>/dev/null || true
+  [ -n "$_p" ] && { run_to 3 kill -HUP "$_p" 2>/dev/null || true; }
   rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/ulauncher_cache/themes/$(current_theme_name)" 2>/dev/null || true
   log "возврат на системную тему $(current_theme_name)"
   echo "тема Ulauncher: системная $(current_theme_name) (наша копия убрана)"
@@ -366,7 +370,7 @@ fi
 
 _pid=$(ul_pid)
 if [ -n "$_pid" ]; then
-  kill -HUP "$_pid" 2>/dev/null || true
+  run_to 3 kill -HUP "$_pid" 2>/dev/null || true
   log "тема перечитана по SIGHUP (pid $_pid), рамка $FRAME"
 else
   log "демон не запущен - тема применится при следующем старте"

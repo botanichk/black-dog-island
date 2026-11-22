@@ -17,11 +17,13 @@
 # выглядела бы иначе при другом ~/.config/bdi/accent. Так она воспроизводится ровно
 # так, как её видел человек в момент сохранения.
 #
-# Зависимости только из системы: sh, python3, magick (только для обоев).
+# run_to: внешние вызовы под таймаутом (см. theme/guard.sh). Без него
+# зависший демон Eww держит кнопку до конца сеанса.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 THEME="$ROOT/theme"
+. "$ROOT/theme/guard.sh"
 BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
 # PALETTES_DIR/SAVE_SOURCE/SAVE_NO_APPLY - только для --selftest: пишем в
 # временный каталог и не трогаем действующую тему.
@@ -180,7 +182,7 @@ if [ -z "${SAVE_NO_APPLY:-}" ]; then
   # Поле названия чистим: иначе следующий клик по «Сохранить» молча перезаписал
   # бы ту же тему. Формально это сброс интерфейса, поэтому ошибку не считаем.
   EWW="$ROOT/build/target/release/eww"
-  [ -x "$EWW" ] && "$EWW" --config "$ROOT/eww" update theme_name="" >/dev/null 2>&1 || true
+  [ -x "$EWW" ] && run_to 5 "$EWW" --config "$ROOT/eww" update theme_name="" >/dev/null 2>&1 || true
 fi
 
 echo "тема «$NAME» сохранена: $DIR/$NAME.json"

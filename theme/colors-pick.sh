@@ -26,6 +26,9 @@ EWW="$ROOT/build/target/release/eww"
 PANEL="$ROOT/adapters/x11/panel.sh"
 THEME="$ROOT/theme"
 
+# run_to: внешние вызовы под таймаутом (см. theme/guard.sh).
+. "$ROOT/theme/guard.sh"
+
 # --- 0. отвязка от кнопки -------------------------------------------------
 # Eww выполняет :onclick синхронно и, если команда не уложилась в :timeout,
 # убивает её на середине. Для смены темы это худший момент: хаб уже закрыт
@@ -298,9 +301,9 @@ fi
 # Вкладка «Цвета» = 6. Если хаб был открыт, вернём его сюда же.
 was_open=false
 tab=colors
-if wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub'; then
+if run_to 5 wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub'; then
   was_open=true
-  idx=$("$EWW" --config "$ROOT/eww" state 2>/dev/null | awk -F': ' '$1=="hub_tab"{print $2; exit}')
+  idx=$(run_to 5 "$EWW" --config "$ROOT/eww" state 2>/dev/null | awk -F': ' '$1=="hub_tab"{print $2; exit}')
   case "${idx:-6}" in
     0) tab=home ;; 1) tab=calendar ;; 2) tab=weather ;;
     3) tab=wifi ;; 4) tab=shot ;; 5) tab=media ;; *) tab=colors ;;
@@ -314,21 +317,23 @@ fi
 # и panel.sh открывает единственное окно. На клик выходит ~3 с вместо ~6.4:
 # раньше 5.3 с из них уходило на закрытие уже пересозданного окна и ожидание.
 if [ "$was_open" = true ]; then
-  "$EWW" --config "$ROOT/eww" close panel-hub >/dev/null 2>&1 || true
+  run_to 5 "$EWW" --config "$ROOT/eww" close panel-hub >/dev/null 2>&1 || true
   i=0
-  while wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 20 ]; do
+  while run_to 3 wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 20 ]; do
     sleep 0.05; i=$((i + 1))
   done
 fi
 
 # --- 5. применить ---------------------------------------------------------
-"$THEME/apply.sh" "$SCHEME" --reload || true
+# run_to 90: apply.sh зовёт reload, Plank и Ulauncher; без таймаута зависший
+# демон держит кнопку до конца сеанса (см. theme/guard.sh).
+run_to 90 "$THEME/apply.sh" "$SCHEME" --reload || true
 
 # --- 6. открыть хаб на прежней вкладке ------------------------------------
 if [ "$was_open" = true ]; then
-  "$PANEL" panel-hub "$tab" >/dev/null 2>&1 || true
+  run_to 15 "$PANEL" panel-hub "$tab" >/dev/null 2>&1 || true
   i=0
-  while ! wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 40 ]; do
+  while ! run_to 3 wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 40 ]; do
     sleep 0.05; i=$((i + 1))
   done
   # panel.sh держит позицию ~1.5 с; не спорим с ним

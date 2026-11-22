@@ -27,6 +27,10 @@ mkdir -p "$BDI_CONFIG" "$BDI_STATE/schemes" "$BDI_CACHE" 2>/dev/null || true
 LOG="$BDI_CACHE/theme.log"
 log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG" 2>/dev/null || true; }
 
+# run_to: внешние вызовы под таймаутом. Без него мёртвый демон Eww или
+# неподнятая сессионная шина вешают смену темы целиком (см. theme/guard.sh).
+. "$ROOT/theme/guard.sh"
+
 # Значения по умолчанию: на свежем клоне файлов состояния ещё нет, а чтение
 # через `< файл` ругается в stderr даже с 2>/dev/null. Запись может не пройти
 # (~/.config/bdi только на чтение) - это не повод не рендерить тему.
@@ -205,8 +209,15 @@ if [ "$RELOAD" -eq 1 ]; then
   # reload возвращает 1, когда демон не успевает ответить ("os error 11"),
   # хотя конфиг уже перечитан; поэтому код 1 не считаем провалом, но
   # предупреждаем - проверять надо пикселями.
-  if "$EWW" --config "$ROOT/eww" reload; then
+  #
+  # run_to обязателен: клиент Eww читает ответ демона до упора (client.rs:
+  # do_server_call), поэтому зависший или чужой демон на сокете вешает
+  # смену темы навсегда. 20 с - с запасом: обычный reload занимает 0.07 с.
+  if run_to 20 "$EWW" --config "$ROOT/eww" reload; then
     echo "eww reload: ок"
+  elif timed_out $?; then
+    log "ошибка: eww reload не ответил за 20 с (демон завис?)"
+    echo "eww reload не ответил за 20 с: конфиг перечитан не был, см. $LOG" >&2
   else
     echo "eww reload: код 1 (демон не ответил, конфиг может быть уже перечитан)" >&2
   fi
@@ -218,7 +229,7 @@ if [ "$RELOAD" -eq 1 ]; then
   [ -n "$_iw" ] || _iw=619
   _sw=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f1)
   if [ -n "${_sw:-}" ] && [ "$_iw" -gt 0 ] && [ "$_iw" -lt "$_sw" ]; then
-    "$EWW" --config "$ROOT/eww" --no-daemonize open island --pos "$(( (_sw - _iw) / 2 ))x0" >/dev/null 2>&1 || true
+    run_to 10 "$EWW" --config "$ROOT/eww" --no-daemonize open island --pos "$(( (_sw - _iw) / 2 ))x0" >/dev/null 2>&1 || true
   fi
 fi
 

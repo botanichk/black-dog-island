@@ -49,21 +49,25 @@ log() {
   printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG" 2>/dev/null || true
 }
 
+. "$ROOT/theme/guard.sh"
+
 dconf_key() {
-  # Имя дока не хардкодим: берём первый из enabled-docks
-  _dock=$(gsettings get net.launchpad.plank enabled-docks 2>/dev/null \
-    | sed "s/[][]//g; s/'//g; s/,.*//" | tr -d ' \t')
+  # Имя дока не хардкодим: берём первый из enabled-docks.
+  # run_to обязателен: gsettings ходит через D-Bus, а на машине без живой
+  # сессионной шины вызов не возвращается и вешает остров (проверено).
+  _dock=$(run_to 5 gsettings get net.launchpad.plank enabled-docks 2>/dev/null \
+    | sed "s/[][]//g; s/'//g; s/,.*//" | tr -d ' \t') || true
   [ -n "$_dock" ] || _dock=dock1
   printf '/net/launchpad/plank/docks/%s/theme\n' "$_dock"
 }
 
 plank_running() {
-  pgrep -x plank >/dev/null 2>&1
+  run_to 3 pgrep -x plank >/dev/null 2>&1
 }
 
 restart_plank() {
   if plank_running; then
-    pkill -x plank 2>/dev/null || true
+    run_to 3 pkill -x plank 2>/dev/null || true
     # ждём выхода, иначе новый процесс увидит старый и уйдёт
     _i=0
     while [ "$_i" -lt 30 ] && plank_running; do
@@ -71,17 +75,19 @@ restart_plank() {
       _i=$((_i + 1))
     done
   fi
-  setsid -f plank >/dev/null 2>&1 || {
+  run_to 10 setsid -f plank >/dev/null 2>&1 || {
     log "ошибка: plank не запустился"
     return 1
   }
-  # ждём окно дока, чтобы следующие замеры видели уже новую тему
+  # ждём окно дока, чтобы следующие замеры видели уже новую тему.
+  # Не дольше ~15 с: wmctrl под таймаутом, иначе мёртвый X-сервер растянул
+  # бы ожидание на 40 итераций по 3 с, а смена темы обязана закончиться.
   _i=0
-  while [ "$_i" -lt 40 ]; do
-    if wmctrl -l 2>/dev/null | grep -qi plank; then
+  while [ "$_i" -lt 15 ]; do
+    if run_to 2 wmctrl -l 2>/dev/null | grep -qi plank; then
       return 0
     fi
-    sleep 0.05
+    sleep 0.2
     _i=$((_i + 1))
   done
   return 0
@@ -115,7 +121,18 @@ command -v plank >/dev/null 2>&1 || {
 }
 
 KEY=$(dconf_key)
-CUR=$(dconf read "$KEY" 2>/dev/null | tr -d "'")
+CUR=""
+if _raw=$(run_to 5 dconf read "$KEY" 2>/dev/null); then
+  CUR=$(printf '%s' "$_raw" | tr -d "'")
+else
+  # 124 = таймаут. Любой другой код - просто нет ключа, это не повод
+  # пропускать покраску: на свежем профиле темы в dconf ещё нет.
+  if timed_out $?; then
+    log "предупреждение: dconf не ответил за 5 с - тема Plank не тронута"
+    echo "dconf не ответил за 5 с, тема Plank не применена" >&2
+    exit 0
+  fi
+fi
 CUR=${CUR:-}
 
 if [ "${ACTION:-apply}" = "status" ]; then
@@ -138,7 +155,12 @@ if [ "${ACTION:-apply}" = "restore" ]; then
     echo "нечего возвращать: исходная тема не записана" >&2
     exit 1
   fi
-  dconf write "$KEY" "'$BASE'"
+  if ! run_to 5 dconf write "$KEY" "'$BASE'"; then
+    log "предупреждение: dconf не принял тему за 5 с - осталась текущая"
+    echo "dconf не ответил за 5 с, тема Plank не изменена" >&2
+    rm -rf "$USER_THEMES/$THEME_NAME"
+    exit 0
+  fi
   rm -f "$BASE_FILE"
   rm -rf "$USER_THEMES/$THEME_NAME"
   restart_plank || true
@@ -287,7 +309,14 @@ if [ "$CUR" = "$THEME_NAME" ] && [ "$NEWLINE" = "$SHOWN" ] && plank_running; the
   exit 0
 fi
 
-dconf write "$KEY" "'$THEME_NAME'"
+if ! run_to 5 dconf write "$KEY" "'$THEME_NAME'"; then
+  # Тема собрана на диске, но выбрать её в dconf не вышло. Продолжать
+  # нельзя: перезапуск Plank подхватил бы старую тему, а следующий вызов
+  # снова упёрся бы в тот же dconf. Пишем причину и выходим - остров живёт.
+  log "предупреждение: dconf не ответил за 5 с - тема $THEME_NAME собрана, но не выбрана"
+  echo "dconf не ответил за 5 с: тема $THEME_NAME собрана, но не выбрана" >&2
+  exit 0
+fi
 restart_plank || true
 mkdir -p "$STATE_DIR"
 printf '%s\n' "$NEWLINE" > "$STATE_COLOR"

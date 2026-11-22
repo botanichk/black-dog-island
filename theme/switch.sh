@@ -21,6 +21,10 @@ BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
 EWW="$ROOT/build/target/release/eww"
 PANEL="$ROOT/adapters/x11/panel.sh"
 
+# run_to: всё внешнее под таймаутом, иначе зависший демон Eww держит кнопку
+# темы до конца сеанса (см. theme/guard.sh).
+. "$ROOT/theme/guard.sh"
+
 RELOAD=1
 WANT=""
 for arg in "$@"; do
@@ -60,9 +64,9 @@ next_scheme() {
 # Что сейчас открыто: вкладка хаба и была ли панель вообще.
 was_open=false
 tab=home
-if wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub'; then
+if run_to 5 wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub'; then
   was_open=true
-  idx=$("$EWW" --config "$ROOT/eww" state 2>/dev/null | awk -F': ' '$1=="hub_tab"{print $2; exit}')
+  idx=$(run_to 5 "$EWW" --config "$ROOT/eww" state 2>/dev/null | awk -F': ' '$1=="hub_tab"{print $2; exit}')
   case "${idx:-0}" in
     0) tab=home ;; 1) tab=calendar ;; 2) tab=weather ;;
     3) tab=wifi ;; 4) tab=shot ;; 5) tab=media ;; 6) tab=colors ;;
@@ -71,9 +75,9 @@ if wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub'; then
 fi
 
 if [ "$RELOAD" -eq 1 ]; then
-  "$ROOT/theme/apply.sh" "$WANT" --reload || true
+  run_to 60 "$ROOT/theme/apply.sh" "$WANT" --reload || true
 else
-  "$ROOT/theme/apply.sh" "$WANT"
+  run_to 60 "$ROOT/theme/apply.sh" "$WANT" || true
 fi
 
 # reload не закрывает хаб, а оставляет окно и переставляет его на y=230,
@@ -81,14 +85,14 @@ fi
 # пока оно исчезнет, и открываем заново через panel.sh: он берёт x/ширину от
 # острова, ставит y=50 и запрашивает нужную вкладку.
 if [ "$RELOAD" -eq 1 ] && [ "$was_open" = true ]; then
-  "$EWW" --config "$ROOT/eww" close panel-hub >/dev/null 2>&1 || true
+  run_to 5 "$EWW" --config "$ROOT/eww" close panel-hub >/dev/null 2>&1 || true
   i=0
-  while wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 30 ]; do
+  while run_to 3 wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 30 ]; do
     sleep 0.1; i=$((i + 1))
   done
-  "$PANEL" panel-hub "$tab" >/dev/null 2>&1 || true
+  run_to 15 "$PANEL" panel-hub "$tab" >/dev/null 2>&1 || true
   i=0
-  while ! wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 40 ]; do
+  while ! run_to 3 wmctrl -l 2>/dev/null | grep -q ' Eww - panel-hub' && [ "$i" -lt 40 ]; do
     sleep 0.1; i=$((i + 1))
   done
   # panel.sh держит позицию ~1.5 с; даём ему закончить и не спорим с ним.
