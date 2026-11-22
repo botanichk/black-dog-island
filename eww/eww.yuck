@@ -460,7 +460,7 @@
     ;; Верхняя карточка забирает остаток высоты, нижняя прижата вниз и растёт
     ;; только по содержимому (:vexpand false + valign end).
     (box :orientation "vertical" :space-evenly false :class "wx-left" :halign "fill" :vexpand true :width 330
-      (label :class "wx-city" :xalign 0 :text w-city)
+      (label :class "wx-city" :xalign 0 :limit-width 22 :text w-city)
       ;; JPEG-фон сцены, герои (фонарь, Жулик) - в правой части кадра, поэтому
       ;; background-position 75% 50%: при обрезке cover правый край держится,
       ;; а лишнее уходит из левого. Слои сверху вниз: боковой градиент
@@ -476,7 +476,7 @@
         ;; углу карточки - температура, описание, диапазон дня.
         (box :orientation "vertical" :space-evenly false :class "wx-cur-main" :halign "start" :valign "start" :hexpand true
           (label :class "wx-cur-temp" :xalign 0 :text "${w-temp}°")
-          (label :class "wx-cur-desc" :xalign 0 :text w-desc)
+          (label :class "wx-cur-desc" :xalign 0 :limit-width 34 :text w-desc)
           (label :class "wx-cur-range" :xalign 0 :text "${w-d0temp}°")))
       (box :orientation "vertical" :space-evenly false :class "wx-details" :halign "fill" :vexpand false :valign "end"
         (box :orientation "horizontal" :space-evenly false :class "wx-detail-row" :halign "fill"
@@ -906,7 +906,7 @@
     (box :orientation "horizontal" :space-evenly false :class "colors-wall" :halign "fill"
       (label :class "colors-sec" :xalign 0 :text "С обоев")
       (label :class "colors-wall-name" :xalign 0 :hexpand true
-             :text colors-wall-name)
+             :limit-width 28 :text colors-wall-name)
       (button :class {colors-now == "wallpaper" && colors-wall-schemes.a1 == 1 ? "ws-dot active" : "ws-dot"}
               :valign "center" :visible {colors-wall-schemes.n > 0} :tooltip {colors-wall-schemes.l1} :timeout "10s"
               :onclick "$BDI_ROOT/theme/colors-pick.sh wallpaper ${colors-wall-schemes.k1}"
