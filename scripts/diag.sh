@@ -86,5 +86,26 @@ fi
 sec "последние строки лога темы"
 [ -f "$BDI_CACHE/theme.log" ] && tail -5 "$BDI_CACHE/theme.log" 2>/dev/null || echo 'пусто'
 
+# Plank и Ulauncher красятся из того же apply.sh, но ломаются по-разному:
+# Plank требует схемы glib и перезапуска, Ulauncher - своей папки тем.
+# Без этих фактов с чужой машины причину не угадать.
+for _t in plank ulauncher; do
+  sec "$_t: theme/$_t.sh status"
+  if [ -x "$ROOT/theme/$_t.sh" ]; then
+    timeout 20 "$ROOT/theme/$_t.sh" status 2>&1 || echo 'status не ответил'
+  else
+    echo 'нет скрипта'
+  fi
+  sec "$_t: лог"
+  [ -f "$BDI_CACHE/$_t.log" ] && tail -8 "$BDI_CACHE/$_t.log" 2>/dev/null || echo 'пусто'
+done
+
+sec "Plank: схема glib и doc-ключи"
+gsettings list-schemas 2>/dev/null | grep -i plank || echo 'схем glib для plank нет'
+gsettings get net.launchpad.plank enabled-docks 2>&1
+dconf dump /net/launchpad/plank/ 2>/dev/null | grep -i 'theme' || echo 'тема в dconf не записана'
+ls /usr/share/plank/themes 2>/dev/null | head -3 || echo 'нет /usr/share/plank/themes'
+ls "$HOME/.local/share/plank/themes" 2>/dev/null | head -3 || echo 'нет ~/.local/share/plank/themes'
+
 echo
 echo 'Скопируйте весь этот вывод целиком.'
