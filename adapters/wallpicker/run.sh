@@ -27,6 +27,19 @@ CLASS="wallpicker.wallpicker"
 LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
 LOG="$LOG_DIR/wallpicker.log"
 
+# run_to: xrandr/wmctrl/xfconf под таймаутом. Без него зависший X-сервер или
+# xfconfd держит кнопку обоев до её таймаута (см. theme/guard.sh).
+. "$ROOT/theme/guard.sh"
+
+# Бинарник: явный WALLPICKER_BIN -> ссылка в ~/src (её ставит install.sh) ->
+# наша сборка в build/. Ссылку мог не поставить установщик (на чужой машине
+# его не запускали), а бинарник при этом собран - раньше из-за этого соты
+# «совсем не стартовали» и кнопка молча уходила в xfdesktop-settings.
+if [ -z "${WALLPICKER_BIN:-}" ] && [ ! -x "$BIN" ] &&
+   [ -x "$ROOT/build/wallpicker-src/wallpicker" ]; then
+  BIN="$ROOT/build/wallpicker-src/wallpicker"
+fi
+
 # --- сетка под экран и число обоев ----------------------------------------
 # Было жёстко 85 px / 7 колонок - под 32 обои. Стало 42: рядов 6, сетка
 # 832 px при экране 768, нижний ряд уходит за край - снаружи «соты видно, а
@@ -34,8 +47,8 @@ LOG="$LOG_DIR/wallpicker.log"
 # Зазор 5, а не апстримные 15: на 1366x768 большие зазоры расползаются.
 SPACING=${WALLPICKER_SPACING:-5}
 
-SW=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f1)
-SH=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f2)
+SW=$(run_to 5 xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f1)
+SH=$(run_to 5 xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f2)
 [ -n "${SW:-}" ] && [ -n "${SH:-}" ] || { SW=1366; SH=768; }
 
 # Обои папки: те же расширения, что понимает сам wallpicker.
@@ -79,10 +92,12 @@ log() {
   printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG" 2>/dev/null || true
 }
 
+# run_to идёт из theme/guard.sh (подключён выше, строка 32).
+
 # --- уже открыто? ---------------------------------------------------------
-if wmctrl -lx 2>/dev/null | grep -q " $CLASS "; then
-  id=$(wmctrl -lx 2>/dev/null | awk -v c="$CLASS" '$3 == c {print $1; exit}')
-  [ -n "$id" ] && wmctrl -i -a "$id" 2>/dev/null || true
+if run_to 3 wmctrl -lx 2>/dev/null | grep -q " $CLASS "; then
+  id=$(run_to 3 wmctrl -lx 2>/dev/null | awk -v c="$CLASS" '$3 == c {print $1; exit}')
+  [ -n "$id" ] && run_to 3 wmctrl -i -a "$id" 2>/dev/null || true
   log "окно уже открыто, поднял: $id"
   exit 0
 fi
@@ -100,10 +115,13 @@ if [ ! -d "$DIR" ]; then
 fi
 
 # --- запуск ---------------------------------------------------------------
-# setsid -f: окно переживает команду кнопки. Без setsid команда умирает
+# setsid: окно переживает команду кнопки. Без setsid команда умирает
 # вместе с таймаутом кнопки, и снаружи это «кнопка обоев молчит».
-SPAWN="setsid -f"
-command -v setsid >/dev/null 2>&1 || SPAWN=""
+# Запускаем в фоне через `&`, чтобы знать PID и отличить «окно ещё грузит
+# миниатюры» от «программа упала сразу» (в виртуалке raylib падает без
+# работающего OpenGL - ждать 20 с впустую нельзя, кнопка упрётся в таймаут).
+HAS_SETSID=0
+command -v setsid >/dev/null 2>&1 && HAS_SETSID=1
 
 # Фон под миниатюрами: те самые обои, что сейчас на столе, размытые и
 # затемнённые на 40%. Берём путь к файлу из xfconf - это ровно то, что
@@ -143,17 +161,27 @@ fi
 
 set -- "$@" "$DIR"
 
-# setsid -f: окно переживает команду кнопки острова. stdout/stderr в лог:
-# raylib сыплет INFO на каждую текстуру, в консоли это мусор.
-if [ -n "$SPAWN" ]; then
-  setsid -f "$BIN" "$@" >>"$LOG" 2>&1
+# stdout/stderr в лог: raylib сыплет INFO на каждую текстуру, в консоли мусор.
+# PID берём из файла, который пишет сам процесс: у `setsid -f` свой pid
+# отдаёт не всегда (при форке $! остаётся от setsid), а на нём держится
+# проверка «упал сразу или ещё грузит».
+PIDF="$LOG_DIR/wallpicker.pid"
+rm -f "$PIDF"
+if [ "$HAS_SETSID" -eq 1 ]; then
+  setsid -f sh -c 'echo $$ > "$1"; shift; exec "$@"' sh "$PIDF" "$BIN" "$@" >>"$LOG" 2>&1
 else
   # Без setsid окно проживёт до выхода команды кнопки: лучше показать окно
   # и честно предупредить, чем молчать.
   log "нет setsid: запускаю в фоне, окно может закрыться с командой"
-  "$BIN" "$@" >>"$LOG" 2>&1 &
+  sh -c 'echo $$ > "$1"; shift; exec "$@"' sh "$PIDF" "$BIN" "$@" >>"$LOG" 2>&1 &
 fi
-log "запуск: $BIN $*"
+WP_PID=""
+_i=0
+while [ "$_i" -lt 20 ] && [ -z "$WP_PID" ]; do
+  WP_PID=$(cat "$PIDF" 2>/dev/null || true)
+  [ -n "$WP_PID" ] || { sleep 0.05; _i=$((_i + 1)); }
+done
+log "запуск: pid ${WP_PID:-неизвестен}, $BIN $*"
 
 # --- развернуть на весь экран --------------------------------------------
 # Ждём окно до 20 с: первый запуск строит кэш миниатюр (42 файла, ~10 с на
@@ -165,11 +193,21 @@ log "запуск: $BIN $*"
 # остров прячется. Если док мешает, он прячется сам - его не трогаем.
 i=0
 while [ "$i" -lt 200 ]; do
-  id=$(wmctrl -lx 2>/dev/null | awk -v c="$CLASS" '$3 == c {print $1; exit}')
+  id=$(run_to 3 wmctrl -lx 2>/dev/null | awk -v c="$CLASS" '$3 == c {print $1; exit}')
   if [ -n "$id" ]; then
-    wmctrl -i -r "$id" -b add,fullscreen 2>/dev/null || true
+    run_to 3 wmctrl -i -r "$id" -b add,fullscreen 2>/dev/null || true
     log "окно $id развёрнуто"
     exit 0
+  fi
+  # Программа уже вышла, а окна так и нет: это не «медленно грузит», а
+  # падение (чаще всего нет OpenGL - в виртуалке raylib не поднимает окно).
+  # Ждать оставшиеся 20 с незачем: кнопка упрётся в таймаут и промолчит.
+  if [ -n "$WP_PID" ] && ! kill -0 "$WP_PID" 2>/dev/null; then
+    # Последние строки stderr raylib - единственная причина, которую видно.
+    _why=$(tail -3 "$LOG" 2>/dev/null | tr '\n' ' ')
+    log "ошибка: wallpicker вышел (pid $WP_PID) без окна: $_why"
+    echo "соты не запустились: программа вышла сразу ($_why), смотрите $LOG" >&2
+    exit 4
   fi
   sleep 0.1
   i=$((i + 1))
