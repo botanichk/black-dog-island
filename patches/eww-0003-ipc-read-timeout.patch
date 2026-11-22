@@ -1,0 +1,18 @@
+diff --git a/crates/eww/src/client.rs b/crates/eww/src/client.rs
+index 616c387..0f30336 100644
+--- a/crates/eww/src/client.rs
++++ b/crates/eww/src/client.rs
+@@ -37,7 +37,12 @@ pub fn do_server_call(stream: &mut UnixStream, action: &opts::ActionWithServer)
+     stream.write_all(&message_bytes).context("Failed to write command to IPC stream")?;
+ 
+     let mut buf = Vec::new();
+-    stream.set_read_timeout(Some(std::time::Duration::from_millis(100))).context("Failed to set read timeout")?;
++    // 100 мс не хватает: reload отвечает ПОСЛЕ перезагрузки конфига и SCSS,
++    // и на живой машине это 195-266 мс, а в виртуалке дольше. Клиент
++    // обрывал ожидание и печатал "os error 11" - снаружи это выглядело как
++    // «тема применится только после выхода и входа» (reload всё же доходил,
++    // но открыть окно заново уже никто не успевал). 2 с с запасом.
++    stream.set_read_timeout(Some(std::time::Duration::from_millis(2000))).context("Failed to set read timeout")?;
+     stream.read_to_end(&mut buf).context("Error reading response from server")?;
+ 
+     Ok(if buf.is_empty() {

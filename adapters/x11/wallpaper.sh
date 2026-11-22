@@ -37,7 +37,11 @@ xfce_fallback() {
     [ -n "$id" ] && wmctrl -i -a "$id" 2>/dev/null || true
     exit 0
   fi
-  setsid -f "$XFCE_BIN" >/dev/null 2>&1
+  if command -v setsid >/dev/null 2>&1; then
+    setsid -f "$XFCE_BIN" >/dev/null 2>&1
+  else
+    "$XFCE_BIN" >/dev/null 2>&1 &
+  fi
   i=0
   while [ "$i" -lt 20 ]; do
     wmctrl -lx 2>/dev/null | grep -q " $XFCE_CLASS " && exit 0
