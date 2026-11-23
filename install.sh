@@ -30,6 +30,7 @@ export BDI_CONFIG BDI_STATE BDI_CACHE
 . "$ROOT/lib/distro.sh"
 . "$ROOT/lib/journal.sh"
 . "$ROOT/lib/backup.sh"
+. "$ROOT/lib/eww-proc.sh"
 . "$ROOT/lib/check.sh"
 
 usage() {
