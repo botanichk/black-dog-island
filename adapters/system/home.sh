@@ -18,6 +18,10 @@ set -eu
 
 PA_CMD="pactl"
 MIN_BRIGHT=5
+# bluetoothctl без таймаута на Void ждёт D-Bus-активацию bluetoothd до 25 с:
+# службы в runit нет, а пакет bluez установлен. Держит весь home.sh, опрос
+# раз в 2 с не успевает отработать, и плитки остаются на :initial ("no").
+BTCTL="timeout 2 bluetoothctl"
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 
@@ -31,7 +35,7 @@ wifi_state() {
 }
 
 bt_state() {
-  v=$(bluetoothctl show 2>/dev/null | sed -n 's/^[[:space:]]*Powered:[[:space:]]*//p' | head -1 || true)
+  v=$($BTCTL show 2>/dev/null | sed -n 's/^[[:space:]]*Powered:[[:space:]]*//p' | head -1 || true)
   [ "${v:-no}" = "yes" ] && echo yes || echo no
 }
 
@@ -117,11 +121,11 @@ case "${1:-}" in
         ;;
       bt)
         case "$val" in
-          on)  bluetoothctl power on >/dev/null ;;
-          off) bluetoothctl power off >/dev/null ;;
+          on)  $BTCTL power on >/dev/null 2>&1 || true ;;
+          off) $BTCTL power off >/dev/null 2>&1 || true ;;
           toggle)
             # bluetoothctl печатает "Powered: yes/no"; состояние уже прочитано.
-            [ "$(bt_state)" = "yes" ] && bluetoothctl power off >/dev/null || bluetoothctl power on >/dev/null ;;
+            [ "$(bt_state)" = "yes" ] && $BTCTL power off >/dev/null 2>&1 || $BTCTL power on >/dev/null 2>&1 ;;
           *)   echo "home.sh: bt on|off|toggle" >&2; exit 2 ;;
         esac
         ;;
