@@ -32,7 +32,7 @@
 # пикселя рамки, а после pkill -x plank + запуск - рамка появляется
 # (оранжевая Mocha: 4183 px по контуру). Перезапуск ~1 с.
 #
-# Зависимости только из системы: sh, python3, dconf, pgrep, pkill.
+# Зависимости только из системы: sh, python3, dconf, pgrep, kill.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

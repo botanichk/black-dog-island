@@ -179,26 +179,6 @@ menu separator {
   background-color: $state-hover;
 }
 
-.wifi-excellent {
-  color: $primary;
-}
-
-.wifi-good {
-  color: $primary-dim;
-}
-
-.wifi-ok {
-  color: $primary-dim;
-}
-
-.wifi-weak {
-  color: $on-surface-variant;
-}
-
-.wifi-none {
-  color: $outline;
-}
-
 // Weather: secondary, muted, clickable chip with a state layer.
 .weather {
   min-width: 90px;
@@ -1821,36 +1801,6 @@ window.panel-power {
 
 .tmr-input:focus {
   box-shadow: 0 0 0 2px $primary;
-}
-
-.tmr-unit {
-  min-width: 48px;
-  min-height: 46px;
-  padding: 0;
-  margin-right: 10px;
-  border-radius: $r-control;
-  background-color: $surface-container;
-}
-
-.tmr-unit:last-child {
-  margin-right: 0;
-}
-
-.tmr-unit:hover {
-  background-color: $surface-container-high;
-}
-
-.tmr-unit.on {
-  background-color: $primary;
-}
-
-.tmr-unit-txt {
-  font-size: 18px;
-  color: $on-surface;
-}
-
-.tmr-unit.on .tmr-unit-txt {
-  color: $on-primary;
 }
 
 .tmr-actions {

@@ -128,18 +128,13 @@
 (defpoll wf-state :interval "1m" :initial "отключено" "$BDI_ROOT/adapters/x11/wifi.sh state")
 (defpoll wf-ssid :interval "1m" :initial "—" "$BDI_ROOT/adapters/x11/wifi.sh ssid")
 (defpoll wf-signal :interval "1m" :initial "0" "$BDI_ROOT/adapters/x11/wifi.sh signal")
-(defpoll wf-bars :interval "1m" :initial "▁" "$BDI_ROOT/adapters/x11/wifi.sh bars")
 ;; Уровень сигнала словом: от него зависят иконка (веер из дуг) и её цвет.
 (defpoll wf-level :interval "1m" :initial "none" "$BDI_ROOT/adapters/x11/wifi.sh level")
-(defpoll wf-n :interval "1m" :initial "0" "$BDI_ROOT/adapters/x11/wifi.sh n")
 (defpoll wf-list :interval "1m" :initial "[]" "$BDI_ROOT/adapters/x11/wifi.sh list")
 ;; Радио Wi-Fi опрашиваем чаще остальных: выключатель должен отзываться на
 ;; переключение извне (nm-applet, hotkey) за секунды, а не за минуту.
 ;; Один вызов nmcli radio, стоимость ~20 мс.
 (defpoll wf-radio :interval "3s" :initial "on" "$BDI_ROOT/adapters/x11/wifi.sh radio")
-;; 1, если есть активное подключение. От этого зависит, спрашивать ли
-;; подтверждение перед выключением радио.
-(defpoll wf-active :interval "1m" :initial "0" "$BDI_ROOT/adapters/x11/wifi.sh active")
 ;; 1 - показываем в шапке подтверждение "выключить Wi-Fi?". Ставит адаптер
 ;; (radio-toggle), снимает - кнопка "Отмена" или само выключение. defvar, а не
 ;; defpoll: значение живёт только в интерфейсе.

@@ -53,22 +53,17 @@ if [ -z "${BDI_DETACHED:-}" ] && [ -z "${BDI_NO_DETACH:-}" ]; then
 fi
 
 # Одна копия: второе нажатие во время применения не запускает параллельную
-# смену и не копит очередь - просто выходит.
-# Почему pid-файл, а не flock: Plank перезапускается из theme/plank.sh и
-# наследует открытый дескриптор замка, после чего файл заперт вечно и
-# следующее нажатие молча пропускалось (проверено: fuser показал plank).
-PIDF="$COLORS_CACHE/colors-pick.pid"
-_other=$(cat "$PIDF" 2>/dev/null || true)
-case "${_other:-}" in
-  ''|*[!0-9]*) _other="" ;;
-esac
-if [ -n "$_other" ] && [ "$_other" != "$$" ] && kill -0 "$_other" 2>/dev/null; then
+# смену и не копит очередь - просто выходит. Замок на mkdir (см. lock_take
+# в theme/guard.sh): pid-файл не спасал, между чтением и записью проходили оба.
+# flock нельзя: Plank перезапускается из theme/plank.sh и наследует открытый
+# дескриптор, после чего замок заперт вечно (проверено: fuser показал plank).
+LOCK="$COLORS_CACHE/colors-pick.lock"
+if ! lock_take "$LOCK"; then
   printf '%s уже применяется (pid %s) - повторный запуск пропущен\n' \
-    "$(date '+%Y-%m-%d %H:%M:%S')" "$_other" >>"$COLORS_CACHE/colors-pick.log" 2>/dev/null || true
+    "$(date '+%Y-%m-%d %H:%M:%S')" "${LOCK_PID:-?}" >>"$COLORS_CACHE/colors-pick.log" 2>/dev/null || true
   exit 0
 fi
-printf '%s\n' "$$" > "$PIDF" 2>/dev/null || true
-trap 'rm -f "$PIDF" 2>/dev/null || true' EXIT INT TERM HUP
+trap 'rm -f "$LOCK/pid" 2>/dev/null || true; rmdir "$LOCK" 2>/dev/null || true' EXIT INT TERM HUP
 
 # --- разбор аргументов ----------------------------------------------------
 ACTION=${1:-}

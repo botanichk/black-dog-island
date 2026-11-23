@@ -24,20 +24,14 @@ log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG" 2>/dev/nu
 # guard.sh: run_to и now_ms. Подключаем до lock, чтобы now_ms был готов.
 . "$ROOT/theme/guard.sh"
 
-# Одна копия. Почему pid-файл, а не flock: Plank перезапускается из
-# theme/plank.sh и наследует открытый дескриптор замка - файл остаётся
-# запертым вечно, и каждая следующая смена темы молча пропускала док.
-PIDF="$BDI_CACHE/theme-extras.pid"
-_other=$(cat "$PIDF" 2>/dev/null || true)
-case "${_other:-}" in
-  ''|*[!0-9]*) _other="" ;;
-esac
-if [ -n "$_other" ] && [ "$_other" != "$$" ] && kill -0 "$_other" 2>/dev/null; then
-  log "док и лаунчер уже красятся (pid $_other) - пропускаю"
+# Одна копия. Замок на mkdir (см. lock_take в theme/guard.sh): pid-файл эту
+# задачу не решал - между чтением и записью оба запуска проходили проверку.
+LOCK="$BDI_CACHE/theme-extras.lock"
+if ! lock_take "$LOCK"; then
+  log "док и лаунчер уже красятся (pid ${LOCK_PID:-?}) - пропускаю"
   exit 0
 fi
-printf '%s\n' "$$" > "$PIDF" 2>/dev/null || true
-trap 'rm -f "$PIDF" 2>/dev/null || true' EXIT INT TERM HUP
+trap 'rm -f "$LOCK/pid" 2>/dev/null || true; rmdir "$LOCK" 2>/dev/null || true' EXIT INT TERM HUP
 
 T0=$(now_ms)
 for _t in plank ulauncher; do

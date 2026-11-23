@@ -515,6 +515,28 @@ _out=$(env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
 check "журнал из 5 полей: файл удалён" "нет" \
   "$([ -f "$DHOME/.config/autostart/old.desktop" ] && echo да || echo нет)"
 
+# --- 23. Замок одной копии (theme/guard.sh, lock_take) ---------------------
+# Раньше был pid-файл: между чтением и записью в него проходили оба запуска.
+# Проверено пятью параллельными - файл взяли все пять. Теперь mkdir.
+LD=$(mktemp -d)
+. "$ROOT/theme/guard.sh"
+for i in 1 2 3 4 5 6 7 8; do
+  ( if lock_take "$LD/t.lock"; then echo "$$" >> "$LD/took"; sleep 0.2; fi ) &
+done
+wait
+check "замок: из 8 запусков взял ровно 1" 1 "$(wc -l < "$LD/took" 2>/dev/null || echo 0)"
+
+# Мёртвый замок (pid не существует) подхватывается, живой - нет.
+mkdir -p "$LD/dead.lock"; printf '999999\n' > "$LD/dead.lock/pid"
+lock_take "$LD/dead.lock" && _dead=1 || _dead=0
+check "замок от убитого процесса подхвачен" 1 "$_dead"
+rm -f "$LD/took"
+lock_take "$LD/live.lock" && _t1=1 || _t1=0
+lock_take "$LD/live.lock" && _t2=1 || _t2=0
+check "второй запуск при живом замке отказал" "1 0" "$_t1 $_t2"
+check "замок назвал pid занявшего" "да" "$([ -n "${LOCK_PID:-}" ] && echo да || echo нет)"
+rm -rf "$LD"
+
 printf '\n'
 if [ "$fail" -eq 0 ]; then echo "всё сошлось"; else echo "есть провалы"; fi
 exit "$fail"

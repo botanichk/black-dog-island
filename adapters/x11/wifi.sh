@@ -34,8 +34,8 @@ key=${1:-}
 # Обновить переменные панели сразу после действия, не ожидая defpoll.
 # Ошибки глушим: адаптер должен работать и без запущенного демона Eww.
 refresh_polls() {
-  "$EWW" --config "$CONF" poll wf-radio wf-active wf-state wf-ssid \
-    wf-signal wf-level wf-list wf-n >/dev/null 2>&1 || true
+  "$EWW" --config "$CONF" poll wf-radio wf-state wf-ssid \
+    wf-signal wf-level wf-list >/dev/null 2>&1 || true
 }
 
 # --- Радио Wi-Fi ---
@@ -161,15 +161,10 @@ case "$key" in
   signal)
     nets | awk -F'|' '$1=="*"{print $2; exit}'
     ;;
-  bars)
-    sig=$(nets | awk -F'|' '$1=="*"{print $2; exit}')
-    bars_of "${sig:-0}"
-    ;;
   level)
     sig=$(nets | awk -F'|' '$1=="*"{print $2; exit}')
     level_of "${sig:-0}"
     ;;
-  n)      nets | wc -l | tr -d ' ' ;;
   list)
     # JSON-массив для цикла "for" в Eww. Показываем 12 сетей: остальные
     # всё равно не помещаются в панель, а список длиннее - шум.
@@ -211,10 +206,6 @@ case "$key" in
       exit 1
     fi
     nmcli dev wifi connect "$ssid" 2>&1 | head -3
-    ;;
-  active)
-    # 1 только при реально поднятом соединении (100 connected).
-    if [ "$STATE" = "connected" ] && [ -n "$CUR_SSID" ]; then printf '1'; else printf '0'; fi
     ;;
   radio-toggle)
     # Переключатель из шапки вкладки. Если Wi-Fi выключен - просто включаем.
