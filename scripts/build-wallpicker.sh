@@ -25,23 +25,32 @@ cd "$SRC"
 
 # Патчи по имени, а не по алфавиту: blur-backdrop должен идти после
 # size-and-cancel. Явный список надёжнее сортировки.
-for p in "$PATCHES/hypr-wallpicker-size-and-cancel.patch" \
-         "$PATCHES/hypr-wallpicker-blur-backdrop.patch"; do
-  [ -f "$p" ] || { echo "нет патча $p" >&2; exit 1; }
-  name=$(basename "$p")
-  if git apply --reverse --check "$p" 2>/dev/null; then
-    echo "  $name: уже применён"
-    continue
-  fi
-  if git apply --check "$p" 2>/dev/null; then
-    echo "  $name: применяю"
-    git apply "$p" || { echo "ошибка: не удалось применить $name" >&2; exit 1; }
-  else
-    echo "ошибка: $name не встаёт на этот коммит" >&2
-    echo "  проверь пин в deps/wallpicker.txt" >&2
+# Повторный запуск: reverse-check не годится - hunks патчей перекрываются,
+# после полного применения reverse не встаёт. Проверяем след последнего
+# патча (blur-backdrop) в дереве.
+if grep -qs "scrim_percent" src/wallpaper.c; then
+  # Фикс 2026-11-23: целочисленный crop. Его нет - в дереве патчи до него,
+  # после git pull молча пересобирать старое нельзя.
+  if ! grep -qsF "(int)((float)img.height * win_aspect)" src/wallpaper.c; then
+    echo "ошибка: в дереве патчи без фикса crop, обнови их:" >&2
+    echo "  git -C \"$SRC\" checkout -- src include" >&2
+    echo "и запусти скрипт снова" >&2
     exit 1
   fi
-done
+  echo "  патчи уже применены, пропускаю"
+else
+  for p in "$PATCHES/hypr-wallpicker-size-and-cancel.patch" \
+           "$PATCHES/hypr-wallpicker-blur-backdrop.patch"; do
+    [ -f "$p" ] || { echo "нет патча $p" >&2; exit 1; }
+    git apply --check "$p" || {
+      echo "ошибка: $(basename "$p") не встаёт на этот коммит" >&2
+      echo "  проверь пин в deps/wallpicker.txt" >&2
+      exit 1
+    }
+    git apply "$p"
+    echo "  $(basename "$p"): применён"
+  done
+fi
 
 echo "собираю (около 80 с на 4 ядрах)"
 make 2>&1 | tail -20

@@ -228,7 +228,7 @@ index 3cb76e4..0a8a599 100644
 +  float src_aspect;
 +  float win_aspect;
 +  Rectangle crop;
-+  float keep;
++  int keep;
 +
 +  if (app == NULL || path == NULL) {
 +    return false;
@@ -251,16 +251,18 @@ index 3cb76e4..0a8a599 100644
 +
 +  // Кадрируем по пропорциям экрана, как xfdesktop в режиме zoom: иначе
 +  // растянутая на весь экран картинка была бы сплющена.
++  // keep целым: ImageCrop в raylib при дробных width/height выделяет буфер
++  // меньше, чем копирует, - на 8K-обоях порча кучи (free(): invalid size).
 +  src_aspect = (float)img.width / (float)img.height;
 +  win_aspect = (float)win_w / (float)win_h;
 +  if (src_aspect > win_aspect) {
-+    keep = (float)img.height * win_aspect;
-+    crop = (Rectangle){((float)img.width - keep) / 2.0f, 0.0f, keep,
++    keep = (int)((float)img.height * win_aspect);
++    crop = (Rectangle){(float)((img.width - keep) / 2), 0.0f, (float)keep,
 +                       (float)img.height};
 +  } else {
-+    keep = (float)img.width / win_aspect;
-+    crop = (Rectangle){0.0f, ((float)img.height - keep) / 2.0f,
-+                       (float)img.width, keep};
++    keep = (int)((float)img.width / win_aspect);
++    crop = (Rectangle){0.0f, (float)((img.height - keep) / 2),
++                       (float)img.width, (float)keep};
 +  }
 +  ImageCrop(&img, crop);
 +
