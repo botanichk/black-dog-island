@@ -25,3 +25,4 @@
 13-wallpicker.md - шестиугольный выбор обоев (hypr-wallpicker), хук под XFCE.
 15-audit-and-bdi-facts.md - аудит проекта и сбор фактов для BDI (только чтение).
 16-installer.md - установщик BDI: check, install, uninstall, update, doctor.
+17-void-hardening.md - доводка после Void, совместимость с Hyprland, откат без XFCE, аудит.
