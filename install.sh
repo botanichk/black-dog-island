@@ -2,14 +2,17 @@
 # install.sh - установка острова BDI одной командой.
 #
 # usage:
-#   ./install.sh check     # что не хватает, какой командой поставить (только чтение)
-#   ./install.sh install   # собрать движок, отключить панель XFCE, поставить автозапуск
-#   ./install.sh update    # git pull, пересборка при новом пине или патчах, перезапуск
-#   ./install.sh help      # эта справка
+#   ./install.sh check          # что не хватает, какой командой поставить (только чтение)
+#   ./install.sh install        # собрать движок, отключить панель XFCE, поставить автозапуск
+#   ./install.sh update         # git pull, пересборка при новом пине или патчах, перезапуск
+#   ./install.sh uninstall      # откат по журналу; работает без X и без xfconfd
+#   ./install.sh --restore-backup [каталог]  # вернуть настройки из резервной копии
+#   ./install.sh help           # эта справка
 #
 # install и update работают только в сеансе X11 + XFCE: в Wayland и в чужих
 # рабочих столах (Hyprland и т. п.) установщик печатает причину и выходит,
-# ничего не меняя. check работает в любом сеансе.
+# ничего не меняя. check, uninstall и --restore-backup разрешены в любом
+# сеансе и без графики: это путь отката, когда XFCE не поднялся.
 #
 # sudo не зовётся нигде: пакеты ставит владелец сам по подсказке из check.
 # Всё остальное делается в домашнем каталоге и в клоне репозитория.
@@ -30,13 +33,18 @@ export BDI_CONFIG BDI_STATE BDI_CACHE
 . "$ROOT/lib/check.sh"
 
 usage() {
-  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 case "${1:-help}" in
-  # check работает в любом сеансе: он только читает. uninstall тоже будет
-  # разрешён везде, когда появится (часть D задания 17).
+  # check работает в любом сеансе: он только читает. uninstall и
+  # --restore-backup - тоже: это аварийный путь, когда XFCE не поднялся и
+  # владелец вошёл в Hyprland или в TTY (часть D задания 17).
   check)   check_all ;;
+  uninstall)
+    . "$ROOT/lib/install.sh"; uninstall_all ;;
+  --restore-backup)
+    . "$ROOT/lib/install.sh"; restore_backup "${2:-}" ;;
   install|update)
     . "$ROOT/lib/session.sh"
     _what="Установка не выполнена"

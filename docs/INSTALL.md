@@ -123,16 +123,24 @@ cd black-dog-island
 
 ## Откат
 
-Пока вручную: журнал и резервная копия на месте, но команда `uninstall`
-ещё не написана (следующий шаг). Вернуть панель Xfce можно так:
-
 ```
-xfconf-query -c xfce4-session -p /sessions/Failsafe/Client2_Command -n -t string -s xfce4-panel
-xfce4-panel &
-rm ~/.config/autostart/bdi.desktop
+./install.sh uninstall          # по журналу: панель, композитинг, автозапуск
+./install.sh --restore-backup   # вернуть каталоги из резервной копии целиком
 ```
 
-Прежние значения — в резервной копии: `cat ~/.local/state/bdi/backup-*/xfconf.txt`.
+Обе команды работают **без графики** — из сеанса Hyprland, из TTY, по ssh.
+Запись в xfconf при откате идёт правкой XML канала, поэтому `xfconfd` не нужен.
+`dconf` (тема дока) без графического сеанса не правится — база двоичная, —
+поэтому `uninstall` печатает готовую команду для живого сеанса.
+
+Резервная копия: `~/.local/state/bdi/backup-<дата>`, в неё идут
+`~/.config/xfce4`, `~/.config/autostart`, `~/.config/plank`,
+`~/.config/ulauncher`, `~/.config/bdi`, темы Plank. Размер печатается до
+создания (обычно доли мегабайта). Каталог последней копии —
+`~/.local/state/bdi/last-backup`.
+
+Пошагово, что делать, если панель пропала и остров не поднялся —
+[docs/TESTING.md](TESTING.md#4-откат).
 
 ## Частые вопросы
 

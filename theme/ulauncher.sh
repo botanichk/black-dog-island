@@ -166,7 +166,7 @@ PY
     echo "строк результатов: уже $ROWS"
     exit 0
   fi
-  journal_add file "$SETTINGS" "show-recent-apps=$OLD" "show-recent-apps=$ROWS"
+  journal_add json "$SETTINGS" "show-recent-apps=$OLD" "show-recent-apps=$ROWS"
   restart_ul || true
   log "строк результатов: $OLD -> $ROWS"
   echo "строк результатов: $ROWS"

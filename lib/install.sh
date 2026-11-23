@@ -95,7 +95,7 @@ install_panel() {
   log_info "отключаю панель XFCE в $_prop (было: $_old)"
   # Заглушка true - так XFCE помечает отключённого клиента. Тип bool, а не
   # массив: у отключённого клиента значение скалярное.
-  journal_add xfconf "$_prop" "$_old" "true"
+  journal_add xfconf "xfce4-session:$_prop" "$_old" "true" string
   xfconf-query -c xfce4-session -p "$_prop" -n -t bool -s true ||
     { log_fail "не удалось записать $_prop"; return 1; }
 
@@ -110,7 +110,7 @@ install_compositing() {
   [ "$_c" = true ] && { log_ok "композитинг уже включён"; return 0; }
   log_warn "композитинг выключен: углы острова будут прямоугольными"
   log_ask "Включить композитинг xfwm4?" || { log_info "оставил как есть"; return 0; }
-  journal_add xfconf /general/use_compositing "$_c" "true"
+  journal_add xfconf "xfwm4:/general/use_compositing" "$_c" "true" bool
   xfconf-query -c xfwm4 -p /general/use_compositing -s true
   log_ok "композитинг включён"
 }
@@ -205,7 +205,6 @@ install_skin_consent() {
 # запуске острова, здесь только подъём при входе. Чужой .desktop не
 # перезаписываем: владелец мог настроить свой.
 install_extras() {
-  _n=0
   for _p in plank ulauncher; do
     command -v "$_p" >/dev/null 2>&1 || { log_info "$_p не установлен - пропускаю"; continue; }
     _f="$HOME/.config/autostart/$_p.desktop"
@@ -231,7 +230,6 @@ X-GNOME-Autostart-enabled=true
 OnlyShowIn=XFCE;
 EOF
     log_ok "автозапуск: $_f"
-    _n=$((_n + 1))
   done
   return 0
 }
@@ -320,6 +318,245 @@ install_start() {
     log_fail "остров не поднялся, смотри вывод выше"; return 1; }
 }
 
+# --- откат -----------------------------------------------------------------
+# uninstall_all - вернуть то, что менял install. Работает БЕЗ X и без xfconfd:
+# это аварийный путь, когда панель отключена, а остров не поднялся и владелец
+# вошёл в Hyprland или в TTY. Поэтому xfconf возвращается правкой XML, а не
+# через xfconf-query (тот без шины либо висит, либо пишет в пустоту).
+#
+# Порядок - обратный установке: панель, композитинг, автозапуск, файлы.
+# Журнал читается снизу вверх: у одного ключа может быть несколько записей
+# (ставили, откатывали, ставили снова) - верно только последнее состояние.
+# Значение возвращается, лишь если текущее совпадает с нашим «новым»: если
+# владелец поменял его сам, не спорим.
+
+# _xfconf_restore <канал:путь> <значение> <тип> - вернуть ключ xfconf.
+# Пустое значение удаляет ключ (так возвращается «ключа не было»).
+# Есть живой сеанс - пишем через xfconf-query (иначе xfconfd затрёт XML своим
+# состоянием из памяти). Сеанса нет - правим XML, это аварийный путь.
+_xfconf_restore() {
+  _cp=$1
+  _val=$2
+  _kind=${3:-string}
+  case "$_cp" in
+    *:/*) ;;
+    *) log_warn "журнал: странная цель '$_cp' - пропускаю"; return 0 ;;
+  esac
+  _ch=${_cp%%:*}
+  _path=${_cp#*:}
+
+  if command -v xfconf-query >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ] &&
+     xfconf-query -c "$_ch" -p "$_path" >/dev/null 2>&1; then
+    if [ -z "$_val" ]; then
+      xfconf-query -c "$_ch" -p "$_path" -r >/dev/null 2>&1 &&
+        { log_ok "xfconf $_ch $_path: ключ убран"; return 0; }
+    else
+      xfconf-query -c "$_ch" -p "$_path" -n -t "$_kind" -s "$_val" >/dev/null 2>&1 &&
+        { log_ok "xfconf $_ch $_path = $_val"; return 0; }
+    fi
+    log_warn "xfconf $_ch $_path не поддался - пробую XML"
+  fi
+
+  if python3 "$ROOT/lib/xfconf-xml.py" "$_ch" "$_path" "$_val" "$_kind" 2>/dev/null; then
+    log_ok "xfconf $_ch $_path = ${_val:-(удалён)} (в XML)"
+  else
+    log_warn "xfconf $_ch $_path не вернул - значение ${_val:-(пусто)} в журнале"
+    return 1
+  fi
+}
+
+# _dconf_restore <ключ> <значение> - вернуть ключ dconf (тема дока).
+# База dconf двоичная (GVDB), руками её не правим, а `dconf write` без шины
+# работать не может. Поэтому без шины - честное сообщение с готовой командой:
+# тема дока всё равно подхватится при следующем входе, когда шина будет.
+_dconf_restore() {
+  _key=$1
+  _val=$2
+  if command -v dconf >/dev/null 2>&1 && [ -n "${DISPLAY:-}${DBUS_SESSION_BUS_ADDRESS:-}" ] &&
+     dconf write "$_key" "'$_val'" 2>/dev/null; then
+    log_ok "dconf $_key = $_val"
+    return 0
+  fi
+  log_warn "dconf $_key остался на нашей теме: без графического сеанса не вернуть"
+  log_info "  вернуть вручную: dconf write $_key \"'$_val'\""
+  return 1
+}
+
+# _json_key_restore <файл> <ключ> <значение> - вернуть поле JSON (Ulauncher).
+_json_key_restore() {
+  _f=$1
+  _k=$2
+  _v=$3
+  [ -f "$_f" ] || return 0
+  python3 - "$_f" "$_k" "$_v" <<'PY' || { log_warn "не вернул $_k в $_f"; return 1; }
+import json, sys
+path, key, val = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    d = json.load(open(path, encoding="utf-8"))
+    d[key] = int(val) if val.lstrip("-").isdigit() else val
+    json.dump(d, open(path, "w", encoding="utf-8"), indent=4, sort_keys=True)
+except (OSError, ValueError):
+    raise SystemExit(1)
+PY
+  log_ok "$_f: $_k = $_v"
+}
+
+uninstall_all() {
+  log_step "Откат по журналу"
+  if [ ! -r "$BDI_JOURNAL" ]; then
+    log_info "журнала нет ($BDI_JOURNAL) - менять было нечего"
+  else
+    # tac, а не sort: нужен порядок «снизу вверх». tac есть в coreutils,
+    # но на всякий случай есть awk-запасной путь.
+    if command -v tac >/dev/null 2>&1; then
+      _lines=$(tac "$BDI_JOURNAL")
+    else
+      _lines=$(awk '{a[NR]=$0} END{for(i=NR;i>0;i--)print a[i]}' "$BDI_JOURNAL")
+    fi
+
+    printf '%s\n' "$_lines" | while IFS= read -r _line; do
+      # Поля режем cut, а не `read` с IFS=TAB: TAB - whitespace для read, и
+      # пустые поля схлопываются. Строка «autostart <файл> "" <- Exec» читалась
+      # как «<файл> <- Exec», и откат возвращал чужое значение.
+      _type=$(printf '%s' "$_line" | cut -f2)
+      _target=$(printf '%s' "$_line" | cut -f3)
+      _old=$(printf '%s' "$_line" | cut -f4)
+      _new=$(printf '%s' "$_line" | cut -f5)
+      _kind=$(printf '%s' "$_line" | cut -f6)
+      [ -n "${_type:-}" ] || continue
+      case "$_type" in
+        xfconf)
+          _cur=""
+          if command -v xfconf-query >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
+            _cur=$(xfconf-query -c "${_target%%:*}" -p "${_target#*:}" -v 2>/dev/null \
+              | tr -d '\n' || true)
+          fi
+          # Прочитать не смогли (нет шины) - возвращаем всё равно: это откат,
+          # а не работа с живым сеансом. Значение из журнала - единственный
+          # источник правды, когда XFCE уже не запущен.
+          if [ -z "$_cur" ] || [ "$_cur" = "$_new" ]; then
+            _xfconf_restore "$_target" "$_old" "${_kind:-string}"
+          else
+            log_info "xfconf $_target сейчас '$_cur', не наш '$_new' - не трогаю"
+          fi ;;
+        dconf)
+          case "$_target" in
+            /*) _dconf_restore "$_target" "$_old" ;;
+            *) log_warn "журнал: странный ключ dconf '$_target' - пропускаю" ;;
+          esac ;;
+        json)
+          # _old/_new - «ключ=значение», файл один: у Ulauncher это
+          # settings.json, и удалять его нельзя (там чужие настройки).
+          _jk=${_old%%=*}
+          _jv=${_old#*=}
+          case "$_old" in
+            *=*) _json_key_restore "$_target" "$_jk" "$_jv" ;;
+            *) log_warn "журнал: json без ключа '$_old' - пропускаю" ;;
+          esac ;;
+        autostart)
+          [ -e "$_target" ] || continue
+          case "$_old" in
+            # Наш же старый автозапуск мы погасили - вернуть строку, файл не наш.
+            Hidden=*)
+              if grep -q '^Hidden=' "$_target"; then
+                _tmp="$_target.bdi-tmp"
+                sed "s/^Hidden=.*/$_old/" "$_target" > "$_tmp" && mv "$_tmp" "$_target"
+              else
+                printf '%s\n' "$_old" >> "$_target"
+              fi
+              log_ok "$_target: $_old" ;;
+            # Файл создан нами (старого Exec не было) - удаляем.
+            "") rm -f "$_target"; log_ok "удалён $_target" ;;
+            # Запись была, мы её переписали. Прежний Exec известен, но
+            # остального содержимого нет - оно в резервной копии.
+            *) rm -f "$_target"
+               log_ok "удалён $_target (был Exec=$_old, целиком - в резервной копии)" ;;
+          esac ;;
+        file)
+          # Симлинк на соты: old пусто = создан нами.
+          if [ -n "$_new" ] && [ -e "$_target" ]; then
+            rm -f "$_target"
+            log_ok "удалён $_target"
+          fi ;;
+        process)
+          log_info "процесс $_target был '$_old' -> '$_new': запусти вручную" ;;
+        pkg)
+          log_info "пакет $_target: поставлен вручную, не удаляю" ;;
+        *)
+          log_warn "журнал: неизвестный тип '$_type' - пропускаю" ;;
+      esac
+    done
+  fi
+
+  # Автозапуск острова: файл bdi.desktop наш и в журнале уже помечен на
+  # удаление - здесь только подстраховка на случай, если журнал потерян.
+  # eww-island.desktop не трогаем: это МОГ БЫТЬ чужой файл, а журнал про него
+  # уже сказал своё (вернул Hidden=false, если он был нашим).
+  _f="$HOME/.config/autostart/bdi.desktop"
+  if [ -f "$_f" ] && ! grep -qxF "Exec=$ROOT/scripts/run-island.sh" "$_f"; then
+    log_info "автозапуск $_f не наш - оставил"
+  elif [ -f "$_f" ]; then
+    rm -f "$_f"
+    log_ok "удалён автозапуск: $_f"
+  fi
+
+  log_step "Остров"
+  if [ -x "$ROOT/scripts/stop-island.sh" ]; then
+    "$ROOT/scripts/stop-island.sh" >/dev/null 2>&1 || true
+    log_ok "демон острова остановлен (если был)"
+  fi
+
+  log_step "Готово"
+  log_info "Вернуть панель XFCE сейчас:"
+  log_info "  xfconf-query -c xfce4-session -p /sessions/Failsafe/Client2_Command -n -t string -s xfce4-panel"
+  log_info "  xfce4-panel &   (или выйти и войти в XFCE)"
+  log_info "Если сеанса XFCE нет вообще - ключ уже возвращён в XML, панель"
+  log_info "появится при следующем входе. Проверить:"
+  log_info "  grep -A2 Client2_Command ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml"
+  return 0
+}
+
+# restore_backup - вернуть каталоги из резервной копии целиком.
+# Отдельная команда: uninstall идёт по журналу и точечно, а это - «взять
+# и положить обратно», когда журнала нет или он испорчен.
+restore_backup() {
+  _dir=${1:-}
+  if [ -z "$_dir" ]; then
+    _dir=$(cat "${BDI_STATE:-$HOME/.local/state/bdi}/last-backup" 2>/dev/null || true)
+  fi
+  if [ -z "$_dir" ] || [ ! -d "$_dir" ]; then
+    log_fail "не нашёл резервную копию${_dir:+: $_dir}"
+    log_info "Посмотреть: ls ${BDI_STATE:-$HOME/.local/state/bdi}/"
+    return 1
+  fi
+
+  log_step "Возврат из $_dir"
+  _n=0
+  # Обходим backup_items, а не то, что лежит в копии: имя каталога в копии -
+  # это путь с «/» -> «_» (`~/.config/xfce4` -> `.config_xfce4`), и обратное
+  # превращение сломалось бы на именах с подчёркиванием (share_plank_themes).
+  # Плюс имена начинаются с точки, и простой `"$_dir"/*` их не видит вовсе.
+  while IFS= read -r _dst; do
+    _name=$(printf '%s' "$_dst" | sed "s|^$HOME/||; s|/|_|g")
+    [ -d "$_dir/$_name" ] || continue
+    mkdir -p "$(dirname "$_dst")"
+    rm -rf "$_dst"
+    cp -a "$_dir/$_name" "$_dst"
+    log_ok "возвращён $_dst"
+    _n=$((_n + 1))
+  done <<EOF
+$(backup_items)
+EOF
+
+  # xfconf: если сеанса нет, ключи из XML уже вернулись вместе с каталогом
+  # ~/.config/xfce4. Если сеанс есть - просим xfconfd перечитать.
+  if command -v xfconf-query >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
+    log_info "сеанс XFCE есть: перечитай панель командой выше или выйди и войди"
+  fi
+  log_ok "возвращено каталогов: $_n"
+  [ "$_n" -gt 0 ]
+}
+
 install_all() {
   log_step "Проверка"
   if ! check_all; then
@@ -336,6 +573,7 @@ install_all() {
   log_ask "Продолжаем?" || { log_info "отменено, ничего не менял"; return 1; }
 
   log_step "Резервная копия"
+  log_info "займёт около $(backup_size) МБ в ~/.local/state/bdi"
   backup_create | sed 's/^/  /' || { log_fail "не удалось сделать резервную копию"; return 1; }
 
   log_step "Движок"

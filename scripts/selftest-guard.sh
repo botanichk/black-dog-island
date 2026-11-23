@@ -378,6 +378,143 @@ check "theme-save пишет в свой каталог" 1 \
 check "Plank: имя темы с префиксом bdi-" 1 \
   "$(grep -c '^THEME_NAME=bdi-' "$ROOT/theme/plank.sh")"
 
+# --- 18. откат без X и без шины: install -> uninstall -> те же хэши --------
+# Главная проверка части D. Песочница со своей копией ROOT: uninstall зовёт
+# stop-island.sh и ищет демона по этому пути - живой остров не тронут.
+DROOT="$BASE/d-root"
+DHOME="$BASE/d-home"
+DXML="$DHOME/.config/xfce4/xfconf/xfce-perchannel-xml"
+rm -rf "$DROOT" "$DHOME"
+mkdir -p "$DROOT/lib" "$DROOT/scripts" "$DROOT/theme" "$DXML" \
+         "$DHOME/.local/state/bdi" "$DHOME/.config/autostart"
+cp "$ROOT/install.sh" "$DROOT/"
+cp -r "$ROOT/lib/." "$DROOT/lib/"
+cp "$ROOT/scripts/stop-island.sh" "$DROOT/scripts/"
+cp "$ROOT/theme/guard.sh" "$DROOT/theme/"
+# Настройки с ВКЛЮЧЁННОЙ панелью: на живой она уже отключена, и install_panel
+# вышел бы сразу, откатывать было бы нечего.
+printf '<?xml version="1.1" encoding="UTF-8"?>\n\n<channel name="xfce4-session" version="1.0">\n  <property name="sessions" type="empty">\n    <property name="Failsafe" type="empty">\n      <property name="Client2_Command" type="string" value="xfce4-panel"/>\n    </property>\n  </property>\n</channel>\n' \
+  > "$DXML/xfce4-session.xml"
+dgrep() { grep -o 'name="Client2_Command"[^/]*' "$DXML/xfce4-session.xml" | head -1; }
+
+# Заготовку приводит к каноничному виду сам xfconfd: при install он всё равно
+# перепишет канал целиком (свои пустые ключи, свой порядок), и «тот же хэш»
+# иначе недостижим. Значение специально меняем и возвращаем - на неизменном
+# значении xfconfd файл не трогает, и заготовка осталась бы неканоничной.
+env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
+    XDG_CACHE_HOME="$DHOME/.cache" DISPLAY=:99 \
+  dbus-run-session -- sh -c '
+    xfconf-query -c xfce4-session -p /sessions/Failsafe/Client2_Command -n -t string -s true
+    xfconf-query -c xfce4-session -p /sessions/Failsafe/Client2_Command -n -t string -s xfce4-panel
+  ' >/dev/null 2>&1
+_d1=$(md5sum "$DXML/xfce4-session.xml" | cut -d' ' -f1)
+
+env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
+    XDG_STATE_HOME="$DHOME/.local/state" XDG_CACHE_HOME="$DHOME/.cache" \
+    DISPLAY=:99 XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=XFCE \
+    BDI_CONFIG="$DHOME/.config/bdi" BDI_STATE="$DHOME/.local/state/bdi" \
+    BDI_CACHE="$DHOME/.cache/bdi" \
+  dbus-run-session -- sh -c '
+    . "$1/lib/log.sh"; . "$1/lib/journal.sh"; . "$1/lib/install.sh"
+    ROOT=$1; BDI_CONFIG=$HOME/.config/bdi
+    install_panel; install_autostart; install_extras
+  ' sh "$DROOT" >/dev/null 2>&1
+check "install: панель отключена" 'name="Client2_Command" type="bool" value="true"' "$(dgrep)"
+check "install: автозапуск 3 файла" "3" \
+  "$(ls "$DHOME/.config/autostart/" 2>/dev/null | wc -l | tr -d ' ')"
+check "install: в журнале 4 записи" "4" \
+  "$(grep -c . "$DHOME/.local/state/bdi/changes.log" 2>/dev/null)"
+
+# Без DISPLAY и без DBUS_SESSION_BUS_ADDRESS - как из TTY или Hyprland.
+env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
+    XDG_STATE_HOME="$DHOME/.local/state" XDG_CACHE_HOME="$DHOME/.cache" \
+    BDI_CONFIG="$DHOME/.config/bdi" BDI_STATE="$DHOME/.local/state/bdi" \
+    BDI_CACHE="$DHOME/.cache/bdi" \
+  sh "$DROOT/install.sh" uninstall >/dev/null 2>&1
+check "uninstall без X: код 0" "0" "$?"
+check "uninstall вернул панель" 'name="Client2_Command" type="string" value="xfce4-panel"' "$(dgrep)"
+check "uninstall вернул тип string" "1" \
+  "$(grep -c 'name="Client2_Command" type="string"' "$DXML/xfce4-session.xml")"
+# Повторная запись того же значения не должна менять файл: так проверяется,
+# что откат идемпотентен и пишет в формате xfconfd (тот при install всё равно
+# переписывает канал целиком, поэтому «хэш как до install» недостижим).
+check "uninstall: XML без изменений" "$_d1" \
+  "$(md5sum "$DXML/xfce4-session.xml" | cut -d' ' -f1)"
+check "uninstall: автозапуск убран" "0" \
+  "$(ls "$DHOME/.config/autostart/" 2>/dev/null | wc -l | tr -d ' ')"
+
+# --- 19. откат dconf и json: чужие настройки целы --------------------------
+rm -rf "$DHOME/.config/autostart"; mkdir -p "$DHOME/.config/ulauncher"
+printf '{\n    "show-recent-apps": 3,\n    "clear-on-hide": false\n}\n' \
+  > "$DHOME/.config/ulauncher/settings.json"
+printf '%s\n' \
+  "$(printf '2026-11-23 10:00:00\tdconf\t/net/launchpad/plank/docks/dock1/theme\tEwwIsland\tbdi-EwwIsland\t')" \
+  "$(printf '2026-11-23 10:00:01\tjson\t%s\tshow-recent-apps=0\tshow-recent-apps=5\t' \
+     "$DHOME/.config/ulauncher/settings.json")" \
+  > "$DHOME/.local/state/bdi/changes.log"
+env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
+    XDG_STATE_HOME="$DHOME/.local/state" XDG_CACHE_HOME="$DHOME/.cache" \
+    BDI_STATE="$DHOME/.local/state/bdi" \
+  sh "$DROOT/install.sh" uninstall >/dev/null 2>&1
+check "json вернул поле" "0" \
+  "$(python3 -c "import json;print(json.load(open('$DHOME/.config/ulauncher/settings.json'))['show-recent-apps'])" 2>/dev/null)"
+check "json: чужой ключ цел" "False" \
+  "$(python3 -c "import json;print(json.load(open('$DHOME/.config/ulauncher/settings.json'))['clear-on-hide'])" 2>/dev/null)"
+check "json: файл не удалён" "да" \
+  "$([ -f "$DHOME/.config/ulauncher/settings.json" ] && echo да || echo нет)"
+# Без шины dconf не пишется - откат обязан сказать об этом и дать команду.
+_out=$(env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
+        XDG_CACHE_HOME="$DHOME/.cache" BDI_STATE="$DHOME/.local/state/bdi" \
+        DISPLAY=:99 XDG_SESSION_TYPE=x11 \
+        sh -c 'printf "%s\n" "$(printf "2026-11-23 10:00:00\tdconf\t/net/x/y\tEwwIsland\tbdi-EwwIsland\t")" > "'"$DHOME"'/.local/state/bdi/changes.log"
+               sh "'"$DROOT"'/install.sh" uninstall' 2>&1)
+case "$_out" in
+  *"dconf write"*) printf 'ok   dconf без шины: сказал и дал команду\n' ;;
+  *) printf 'FAIL dconf без шины молчит [%s]\n' "$_out"; fail=1 ;;
+esac
+
+# --- 20. файл копии: старый автозапуск возвращается, а не удаляется --------
+rm -rf "$DHOME/.config/autostart"; mkdir -p "$DHOME/.config/autostart"
+printf '[Desktop Entry]\nExec=/x/run-island.sh\nHidden=true\n' \
+  > "$DHOME/.config/autostart/eww-island.desktop"
+printf '%s\n' \
+  "$(printf '2026-11-23 10:00:00\tautostart\t%s\tHidden=false\tHidden=true\t' \
+     "$DHOME/.config/autostart/eww-island.desktop")" \
+  > "$DHOME/.local/state/bdi/changes.log"
+env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
+    BDI_STATE="$DHOME/.local/state/bdi" \
+  sh "$DROOT/install.sh" uninstall >/dev/null 2>&1
+check "погашенный автозапуск: Hidden вернулся" "false" \
+  "$(sed -n 's/^Hidden=//p' "$DHOME/.config/autostart/eww-island.desktop" 2>/dev/null)"
+check "погашенный автозапуск: файл на месте" "да" \
+  "$([ -f "$DHOME/.config/autostart/eww-island.desktop" ] && echo да || echo нет)"
+
+# --- 21. пустые поля журнала не сдвигают значения --------------------------
+# TAB - whitespace для read, и строка «autostart<файл>""<-Exec» читалась как
+# «<файл><-Exec», откат возвращал чужое значение. Поля режет cut.
+rm -rf "$DHOME/.config/autostart"; mkdir -p "$DHOME/.config/autostart"
+printf '%s\n' \
+  "$(printf '2026-11-23 10:00:00\tautostart\t%s\t\t%s\t' \
+     "$DHOME/.config/autostart/made.desktop" "/x/run-island.sh")" \
+  > "$DHOME/.local/state/bdi/changes.log"
+printf '[Desktop Entry]\nExec=/x/run-island.sh\n' > "$DHOME/.config/autostart/made.desktop"
+env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
+    BDI_STATE="$DHOME/.local/state/bdi" \
+  sh "$DROOT/install.sh" uninstall >/dev/null 2>&1
+check "созданный нами файл удалён" "нет" \
+  "$([ -f "$DHOME/.config/autostart/made.desktop" ] && echo да || echo нет)"
+
+# --- 22. журнал с типом: старая строка из 5 полей тоже читается ------------
+rm -rf "$DHOME/.config/autostart"; mkdir -p "$DHOME/.config/autostart"
+printf '2026-11-23 10:00:00\tautostart\t%s\t\t/x\n' \
+  "$DHOME/.config/autostart/old.desktop" > "$DHOME/.local/state/bdi/changes.log"
+printf 'x\n' > "$DHOME/.config/autostart/old.desktop"
+_out=$(env -i PATH="$PATH" HOME="$DHOME" XDG_CONFIG_HOME="$DHOME/.config" \
+        BDI_STATE="$DHOME/.local/state/bdi" \
+        sh "$DROOT/install.sh" uninstall 2>&1)
+check "журнал из 5 полей: файл удалён" "нет" \
+  "$([ -f "$DHOME/.config/autostart/old.desktop" ] && echo да || echo нет)"
+
 printf '\n'
 if [ "$fail" -eq 0 ]; then echo "всё сошлось"; else echo "есть провалы"; fi
 exit "$fail"

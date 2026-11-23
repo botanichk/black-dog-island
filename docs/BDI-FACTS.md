@@ -480,7 +480,9 @@ POSIX). Колонки `wmctrl -lG` сдвинуты на одну вправо 
 | автозапуск | `OnlyShowIn=XFCE;` + `Hidden=false` | `lib/install.sh` (`install_autostart`) |
 | старый `eww-island.desktop` | гасится `Hidden=true` и пишется в журнал (иначе два острова) | `disable_stale_autostart` |
 | `check` | читает в любом сеансе, ничего не меняет | `lib/check.sh` |
-| `uninstall` | будет разрешён в любом сеансе, без X (часть D) | — |
+| `uninstall` | работает в любом сеансе и без X: xfconf правится в XML, а не через `xfconf-query` | `lib/install.sh` (`uninstall_all`), `lib/xfconf-xml.py` |
+| `--restore-backup` | возвращает каталоги из `~/.local/state/bdi/backup-*` | `restore_backup` |
+| `dconf` (тема дока) | без шины не пишется: печатается готовая команда | `_dconf_restore` |
 | свои темы | `~/.config/bdi/palettes` (было в каталоге Noctalia) | `theme-save.sh`, `palette_lib.read_user` |
 | каталог Noctalia | только чтение; старые темы видны и копируются кнопкой «Папка» | `palette_lib.py`, `colors-pick.sh` |
 | док Plank и Ulauncher | красятся только с согласия из install (`skin-plank`, `skin-ulauncher`) | `install_skin_consent` |
