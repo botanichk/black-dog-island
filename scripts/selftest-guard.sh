@@ -537,6 +537,31 @@ check "второй запуск при живом замке отказал" "1
 check "замок назвал pid занявшего" "да" "$([ -n "${LOCK_PID:-}" ] && echo да || echo нет)"
 rm -rf "$LD"
 
+# --- 24. Папка обоев: всегда ~/Изображения --------------------------------
+# Решение владельца 2026-11-23. Раньше шёл перебор (xdg-user-dir, ~/Pictures,
+# ~/Изображения), и пустая ~/Pictures перекрывала сорок обоев рядом.
+WD=$(mktemp -d)
+mkdir -p "$WD/h/Изображения"
+printf 'x' > "$WD/h/Изображения/w.png"
+_wd=$(env -i PATH="$PATH" HOME="$WD/h" XDG_CONFIG_HOME="$WD/h/.config" \
+       BDI_CONFIG="$WD/h/.config/bdi" \
+       sh -c ". $ROOT/lib/wallpaper.sh; bdi_wallpaper_dir")
+check "обои: по умолчанию ~/Изображения" "$WD/h/Изображения" "$_wd"
+
+# Пустая ~/Pictures не должна перекрывать: её в списке кандидатов больше нет.
+mkdir -p "$WD/h/Pictures"
+_wd=$(env -i PATH="$PATH" HOME="$WD/h" XDG_CONFIG_HOME="$WD/h/.config" \
+       BDI_CONFIG="$WD/h/.config/bdi" \
+       sh -c ". $ROOT/lib/wallpaper.sh; bdi_wallpaper_dir")
+check "обои: пустой Pictures не перекрывает" "$WD/h/Изображения" "$_wd"
+
+# Явный выбор владельца главнее - нужен для второй папки и для тестов.
+_wd=$(env -i PATH="$PATH" HOME="$WD/h" XDG_CONFIG_HOME="$WD/h/.config" \
+       BDI_CONFIG="$WD/h/.config/bdi" BDI_WALLPAPERS="$WD/h/Мои обои" \
+       sh -c ". $ROOT/lib/wallpaper.sh; bdi_wallpaper_dir")
+check "обои: явный выбор владельца главнее" "$WD/h/Мои обои" "$_wd"
+rm -rf "$WD"
+
 printf '\n'
 if [ "$fail" -eq 0 ]; then echo "всё сошлось"; else echo "есть провалы"; fi
 exit "$fail"

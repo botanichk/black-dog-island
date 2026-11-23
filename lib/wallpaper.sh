@@ -13,38 +13,25 @@
 # set -u здесь нет намеренно: библиотека подключается к чужим скриптам и не
 # должна менять их режим оболочки.
 
-# bdi_wallpaper_dir - первая существующая папка обоев по порядку:
-#   $BDI_WALLPAPERS -> $WALLPAPER_DIR (старое имя) -> ~/.config/bdi/wallpapers
-#   -> XDG_PICTURES_DIR (user-dirs.dirs, потом xdg-user-dir) -> ~/Pictures
-#   -> ~/Изображения.
-# Ничего нет - печатает ~/Pictures: сообщение назовёт путь, куда положить.
+# bdi_wallpaper_dir - папка обоев: всегда ~/Изображения.
+#
+# Так решил владелец (2026-11-23): обои лежат в ~/Изображения, искать больше
+# негде. Раньше шёл перебор (xdg-user-dir, ~/Pictures, ~/Изображения), и на
+# машине с пустой ~/Pictures он выбирал её - сетка открывалась пустой, хотя
+# рядом лежали сорок обоев.
+#
+# Явное слово владельца главнее: $BDI_WALLPAPERS, $WALLPAPER_DIR (старое имя)
+# или путь в ~/.config/bdi/wallpapers. Это нужно для второй папки и для
+# проверок на заглушках.
 bdi_wallpaper_dir() {
   _cfg="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
   _file=""
   [ -r "$_cfg/wallpapers" ] && _file=$(tr -d ' \t\r\n' < "$_cfg/wallpapers" 2>/dev/null || true)
 
-  _xdg=""
-  _ud="${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs"
-  if [ -r "$_ud" ]; then
-    _xdg=$(sed -n 's/^XDG_PICTURES_DIR="\(.*\)"$/\1/p' "$_ud" | tail -1)
-    case "$_xdg" in
-      '$HOME'/*) _xdg="$HOME/${_xdg#\$HOME/}" ;;
-      '$HOME') _xdg="" ;;
-    esac
-  fi
-  if [ -z "$_xdg" ] && command -v xdg-user-dir >/dev/null 2>&1; then
-    _xdg=$(xdg-user-dir PICTURES 2>/dev/null || true)
-  fi
-
-  for _d in "${BDI_WALLPAPERS:-}" "${WALLPAPER_DIR:-}" "$_file" "$_xdg" \
-            "$HOME/Pictures" "$HOME/Изображения"; do
-    # xdg-user-dir без настроек отдаёт сам $HOME - это не папка картинок.
-    if [ -n "$_d" ] && [ "$_d" != "$HOME" ] && [ -d "$_d" ]; then
-      printf '%s\n' "$_d"
-      return 0
-    fi
+  for _d in "${BDI_WALLPAPERS:-}" "${WALLPAPER_DIR:-}" "$_file"; do
+    [ -n "$_d" ] && printf '%s\n' "$_d" && return 0
   done
-  printf '%s\n' "${BDI_WALLPAPERS:-$HOME/Pictures}"
+  printf '%s\n' "$HOME/Изображения"
 }
 
 # bdi_count_walls <папка> - сколько обоев увидит программа (верхний уровень).

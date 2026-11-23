@@ -51,10 +51,9 @@ SW=$(run_to 5 xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d
 SH=$(run_to 5 xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f2)
 [ -n "${SW:-}" ] && [ -n "${SH:-}" ] || { SW=1366; SH=768; }
 
-# Папка обоев: правило поиска одно на весь проект - lib/wallpaper.sh
-# (BDI_WALLPAPERS -> ~/.config/bdi/wallpapers -> XDG_PICTURES_DIR ->
-# ~/Pictures -> ~/Изображения). Зашивать одно имя нельзя: в виртуалке на
-# Void папки ~/Pictures нет вовсе, и соты «не стартовали».
+# Папка обоев: правило одно на весь проект - lib/wallpaper.sh (всегда
+# ~/Изображения; явно переопределяется BDI_WALLPAPERS). Первый аргумент
+# скрипта тоже может указать папку - так удобно для проверок.
 . "$ROOT/lib/wallpaper.sh"
 DIR=${1:-$(bdi_wallpaper_dir)}
 
@@ -76,8 +75,9 @@ fit_grid() {
   printf '70 5\n'
 }
 
-# Папка обоев: flavour и порядок живут в lib/wallpaper.sh (см. строку 54).
-# DIR уже выставлен выше; walk_dir тут больше нет.
+# Папка обоев - всегда ~/Изображения (решение владельца). Правило живёт в
+# lib/wallpaper.sh; для проверок его можно переопределить BDI_WALLPAPERS.
+. "$ROOT/lib/wallpaper.sh"
 
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 log() {
