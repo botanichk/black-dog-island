@@ -3,9 +3,10 @@
 #
 # usage: power.sh logout|reboot|poweroff|status
 #
-# Выключение и перезагрузка - через systemctl: это ровно то, что делает кнопка
-# в любом DE, и polkit для org.freedesktop.login1.power-off / .reboot разрешает
-# активной сессии действовать без пароля (allow_active=yes). Проверено:
+# Выключение и перезагрузка - через logind: systemctl на Arch, loginctl на Void
+# (там systemd нет вовсе, за logind отвечает elogind). Это ровно то, что делает
+# кнопка в любом DE, и polkit для org.freedesktop.login1.power-off / .reboot
+# разрешает активной сессии действовать без пароля (allow_active=yes). Проверено:
 # pkcheck --action-id org.freedesktop.login1.power-off --process $$ -> код 0.
 #
 # Выход из сессии - НЕ через loginctl terminate-session. Тот требует polkit
@@ -79,13 +80,20 @@ case "${1:-}" in
     echo "не смог выйти из сессии" >&2
     exit 1
     ;;
-  reboot)
-    log "reboot: systemctl reboot"
-    exec systemctl reboot
-    ;;
-  poweroff)
-    log "poweroff: systemctl poweroff"
-    exec systemctl poweroff
+  reboot|poweroff)
+    # Действие одно и то же, а средство зависит от системы: на Void systemctl
+    # нет, и `exec systemctl` тихо ничего не делал (код 127 в лог не писался).
+    if command -v systemctl >/dev/null 2>&1; then
+      log "$1: systemctl $1"
+      exec systemctl "$1"
+    fi
+    if command -v loginctl >/dev/null 2>&1; then
+      log "$1: loginctl $1"
+      exec loginctl "$1"
+    fi
+    log "$1: нет ни systemctl, ни loginctl"
+    echo "не смог: нет systemctl и loginctl" >&2
+    exit 1
     ;;
   status)
     echo "сессия:   $(session_id || echo '?')"
