@@ -191,6 +191,10 @@ PY
 
 # Рендер с откатом: битая схема (кривой JSON, чужой id, не #rrggbb) не должна
 # оставлять остров без colors.scss. Вторая попытка всегда на default из git.
+#
+# Замер шага: в theme.log раньше были только ошибки, и «где именно медленно»
+# на чужой машине угадывалось. Теперь каждый шаг пишет метку и мс.
+_T_RENDER=$(now_ms)
 if ! render_theme "$JSON" "$SCHEME"; then
   log "схема $SCHEME не отрендерилась - повторяю на default"
   echo "схема $SCHEME не отрендерилась - беру default" >&2
@@ -203,8 +207,10 @@ if ! render_theme "$JSON" "$SCHEME"; then
   }
   printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current" 2>/dev/null || true
 fi
+log "шаг render мс=$(( $(now_ms) - _T_RENDER ))"
 
 if [ "$RELOAD" -eq 1 ]; then
+  _T_RELOAD=$(now_ms)
   EWW="$ROOT/build/target/release/eww"
   [ -x "$EWW" ] || { echo "eww не собран: $EWW" >&2; exit 1; }
   # reload возвращает 1, когда демон не успевает ответить ("os error 11"),
@@ -279,6 +285,7 @@ if [ "$RELOAD" -eq 1 ]; then
       run_to 10 "$EWW" --config "$ROOT/eww" --no-daemonize open island --pos "$(( (_sw - _iw) / 2 ))x0" >/dev/null 2>&1 || true
     fi
   fi
+  log "шаг reload мс=$(( $(now_ms) - _T_RELOAD ))"
 fi
 
 # Запоминаем выбор последним шагом: если рендер упал, ~/.config/bdi/current не врёт.
@@ -286,22 +293,22 @@ fi
 printf '%s\n' "$SCHEME" > "$BDI_CONFIG/current" 2>/dev/null || true
 echo "схема: $SCHEME (~/.config/bdi/current)"
 
-# --- 5. рамка Plank в цвет $primary ---------------------------------------
-# Plank не перечитывает тему на лету, поэтому его надо перезапустить (~1 с).
-# Ошибку здесь не пробрасываем: без Plank остров работает, а падать из-за
-# дока не должен. Подробности - в theme/plank.sh и docs/PLANK.md.
-if [ -x "$ROOT/theme/plank.sh" ]; then
-  if ! "$ROOT/theme/plank.sh" apply; then
-    echo "рамка Plank: не применилась (см. ~/.cache/bdi/plank.log)" >&2
+# --- 5. Plank и Ulauncher: В ФОНЕ -----------------------------------------
+# Почему в фоне: Plank не перечитывает тему на лету и перезапускается (~1 с),
+# а Ulauncher ходит в D-Bus и dconf - на виртуалке каждый такой вызов занимает
+# секунды. Пока они шли синхронно, кнопка темы «вешала остров»: colors.scss
+# уже применён, а команда всё ещё ждала док. Теперь остров перекрашивается
+# сразу, а док и лаунчер догоняют сами (theme/extras.sh).
+#
+# Отдельный setsid: команду кнопки Eww убивает по своему :timeout, и это не
+# должно обрывать покраску дока на середине.
+if [ -x "$ROOT/theme/extras.sh" ]; then
+  if command -v setsid >/dev/null 2>&1; then
+    setsid -f "$ROOT/theme/extras.sh" >>"$BDI_CACHE/theme-extra.log" 2>&1 \
+      </dev/null || \
+      "$ROOT/theme/extras.sh" >>"$BDI_CACHE/theme-extra.log" 2>&1 || true
+  else
+    "$ROOT/theme/extras.sh" >>"$BDI_CACHE/theme-extra.log" 2>&1 || true
   fi
 fi
 
-# --- 6. тема Ulauncher в те же цвета --------------------------------------
-# Ulauncher перечитывает тему по SIGHUP, поэтому окно не мигает и ввод не
-# теряется (в отличие от Plank, которому нужен перезапуск). Ошибку не
-# пробрасываем: без Ulauncher остров работает. Подробности - theme/ulauncher.sh.
-if [ -x "$ROOT/theme/ulauncher.sh" ]; then
-  if ! "$ROOT/theme/ulauncher.sh" apply; then
-    echo "тема Ulauncher: не применилась (см. ~/.cache/bdi/ulauncher.log)" >&2
-  fi
-fi

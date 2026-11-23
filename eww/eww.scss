@@ -1550,6 +1550,15 @@ window.panel-hub {
   font-weight: bold;
 }
 
+// Статус смены темы в шапке («применяется» / «готово» / «ошибка: ...»).
+// Приглушённый, чтобы не спорил с заголовком; ширина ограничена в yuck
+// (limit-width 18), иначе длинная строка раздула бы шапку.
+.colors-status {
+  color: $on-surface-variant;
+  font-size: $t-caption;
+  padding: 0 8px 0 0;
+}
+
 // One row of cards. Rows are pre-chunked by colors-list.sh: 3 builtin,
 // 2 user cards. GTK3 has no grid, so widths come from hexpand.
 .colors-row {

@@ -92,24 +92,45 @@ grep -q "ошибка: wallpicker вышел" "$BDI_CACHE/wallpicker.log" &&
   printf 'ok   причина в wallpicker.log\n' ||
   { printf 'FAIL причина не в wallpicker.log\n'; fail=1; }
 
-# --- 4. соты: net возни -> бинарник из build/ находится --------------------
+# --- 4. соты: бинарник из build/ находится, даже если ссылки нет ----------
 mk_sandbox
 printf '#!/bin/sh\nexit 1\n' > "$BASE/bin/wallpicker"
 chmod +x "$BASE/bin/wallpicker"
 mkdir -p "$BASE/walls"
-cp "$ROOT/build/wallpicker-src/wallpicker" "$BASE/bin/real-wp" 2>/dev/null || true
-# Заглушка вместо настоящего окна: пусть падает, важен только выбор пути.
+# Картинка обязательна: пустую папку run.sh теперь отсекает кодом 5 и до
+# запуска не доходит (это проверяет отдельный случай ниже).
+printf 'not really a png\n' > "$BASE/walls/a.png"
 out=$(WALLPAPER_DIR="$BASE/walls" PATH="$BASE/bin:$PATH" \
       timeout 20 sh "$ROOT/adapters/wallpicker/run.sh" 2>&1)
 grep -q "запуск: pid" "$BDI_CACHE/wallpicker.log" &&
   printf 'ok   запуск логируется с pid\n' ||
   { printf 'FAIL запуск не залогирован\n'; fail=1; }
 
-# --- 5. кнопка обоев: соты падают -> запасной вариант и причина в лог ------
+# --- 4b. соты: пустая папка -> код 5, программа не запускается ------------
+mk_sandbox
+printf '#!/bin/sh\necho "$*" >> "$BDI_CACHE/wp.called"\nexit 0\n' > "$BASE/bin/wallpicker"
+chmod +x "$BASE/bin/wallpicker"
+mkdir -p "$BASE/walls"
+out=$(WALLPICKER_BIN="$BASE/bin/wallpicker" WALLPAPER_DIR="$BASE/walls" \
+      PATH="$BASE/bin:$PATH" timeout 20 sh "$ROOT/adapters/wallpicker/run.sh" 2>&1)
+_rc=$?
+check "пустая папка обоев -> код 5" 5 "$_rc"
+case "$out" in
+  *"нет обоев"*) printf 'ok   пустая папка названа вслух\n' ;;
+  *) printf 'FAIL пустая папка: нет сообщения [%s]\n' "$out"; fail=1 ;;
+esac
+[ -f "$BDI_CACHE/wp.called" ] &&
+  { printf 'FAIL программа запущена на пустой папке\n'; fail=1; } ||
+  printf 'ok   на пустой папке программа не запускается\n'
+
+# --- 5. кнопка обоев: соты упали -> код 4, запасной НЕ открывается --------
+# Раньше любой провал молча открывал xfdesktop-settings, и причину было не
+# видно. Теперь запасной путь только для «программы нет» (код 1).
 mk_sandbox
 printf '#!/bin/sh\nexit 1\n' > "$BASE/bin/wallpicker"
 printf '#!/bin/sh\necho "xfdesktop-settings запущен" >> "$BDI_CACHE/fallback.called"\n' > "$BASE/bin/xfdesktop-settings"
 printf '#!/bin/sh\nexit 1\n' > "$BASE/bin/wmctrl"
+printf '#!/bin/sh\nexit 0\n' > "$BASE/bin/notify-send"
 chmod +x "$BASE/bin"/*
 mkdir -p "$BASE/walls"
 printf 'not really a png\n' > "$BASE/walls/a.png"
@@ -117,13 +138,27 @@ printf 'not really a png\n' > "$BASE/walls/a.png"
 WALLPICKER_BIN="$BASE/bin/wallpicker" WALLPAPER_DIR="$BASE/walls" \
   PATH="$BASE/bin:$PATH" timeout 40 sh "$ROOT/adapters/x11/wallpaper.sh" >/dev/null 2>&1
 _rc=$?
-check "кнопка обоев: без сот отвечает 0" 0 "$_rc"
+check "кнопка обоев: падение сот -> код 4" 4 "$_rc"
 [ -f "$BDI_CACHE/fallback.called" ] &&
-  printf 'ok   запасной xfdesktop-settings открыт\n' ||
-  { printf 'FAIL запасной вариант не открылся\n'; fail=1; }
+  { printf 'FAIL запасной настройщик открылся молча\n'; fail=1; } ||
+  printf 'ok   запасной настройщик не открылся\n'
 grep -q "wallpicker не запустился" "$BDI_CACHE/wallpicker.log" &&
   printf 'ok   причина записана в лог\n' ||
   { printf 'FAIL причины нет в логе\n'; fail=1; }
+
+# --- 5b. кнопка обоев: программы нет (код 1) -> запасной открывается ------
+mk_sandbox
+printf '#!/bin/sh\necho "xfdesktop-settings запущен" >> "$BDI_CACHE/fallback.called"\n' > "$BASE/bin/xfdesktop-settings"
+printf '#!/bin/sh\nexit 1\n' > "$BASE/bin/wmctrl"
+printf '#!/bin/sh\nexit 0\n' > "$BASE/bin/notify-send"
+chmod +x "$BASE/bin"/*
+mkdir -p "$BASE/walls"; printf 'x\n' > "$BASE/walls/a.png"
+
+WALLPICKER_BIN="$BASE/bin/нет-такой" WALLPAPER_DIR="$BASE/walls" \
+  PATH="$BASE/bin:$PATH" timeout 40 sh "$ROOT/adapters/x11/wallpaper.sh" >/dev/null 2>&1
+[ -f "$BDI_CACHE/fallback.called" ] &&
+  printf 'ok   нет программы -> запасной настройщик открыт\n' ||
+  { printf 'FAIL нет программы, а настройщик не открылся\n'; fail=1; }
 
 # --- 6. apply.sh: reload «ответил», а главный цикл залип -> перезапуск ------
 # Дерево-двойник: настоящие theme/*, но scripts/stop-island.sh и run-island.sh
@@ -201,6 +236,72 @@ _rc=$?
 _t1=$(date +%s)
 check "stop-island.sh не виснет на eww kill" 0 "$_rc"
 check "stop-island.sh уложился в 20 с" 1 "$(( (_t1 - _t0) < 20 ? 1 : 0 ))"
+
+# --- 9. смена темы: второй запуск во время первого не стартует ------------
+# Проверяем именно pid-файл, без настоящей смены темы: подменяем apply.sh
+# заглушкой, которая спит, и зовём colors-pick дважды.
+mk_sandbox
+PICKROOT="$BASE/pickroot"
+mkdir -p "$PICKROOT/theme" "$PICKROOT/eww" "$PICKROOT/adapters/x11"
+cp "$ROOT/theme/colors-pick.sh" "$ROOT/theme/guard.sh" "$PICKROOT/theme/"
+printf '#!/bin/sh\nprintf "apply\\n" >> "$BDI_CACHE/apply.called"\nsleep 3\n' \
+  > "$PICKROOT/theme/apply.sh"
+printf '#!/bin/sh\nexit 1\n' > "$PICKROOT/theme/from-wallpaper.sh"
+printf '#!/bin/sh\nexit 1\n' > "$PICKROOT/adapters/x11/panel.sh"
+chmod +x "$PICKROOT/theme/"*.sh "$PICKROOT/adapters/x11/panel.sh"
+
+BDI_NO_DETACH=1 timeout 20 sh "$PICKROOT/theme/colors-pick.sh" hue all >/dev/null 2>&1
+BDI_NO_DETACH=1 timeout 20 sh "$PICKROOT/theme/colors-pick.sh" palette n-island dark >/dev/null 2>&1 &
+sleep 0.5
+BDI_NO_DETACH=1 timeout 20 sh "$PICKROOT/theme/colors-pick.sh" palette light dark >/dev/null 2>&1
+check "второй запуск отброшен" 1 "$(grep -c 'уже применяется' "$BDI_CACHE/colors-pick.log" 2>/dev/null | head -1)"
+wait
+check "первый запуск дошёл до apply" 1 "$(grep -c 'apply' "$BDI_CACHE/apply.called" 2>/dev/null | head -1)"
+[ -f "$BDI_CACHE/colors-pick.pid" ] &&
+  { printf 'FAIL pid-файл остался после выхода\n'; fail=1; } ||
+  printf 'ok   pid-файл убран\n'
+
+# --- 10. apply.sh: док и лаунчер уходят в фон, кнопка не ждёт их ----------
+# Заглушки plank/ulauncher спят 5 с. Основной путь должен вернуться быстро,
+# а в theme.log появиться «шаг render» (замер) - раньше шагов вообще не было.
+mk_sandbox
+FAKE="$BASE/root"
+mkdir -p "$FAKE/theme" "$FAKE/scripts" "$FAKE/eww/assets" "$FAKE/build/target/release"
+cp "$ROOT/theme/apply.sh" "$ROOT/theme/guard.sh" "$ROOT/theme/extras.sh" "$FAKE/theme/"
+ln -s "$ROOT/theme/schemes" "$FAKE/theme/schemes"
+ln -s "$ROOT/theme/templates" "$FAKE/theme/templates"
+printf '#!/bin/sh\nsleep 5\n' > "$FAKE/theme/plank.sh"
+printf '#!/bin/sh\nsleep 5\n' > "$FAKE/theme/ulauncher.sh"
+printf '#!/bin/sh\ncase "$*" in *state*) echo "hub_tab: 0"; exit 0 ;; esac\nexit 0\n' \
+  > "$FAKE/build/target/release/eww"
+chmod +x "$FAKE/theme/"*.sh "$FAKE/build/target/release/eww"
+
+_t0=$(date +%s)
+timeout 60 sh "$FAKE/theme/apply.sh" default --reload >/dev/null 2>&1
+_rc=$?
+_t1=$(date +%s)
+check "apply.sh вернул 0" 0 "$_rc"
+check "apply.sh не ждёт док и лаунчер (5 с каждый)" 1 "$(( (_t1 - _t0) < 5 ? 1 : 0 ))"
+grep -q "шаг render" "$BDI_CACHE/theme.log" &&
+  printf 'ok   шаг render замерен\n' ||
+  { printf 'FAIL замера шагов нет в theme.log\n'; fail=1; }
+sleep 6
+grep -q "шаг plank" "$BDI_CACHE/theme.log" &&
+  printf 'ok   фон догнал док\n' ||
+  { printf 'FAIL фон не дошёл до дока\n'; fail=1; }
+
+# --- 11. портативность: не возвращать gawk-функции в awk -------------------
+# Проверено по шаблону void-packages/base-system: Void ставит gawk и coreutils,
+# то есть `strtonum` там есть, а вот `date +%s%N`, `stat -c`, `readlink -f` тем
+# более работают - их трогать не нужно (в задании 17 они были в списке
+# подозреваемых, но в реальности на обеих целевых системах это GNU-утилиты).
+# Остаётся один настоящий риск: awk бывает mawk (Debian, часть сборок Void),
+# и `strtonum` в нём нет - тогда island-geom.sh молча терял геометрию острова.
+_hits=$(grep -rn 'strtonum' --include='*.sh' "$ROOT/adapters" "$ROOT/lib" \
+          "$ROOT/scripts" "$ROOT/theme" 2>/dev/null | grep -v 'selftest-guard' \
+          | grep -v '^[^:]*:[0-9]*: *#' | head -3)
+[ -z "$_hits" ] && printf 'ok   нет gawk-функции strtonum\n' ||
+  { printf 'FAIL strtonum вернулся:\n%s\n' "$_hits"; fail=1; }
 
 printf '\n'
 if [ "$fail" -eq 0 ]; then echo "всё сошлось"; else echo "есть провалы"; fi

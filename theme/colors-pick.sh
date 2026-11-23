@@ -33,23 +33,42 @@ THEME="$ROOT/theme"
 # Eww выполняет :onclick синхронно и, если команда не уложилась в :timeout,
 # убивает её на середине. Для смены темы это худший момент: хаб уже закрыт
 # (шаг 4), reload не доехал, а переоткрыть его некому - снаружи это «выбор
-# темы всё повесил». На VM с Plank и Ulauncher шаг занимает около 6.5 с при
-# таймауте кнопки 8 с, то есть впритык.
+# темы всё повесил». Пока шаги шли в процессе кнопки, на VM с Plank и
+# Ulauncher всё занимало около 6.5 с при таймауте 8 с, то есть впритык.
 # Поэтому тяжёлые действия уходят в свой сеанс setsid: кнопка отвечает сразу
 # и ничего не может оборвать. path не отвязываем (его вывод читает
 # theme-save.sh), а внутренние вызовы ставят BDI_NO_DETACH=1.
 COLORS_CACHE="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
+# Каталог нужен всем веткам: сюда пишутся pid-файл, статус для хаба и журнал.
+mkdir -p "$COLORS_CACHE" 2>/dev/null || true
 if [ -z "${BDI_DETACHED:-}" ] && [ -z "${BDI_NO_DETACH:-}" ]; then
   case "${1:-}" in
     palette|mode|wallpaper|accent|hue|reset)
       if command -v setsid >/dev/null 2>&1; then
-        mkdir -p "$COLORS_CACHE" 2>/dev/null || true
         BDI_DETACHED=1 setsid -f sh "$0" "$@" \
           >>"$COLORS_CACHE/colors-pick.log" 2>&1 </dev/null || true
         exit 0
       fi ;;
   esac
 fi
+
+# Одна копия: второе нажатие во время применения не запускает параллельную
+# смену и не копит очередь - просто выходит.
+# Почему pid-файл, а не flock: Plank перезапускается из theme/plank.sh и
+# наследует открытый дескриптор замка, после чего файл заперт вечно и
+# следующее нажатие молча пропускалось (проверено: fuser показал plank).
+PIDF="$COLORS_CACHE/colors-pick.pid"
+_other=$(cat "$PIDF" 2>/dev/null || true)
+case "${_other:-}" in
+  ''|*[!0-9]*) _other="" ;;
+esac
+if [ -n "$_other" ] && [ "$_other" != "$$" ] && kill -0 "$_other" 2>/dev/null; then
+  printf '%s уже применяется (pid %s) - повторный запуск пропущен\n' \
+    "$(date '+%Y-%m-%d %H:%M:%S')" "$_other" >>"$COLORS_CACHE/colors-pick.log" 2>/dev/null || true
+  exit 0
+fi
+printf '%s\n' "$$" > "$PIDF" 2>/dev/null || true
+trap 'rm -f "$PIDF" 2>/dev/null || true' EXIT INT TERM HUP
 
 # --- разбор аргументов ----------------------------------------------------
 ACTION=${1:-}
@@ -327,7 +346,24 @@ fi
 # --- 5. применить ---------------------------------------------------------
 # run_to 120: apply.sh зовёт reload, перезапуск демона, Plank и Ulauncher;
 # без таймаута зависший демон держит кнопку до конца сеанса (см. theme/guard.sh).
-run_to 120 "$THEME/apply.sh" "$SCHEME" --reload || true
+#
+# Статус для хаба: файл пишется ДО и ПОСЛЕ работы, хаб читает его опросом.
+# Снаружи видно «применяется / готово / ошибка», а не просто исчезнувшее окно.
+STATUS="$COLORS_CACHE/theme-status"
+printf '%s\n' "применяется" > "$STATUS" 2>/dev/null || true
+_START=$(now_ms)
+if run_to 120 "$THEME/apply.sh" "$SCHEME" --reload; then
+  _rc=0
+else
+  _rc=$?
+  [ "$_rc" -eq 124 ] && _why="превышено время" || _why="ошибка apply"
+  printf '%s\n' "ошибка: $_why" > "$STATUS" 2>/dev/null || true
+fi
+_END=$(now_ms)
+printf '%s шаг=apply схема=%s мс=%s код=%s\n' \
+  "$(date '+%Y-%m-%d %H:%M:%S')" "$SCHEME" "$(( _END - _START ))" "$_rc" \
+  >> "$COLORS_CACHE/colors-pick.log" 2>/dev/null || true
+[ "$_rc" -eq 0 ] && printf '%s\n' "готово" > "$STATUS" 2>/dev/null || true
 
 # --- 6. открыть хаб на прежней вкладке ------------------------------------
 if [ "$was_open" = true ]; then

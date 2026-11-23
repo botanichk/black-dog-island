@@ -108,10 +108,19 @@ esac
 
 xid=$(find_island_xid $(eww_daemon_pids "$CONF")) || exit 1
 
-# Геометрия окна: wmctrl отдаёт координаты клиентской области (рамка у окон Eww нулевая).
-# XID сравниваем как числа: xprop печатает 0x3200029, wmctrl - 0x03200029.
-want=$((xid))
-geo=$(wmctrl -lG 2>/dev/null | awk -v w="$want" '{ id = strtonum("0x" substr($1, 3)); if (id == w) {print $3, $4, $5, $6; exit} }')
+# Геометрия окна: wmctrl отдаёт координаты клиентской области (рамка у окон
+# Eww нулевая). XID сравниваем как числа: xprop печатает 0x3200029,
+# wmctrl - 0x03200029.
+#
+# strtonum - функция GNU awk, её нет в POSIX awk (nawk/mawk, busybox): без неё
+# awk падал, и остров считался «без геометрии». XID сравниваем строками, а не
+# числами: снимаем 0x, ведущие нули и регистр - этого хватает (xprop печатает
+# 0x3200029, wmctrl - 0x03200029). sub/tolower/gsub есть в POSIX awk.
+want=$(printf '%s' "$xid" | tr 'A-F' 'a-f' | sed 's/^0x//; s/^0*//')
+[ -n "$want" ] || exit 1
+geo=$(wmctrl -lG 2>/dev/null | awk -v w="$want" '
+  { id = tolower($1); sub(/^0x/, "", id); sub(/^0+/, "", id)
+    if (id == w) { print $3, $4, $5, $6; exit } }')
 [ -n "$geo" ] || exit 1
 
 echo "$xid $geo"

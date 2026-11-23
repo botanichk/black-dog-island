@@ -14,6 +14,13 @@ EWW="$ROOT/build/target/release/eww"
 CONF="$ROOT/eww"
 GEOM="$ROOT/adapters/x11/island-geom.sh"
 
+# Вывод копится в файл и печатается в конце через sed: в отчёте не должно быть
+# имени пользователя (пути /home/<кто>) и названий сетей - владелец присылает
+# вывод публично. Сети в diag не печатаются вообще, имя убираем здесь.
+_OUT="${TMPDIR:-/tmp}/bdi-diag.$$"
+exec 3>&1 4>&2 1>"$_OUT" 2>&1
+trap 'rm -f "$_OUT"' EXIT INT TERM HUP
+
 BDI_ROOT="$ROOT"
 BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
 BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
@@ -22,12 +29,54 @@ export BDI_ROOT BDI_CONFIG BDI_STATE BDI_CACHE
 
 sec() { printf '\n== %s\n' "$*"; }
 
+# Окна острова. Не `grep -i eww`: под него попадают заголовки чужих окон
+# (браузер со страницей про Eww). Имя пользователя (3-е поле wmctrl) скрываем -
+# вывод присылают публично.
+eww_windows() {
+  wmctrl -l 2>/dev/null | grep 'Eww - ' | awk '{ $3 = "…"; print }'
+}
+
 sec "окружение"
 printf 'root        %s\n' "$ROOT"
 printf 'дисплей     %s (экран %s)\n' "${DISPLAY:-нет}" \
   "$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}')"
+printf 'сеанс       %s / %s\n' "${XDG_SESSION_TYPE:-?}" "${XDG_CURRENT_DESKTOP:-?}"
 printf 'бинарник    %s\n' "$([ -x "$EWW" ] && echo есть || echo НЕТ)"
 printf 'colors.scss %s\n' "$([ -f "$CONF/colors.scss" ] && echo есть || echo НЕТ)"
+
+# Версии инструментов: половина «не работает на Void» - это другой awk, sed
+# или date. Без версий такой отчёт не разобрать.
+sec "инструменты"
+printf 'awk         %s\n' "$(command -v awk || echo НЕТ)"
+printf '  версия    %s\n' "$(awk --version 2>&1 | head -1 || awk -W version 2>&1 | head -1)"
+printf 'sed         %s\n' "$(sed --version 2>&1 | head -1 || echo 'без --version')"
+printf 'date        %s\n' "$(date --version 2>&1 | head -1 || echo 'без --version')"
+printf 'stat        %s\n' "$(stat --version 2>&1 | head -1 || echo 'без --version')"
+printf 'sh          %s -> %s\n' "$(command -v sh)" "$(readlink -f /bin/sh 2>/dev/null || echo '?')"
+printf 'timeout     %s\n' "$(command -v timeout || echo НЕТ)"
+printf 'flock       %s\n' "$(command -v flock || echo НЕТ)"
+printf 'setsid      %s\n' "$(command -v setsid || echo НЕТ)"
+
+sec "D-Bus и настройки"
+printf 'DBUS_SESSION_BUS_ADDRESS %s\n' "${DBUS_SESSION_BUS_ADDRESS:-ПУСТО}"
+dbus-send --session --dest=org.freedesktop.DBus --type=method_call \
+  --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames \
+  >/dev/null 2>&1 && printf 'сеансовая шина   отвечает\n' || printf 'сеансовая шина   НЕТ\n'
+printf 'dconf       %s\n' "$(command -v dconf || echo НЕТ)"
+printf 'gsettings   %s\n' "$(command -v gsettings || echo НЕТ)"
+printf 'xfconf-query %s\n' "$(command -v xfconf-query || echo НЕТ)"
+
+sec "noctalia"
+# Только чтение: наши скрипты считают палитру сами (theme/wp-palette.py),
+# noctalia нужна лишь как источник палитр, если стоит.
+_noc=""
+for _d in "${XDG_CONFIG_HOME:-$HOME/.config}/noctalia" \
+          "${XDG_STATE_HOME:-$HOME/.local/state}/noctalia"; do
+  [ -d "$_d" ] && _noc="$_noc $_d"
+done
+printf 'каталоги    %s\n' "${_noc:-нет}"
+printf 'палитры     %s\n' "$(ls "${XDG_CONFIG_HOME:-$HOME/.config}/noctalia/palettes" 2>/dev/null | wc -l)"
+printf 'location    %s\n' "$([ -r "$HOME/.cache/noctalia/location.json" ] && echo есть || echo 'нет (считаем по IP)')"
 
 sec "демоны Eww (наши)"
 pgrep -af "$EWW --config $CONF daemon" 2>/dev/null | grep -v pgrep || echo 'нет'
@@ -57,7 +106,7 @@ timeout 5 "$EWW" --config "$CONF" ping 2>&1
 printf 'код: %s\n' "$?"
 
 sec "окна Eww на экране"
-wmctrl -l 2>/dev/null | grep -i eww || echo 'нет ни одного'
+eww_windows || echo 'нет ни одного'
 
 sec "поиск окна острова (island-geom.sh)"
 if [ -x "$GEOM" ]; then
@@ -87,7 +136,7 @@ else
 fi
 
 sec "окна Eww после open"
-wmctrl -l 2>/dev/null | grep -i eww || echo 'нет ни одного'
+eww_windows || echo 'нет ни одного'
 
 sec "лог Eww (свежий файл)"
 _l=$(ls -t "${XDG_CACHE_HOME:-$HOME/.cache}"/eww/*.log 2>/dev/null | head -1)
@@ -101,13 +150,14 @@ fi
 sec "последние строки лога темы"
 [ -f "$BDI_CACHE/theme.log" ] && tail -5 "$BDI_CACHE/theme.log" 2>/dev/null || echo 'пусто'
 
-sec "композитор"
+sec "композитор и экран"
 # Без композитора не работают ни скруглённые углы острова, ни прозрачность
 # (Ulauncher, док): xfwm4 рисует окно плотным и прямоугольным. На живой
 # машине проверено, что прозрачный угол острова показывает обои, поэтому
 # тест такой: точка в углу окна острова не должна быть равна $surface.
 _comp=$(xfconf-query -c xfwm4 -p /general/use_compositing -v 2>/dev/null || echo '?')
 printf 'xfwm4 use_compositing  %s\n' "$_comp"
+printf 'разрешение  %s\n' "$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}')"
 _geo=$(wmctrl -lG 2>/dev/null | grep 'Eww - island' | head -1)
 if [ -n "${_geo:-}" ]; then
   _x=$(printf '%s' "$_geo" | awk '{print $3}')
@@ -143,11 +193,24 @@ printf 'бинарник   %s\n' "$([ -x "$_wpbin" ] && echo "есть ($(stat -
 printf 'ссылка     %s\n' "$([ -x "$_wplink" ] && echo "есть -> $(readlink -f "$_wplink" 2>/dev/null)" || echo "НЕТ ($_wplink)")"
 printf 'пин        %s\n' "$(cat "$ROOT/build/.wallpicker-pin" 2>/dev/null || echo 'не записан')"
 _wpdir=""
-for _d in "$(command -v xdg-user-dir >/dev/null 2>&1 && xdg-user-dir PICTURES 2>/dev/null)" "$HOME/Изображения" "$HOME/Pictures"; do
-  [ -n "$_d" ] && [ "$_d" != "$HOME" ] && [ -d "$_d" ] && { _wpdir=$_d; break; }
-done
-printf 'папка обоев %s\n' "${_wpdir:-НЕТ - ни xdg-user-dir PICTURES, ни ~/Изображения, ни ~/Pictures}"
+. "$ROOT/lib/wallpaper.sh"
+_wpdir=$(bdi_wallpaper_dir)
+printf 'папка обоев %s (%s шт.)\n' "$_wpdir" "$([ -d "$_wpdir" ] && bdi_count_walls "$_wpdir" || echo 'папки нет')"
 [ -f "$BDI_CACHE/wallpicker.log" ] && tail -8 "$BDI_CACHE/wallpicker.log" 2>/dev/null || echo 'лог: пусто'
+
+sec "raylib и OpenGL (для сот)"
+# «Соты не открываются» на чужой машине чаще всего именно это: бинарник собран,
+# но libGL или драйвер не дают окна, и программа выходит через SystemExit.
+_wpbin2="$ROOT/build/wallpicker-src/wallpicker"
+if [ -x "$_wpbin2" ]; then
+  printf 'ldd         %s\n' "$(ldd "$_wpbin2" 2>/dev/null | grep -c 'not found') не найдено библиотек"
+  ldd "$_wpbin2" 2>/dev/null | grep 'not found' | head -5
+else
+  echo 'бинарника нет - нечего смотреть'
+fi
+printf 'libGL       %s\n' "$(ls /usr/lib/libGL.so* /usr/lib64/libGL.so* 2>/dev/null | head -1 || echo НЕТ)"
+printf 'glxinfo     %s\n' "$(command -v glxinfo || echo 'нет (необязательно)')"
+printf 'OpenGL      %s\n' "$(glxinfo -B 2>/dev/null | sed -n 's/^OpenGL version string: //p' | head -1 || echo 'не спрошено')"
 
 sec "Plank: схема glib и doc-ключи"
 gsettings list-schemas 2>/dev/null | grep -i plank || echo 'схем glib для plank нет'
@@ -156,5 +219,19 @@ dconf dump /net/launchpad/plank/ 2>/dev/null | grep -i 'theme' || echo 'тема
 ls /usr/share/plank/themes 2>/dev/null | head -3 || echo 'нет /usr/share/plank/themes'
 ls "$HOME/.local/share/plank/themes" 2>/dev/null | head -3 || echo 'нет ~/.local/share/plank/themes'
 
+sec "статус смены темы"
+printf 'статус      %s\n' "$(cat "$BDI_CACHE/theme-status" 2>/dev/null || echo 'нет (тему не меняли)')"
+printf 'схема       %s / режим %s\n' "$(cat "$BDI_CONFIG/current" 2>/dev/null || echo '?')" \
+  "$(cat "$BDI_CONFIG/mode" 2>/dev/null || echo '?')"
+for _t in theme theme-extra colors-pick; do
+  printf 'лог %-12s\n' "$_t"
+  [ -f "$BDI_CACHE/$_t.log" ] && tail -6 "$BDI_CACHE/$_t.log" 2>/dev/null || echo '  пусто'
+done
+
 echo
 echo 'Скопируйте весь этот вывод целиком.'
+
+# Имя пользователя из путей убираем: отчёт присылают публично.
+sed -e "s#$HOME#~#g" -e "s#/home/[^/ ]*#~#g" \
+    -e "s#--dest=[^ ]*#--dest=… #g" "$_OUT" >&3
+rm -f "$_OUT"

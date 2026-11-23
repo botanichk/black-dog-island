@@ -176,6 +176,18 @@ check_all() {
   # Соты обоев: без cmake/make/заголовков X11 их не собрать, и кнопка обоев
   # молча открывала xfdesktop-settings вместо сетки.
   log_step "Для выбора обоев"
+  . "$ROOT/lib/wallpaper.sh"
+  _wpdir=$(bdi_wallpaper_dir)
+  if [ -d "$_wpdir" ]; then
+    _wpn=$(bdi_count_walls "$_wpdir")
+    if [ "${_wpn:-0}" -eq 0 ]; then
+      log_warn "в папке обоев $_wpdir нет картинок (png, jpg, jpeg): сетка откроется пустой"
+    else
+      log_ok "обоев в $_wpdir: $_wpn"
+    fi
+  else
+    log_warn "нет папки обоев $_wpdir: положите туда картинки или укажите BDI_WALLPAPERS"
+  fi
   if [ -x "$ROOT/build/wallpicker-src/wallpicker" ]; then
     log_ok "соты обоев уже собраны"
   else
@@ -204,7 +216,6 @@ check_all() {
     fi
     rm -f "$_wplist"
   fi
-
   log_step "Рабочий стол"
   # Панель XFCE: установщик её отключает, но проверить стоит заранее.
   if pgrep -x xfce4-panel >/dev/null 2>&1; then

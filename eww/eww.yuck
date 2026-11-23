@@ -12,6 +12,12 @@
 ;; Действующие режим и схема - для подсветки выбранного.
 (defpoll colors-mode :interval "3s" :initial "dark" "cat $BDI_CONFIG/mode")
 (defpoll colors-now :interval "3s" :initial "default" "cat $BDI_CONFIG/current")
+;; Статус последней смены темы: «применяется», «готово», «ошибка: ...».
+;; Пишет theme/colors-pick.sh, читаем опросом - отдельного канала нет,
+;; а строка нужна там же, где кнопки: иначе смена выглядит как «зависло».
+;; $BDI_CACHE экспортирует run-island.sh, как и $BDI_ROOT в путях ниже.
+(defpoll colors-status :interval "1s" :initial ""
+  "cat $BDI_CACHE/theme-status 2>/dev/null || true")
 ;; Акценты действующей палитры: до трёх образцов под шапкой вкладки, плоскими
 ;; полями (n/r1..r3/h1..h3) - массивы внутри (for) в этой сборке не читаются
 ;; через индексы, ряд получался пустым. Опрос 3 с: акцент меняется кликом,
@@ -771,6 +777,11 @@
     ;; которых в хабе нет.
     (box :orientation "horizontal" :space-evenly false :class "colors-head" :halign "fill"
       (label :class "colors-title" :xalign 0 :hexpand true :text "Цвет острова")
+      ;; Статус смены темы: пустая строка - метки нет. Стоит рядом с кнопками,
+      ;; потому что смена тянется секунды (на виртуалке - с перезапуском
+      ;; демона), и без строки нажатие выглядит как «ничего не произошло».
+      (label :class "colors-status" :xalign 1 :limit-width 18
+             :visible {colors-status != ""} :text colors-status)
       (box :orientation "horizontal" :space-evenly false :class "colors-mode"
         (button :class {colors-mode == "dark" ? "colors-seg active" : "colors-seg"}
                 :timeout "8s"

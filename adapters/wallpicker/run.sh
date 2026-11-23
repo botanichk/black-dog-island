@@ -51,10 +51,12 @@ SW=$(run_to 5 xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d
 SH=$(run_to 5 xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}' | cut -d x -f2)
 [ -n "${SW:-}" ] && [ -n "${SH:-}" ] || { SW=1366; SH=768; }
 
-# Обои папки: те же расширения, что понимает сам wallpicker.
-count_walls() {
-  find "$1" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) 2>/dev/null | wc -l
-}
+# Папка обоев: правило поиска одно на весь проект - lib/wallpaper.sh
+# (BDI_WALLPAPERS -> ~/.config/bdi/wallpapers -> XDG_PICTURES_DIR ->
+# ~/Pictures -> ~/Изображения). Зашивать одно имя нельзя: в виртуалке на
+# Void папки ~/Pictures нет вовсе, и соты «не стартовали».
+. "$ROOT/lib/wallpaper.sh"
+DIR=${1:-$(bdi_wallpaper_dir)}
 
 # Радиус и колонки под $1 обоев и экран ${2}x${3}: печатает "радиус колонки".
 # Шаг сетки по X 1.732*r+sp, по Y 1.5*r+sp (src/ui.c, BuildGridLayout).
@@ -74,18 +76,8 @@ fit_grid() {
   printf '70 5\n'
 }
 
-# Папка обоев: аргумент -> WALLPAPER_DIR -> картинки пользователя по XDG ->
-# ~/Изображения -> ~/Pictures. Зашивать одно имя нельзя: на чужой системе
-# папка называется по-английски (Pictures), и соты не открывались вовсе.
-wall_dir() {
-  for d in "${WALLPAPER_DIR:-}" "$(command -v xdg-user-dir >/dev/null 2>&1 && xdg-user-dir PICTURES 2>/dev/null)" \
-           "$HOME/Изображения" "$HOME/Pictures"; do
-    # xdg-user-dir без настроек отдаёт сам $HOME - это не папка картинок.
-    [ -n "$d" ] && [ "$d" != "$HOME" ] && [ -d "$d" ] && { printf '%s\n' "$d"; return 0; }
-  done
-  printf '%s\n' "${WALLPAPER_DIR:-$HOME/Изображения}"
-}
-DIR=${1:-$(wall_dir)}
+# Папка обоев: flavour и порядок живут в lib/wallpaper.sh (см. строку 54).
+# DIR уже выставлен выше; walk_dir тут больше нет.
 
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 log() {
@@ -110,8 +102,19 @@ fi
 
 if [ ! -d "$DIR" ]; then
   log "ошибка: нет папки обоев $DIR"
+  bdi_notify "Папки обоев нет: $DIR. Положите картинки (png, jpg) в папку картинок."
   echo "нет папки обоев: $DIR" >&2
   exit 2
+fi
+
+# Пустая папка - громкая ошибка, а не пустая сетка. Раньше соты открывались
+# с нулём картинок (снаружи «ничего не происходит»), и причина была не видна.
+NWALL=$(bdi_count_walls "$DIR")
+if [ "${NWALL:-0}" -eq 0 ]; then
+  log "ошибка: в папке $DIR нет обоев (png, jpg, jpeg)"
+  bdi_notify "В папке $DIR нет обоев (png, jpg, jpeg)."
+  echo "В папке $DIR нет обоев (png, jpg, jpeg)" >&2
+  exit 5
 fi
 
 # --- запуск ---------------------------------------------------------------
@@ -135,10 +138,8 @@ command -v setsid >/dev/null 2>&1 && HAS_SETSID=1
 . "$ROOT/theme/desktop.sh"
 CURRENT_WALL=$(xfce_current_wallpaper 2>/dev/null || true)
 
-# Размер экрана: xrandr даёт текущий режим. Без него - 1366x768, как у владельца.
-
 # Ручные значения хозяина главнее расчёта: WALLPICKER_RADIUS / WALLPICKER_COLS.
-NWALL=$(count_walls "$DIR")
+# NWALL уже посчитан выше (пустая папка отсечена там же).
 if [ -n "${WALLPICKER_RADIUS:-}" ] && [ -n "${WALLPICKER_COLS:-}" ]; then
   RADIUS=$WALLPICKER_RADIUS
   COLS=$WALLPICKER_COLS

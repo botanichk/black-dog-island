@@ -24,3 +24,10 @@ run_to() {
 
 # timed_out <код>: true, если предыдущий run_to не уложился в таймаут.
 timed_out() { [ "${1:-0}" -eq 124 ]; }
+
+# now_ms - миллисекунды от эпохи для замеров шагов темы.
+# date +%s%3N есть только в GNU date (в Void и busybox его нет), поэтому
+# считаем через python3: он и так обязателен для темы.
+now_ms() {
+  python3 -c 'import time; print(int(time.time() * 1000))' 2>/dev/null || echo 0
+}
