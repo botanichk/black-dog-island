@@ -23,8 +23,9 @@
 #
 # Почему копия темы, а не правка твоей: тема Plank - это файл dock.theme из
 # чужого набора, и правка в нём затрётся при любом обновлении набора.
-# Поэтому рядом кладётся своя тема EwwIsland: полная копия исходной, в
+# Поэтому рядом кладётся своя тема bdi-EwwIsland: полная копия исходной, в
 # которой заменены только строки вида и заливки, перечисленные в SET_KEYS.
+# Префикс bdi- обязателен: имя не должно совпасть с чужой темой Plank.
 #
 # Почему перезапуск Plank: он не перечитывает dock.theme на лету.
 # Проверено: смена темы через dconf при живом процессе не меняет ни одного
@@ -35,10 +36,16 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-THEME_NAME=EwwIsland
+# Имя нашей темы с префиксом bdi-: чужие темы Plank называются Default,
+# Matte, Tokyonight-* и т. п. Совпадения быть не должно.
+THEME_NAME=bdi-EwwIsland
+# Старое имя (до задания 17, часть C). У тех, кто уже ставил, тема лежит под
+# ним - её надо убрать после переезда, иначе в списке тем останется дубль.
+LEGACY_THEME=EwwIsland
 USER_THEMES="$HOME/.local/share/plank/themes"
 SYS_THEMES="/usr/share/plank/themes"
 BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
+BDI_STATE="${BDI_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/bdi}"
 STATE_DIR="$BDI_CONFIG"
 BASE_FILE="$STATE_DIR/plank-base-theme"
 LOG_DIR="${BDI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/bdi}"
@@ -50,6 +57,7 @@ log() {
 }
 
 . "$ROOT/theme/guard.sh"
+. "$ROOT/lib/journal.sh"
 
 dconf_key() {
   # Имя дока не хардкодим: берём первый из enabled-docks.
@@ -62,15 +70,32 @@ dconf_key() {
 }
 
 plank_running() {
-  run_to 3 pgrep -x plank >/dev/null 2>&1
+  [ -n "$(plank_pids)" ]
+}
+
+# plank_pids - pids дока В ЭТОМ X-сеансе (по DISPLAY из /proc/<pid>/environ).
+# Почему не pkill -x plank: имя процесса общее, и на мультисите/второй сессии
+# это убило бы док другого человека. Свой сеанс - только наш DISPLAY.
+plank_pids() {
+  . "$ROOT/lib/session.sh"
+  for _p in $(run_to 3 pgrep -x plank 2>/dev/null || true); do
+    if [ -r "/proc/$_p/environ" ]; then
+      _d=$(tr '\0' '\n' < "/proc/$_p/environ" 2>/dev/null \
+        | sed -n 's/^DISPLAY=//p' | head -1)
+      bdi_same_display "$_d" && printf '%s\n' "$_p"
+    fi
+  done
 }
 
 restart_plank() {
-  if plank_running; then
-    run_to 3 pkill -x plank 2>/dev/null || true
+  _pids=$(plank_pids)
+  if [ -n "$_pids" ]; then
+    for _p in $_pids; do
+      kill "$_p" 2>/dev/null || true
+    done
     # ждём выхода, иначе новый процесс увидит старый и уйдёт
     _i=0
-    while [ "$_i" -lt 30 ] && plank_running; do
+    while [ "$_i" -lt 30 ] && [ -n "$(plank_pids)" ]; do
       sleep 0.1
       _i=$((_i + 1))
     done
@@ -104,6 +129,11 @@ theme_dir() {
   return 1
 }
 
+# Наша ли тема выбрана в dconf: новое имя или старое (до переезда на bdi-).
+is_ours() {
+  [ "$1" = "$THEME_NAME" ] || [ "$1" = "$LEGACY_THEME" ]
+}
+
 case "${1:-apply}" in
   apply) ;;
   restore) ACTION=restore ;;
@@ -119,6 +149,14 @@ command -v plank >/dev/null 2>&1 || {
   echo "нет plank - нечего красить" >&2
   exit 1
 }
+
+# Согласие владельца из install (install_skin_consent). apply идёт из смены
+# темы - без согласия не трогаем ни dconf, ни док. restore и status работают
+# всегда: это возврат и чтение.
+if [ "${ACTION:-apply}" = "apply" ] && [ "$(cat "$BDI_CONFIG/skin-plank" 2>/dev/null || true)" = "no" ]; then
+  echo "док Plank: покраска отключена при установке (~/.config/bdi/skin-plank)"
+  exit 0
+fi
 
 KEY=$(dconf_key)
 CUR=""
@@ -139,11 +177,13 @@ if [ "${ACTION:-apply}" = "status" ]; then
   echo "ключ:      $KEY"
   echo "тема:      ${CUR:-(не задана)}"
   echo "исходная:  $(cat "$BASE_FILE" 2>/dev/null || echo '(не записана)')"
-  if [ -f "$USER_THEMES/$THEME_NAME/dock.theme" ]; then
-    echo "рамка:     $(grep -m1 '^OuterStrokeColor=' "$USER_THEMES/$THEME_NAME/dock.theme" | cut -d= -f2)"
-    echo "заливка:   $(grep -m1 '^FillStartColor=' "$USER_THEMES/$THEME_NAME/dock.theme" | cut -d= -f2)"
-    echo "радиусы:   $(grep -m1 '^TopRoundness=' "$USER_THEMES/$THEME_NAME/dock.theme" | cut -d= -f2) px"
-  fi
+  for _d in "$THEME_NAME" "$LEGACY_THEME"; do
+    [ -f "$USER_THEMES/$_d/dock.theme" ] || continue
+    echo "наша тема: $_d"
+    echo "рамка:     $(grep -m1 '^OuterStrokeColor=' "$USER_THEMES/$_d/dock.theme" | cut -d= -f2)"
+    echo "заливка:   $(grep -m1 '^FillStartColor=' "$USER_THEMES/$_d/dock.theme" | cut -d= -f2)"
+    echo "радиусы:   $(grep -m1 '^TopRoundness=' "$USER_THEMES/$_d/dock.theme" | cut -d= -f2) px"
+  done
   echo "процесс:   $(plank_running && echo работает || echo не запущен)"
   exit 0
 fi
@@ -158,11 +198,11 @@ if [ "${ACTION:-apply}" = "restore" ]; then
   if ! run_to 5 dconf write "$KEY" "'$BASE'"; then
     log "предупреждение: dconf не принял тему за 5 с - осталась текущая"
     echo "dconf не ответил за 5 с, тема Plank не изменена" >&2
-    rm -rf "$USER_THEMES/$THEME_NAME"
+    rm -rf "$USER_THEMES/$THEME_NAME" "$USER_THEMES/$LEGACY_THEME"
     exit 0
   fi
   rm -f "$BASE_FILE"
-  rm -rf "$USER_THEMES/$THEME_NAME"
+  rm -rf "$USER_THEMES/$THEME_NAME" "$USER_THEMES/$LEGACY_THEME"
   restart_plank || true
   log "возврат на исходную тему: $BASE"
   echo "тема Plank: $BASE (наша $THEME_NAME убрана)"
@@ -174,7 +214,7 @@ fi
 # state-файла, иначе наша же копия стала бы «исходной» и рамка застыла бы.
 BASE=$(cat "$BASE_FILE" 2>/dev/null || true)
 if [ -z "$BASE" ]; then
-  if [ -z "$CUR" ] || [ "$CUR" = "$THEME_NAME" ]; then
+  if [ -z "$CUR" ] || is_ours "$CUR"; then
     BASE=Default
   else
     BASE=$CUR
@@ -296,7 +336,7 @@ NEWLINE=$(grep -E "$SIG_KEYS" "$OUTDIR/dock.theme" | tr '\n' ' ')
 # state-файле после прошлого применения).
 STATE_COLOR="$STATE_DIR/plank-color"
 SHOWN=$(cat "$STATE_COLOR" 2>/dev/null || true)
-if [ "$CUR" != "$THEME_NAME" ]; then
+if ! is_ours "$CUR"; then
   # Показывается исходная тема - её набор и есть текущий.
   SHOWN=$(grep -E "$SIG_KEYS" "$BASE_DIR/dock.theme" | tr '\n' ' ' || true)
 fi
@@ -307,6 +347,19 @@ if [ "$CUR" = "$THEME_NAME" ] && [ "$NEWLINE" = "$SHOWN" ] && plank_running; the
   # закрытым (проверено - скрипт молча выходил «без изменений»).
   log "без изменений: $NEWLINE"
   exit 0
+fi
+
+# Переезд со старого имени: чужая тема не трогается, убираем только свою.
+# Без этого в списке тем Plank остался бы дубль EwwIsland рядом с bdi-EwwIsland.
+if [ -d "$USER_THEMES/$LEGACY_THEME" ]; then
+  rm -rf "$USER_THEMES/$LEGACY_THEME"
+  log "убрана наша тема под старым именем: $LEGACY_THEME"
+fi
+
+# Журнал: dconf-ключ уходит с этого значения на нашу тему. uninstall
+# вернёт BASE. Пишем без дублей - на каждую смену палитры ключ уже наш.
+if [ "$CUR" != "$THEME_NAME" ]; then
+  journal_add dconf "$KEY" "${CUR:-}" "$THEME_NAME"
 fi
 
 if ! run_to 5 dconf write "$KEY" "'$THEME_NAME'"; then

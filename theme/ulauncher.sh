@@ -52,10 +52,19 @@ log() {
 # run_to: внешние вызовы под таймаутом (см. theme/guard.sh). Без него
 # зависший D-Bus/pgrep с одинаковым успехом вешает смену темы.
 . "$ROOT/theme/guard.sh"
+. "$ROOT/lib/journal.sh"
 
 # PID демона. Окно скрыто, поэтому ищем по строке запуска, а не по окну.
+# Только свой X-сеанс: у второго пользователя на этой же машине может быть
+# свой Ulauncher, и его SIGHUP/kill - не наше дело.
 ul_pid() {
-  run_to 3 pgrep -f '[/]usr/bin/ulauncher' 2>/dev/null | head -1 || true
+  . "$ROOT/lib/session.sh"
+  for _p in $(run_to 3 pgrep -f '[/]usr/bin/ulauncher' 2>/dev/null || true); do
+    [ -r "/proc/$_p/environ" ] || continue
+    _d=$(tr '\0' '\n' < "/proc/$_p/environ" 2>/dev/null | sed -n 's/^DISPLAY=//p' | head -1)
+    bdi_same_display "$_d" && { printf '%s\n' "$_p"; return 0; }
+  done
+  return 0
 }
 
 # Перезапуск нужен только когда меняется settings.json (см. rows).
@@ -134,6 +143,13 @@ command -v ulauncher >/dev/null 2>&1 || {
   exit 1
 }
 
+# Согласие владельца из install (install_skin_consent). restore/status/rows
+# остаются доступны: это возврат, чтение и настройка, а не покраска.
+if [ "$ACTION" = "apply" ] && [ "$(cat "$STATE_DIR/skin-ulauncher" 2>/dev/null || true)" = "no" ]; then
+  echo "Ulauncher: покраска отключена при установке (~/.config/bdi/skin-ulauncher)"
+  exit 0
+fi
+
 # --- rows: сколько строк показывать ---------------------------------------
 if [ "$ACTION" = "rows" ]; then
   [ -f "$SETTINGS" ] || { echo "нет $SETTINGS" >&2; exit 1; }
@@ -150,6 +166,7 @@ PY
     echo "строк результатов: уже $ROWS"
     exit 0
   fi
+  journal_add file "$SETTINGS" "show-recent-apps=$OLD" "show-recent-apps=$ROWS"
   restart_ul || true
   log "строк результатов: $OLD -> $ROWS"
   echo "строк результатов: $ROWS"
@@ -204,6 +221,14 @@ BASE_DIR="$SYS_THEMES/$BASE_NAME"
 }
 
 clean_stale
+# Чужой каталог с тем же именем не трогаем: у владельца может быть своя тема
+# light/dark в user-themes, и наша копия затёрла бы её css. Наша узнаётся по
+# маркеру, который кладём ниже.
+if [ -d "$OUR" ] && [ ! -f "$OUR/$MARKER" ]; then
+  log "в $OUR лежит чужая тема - не трогаю"
+  echo "в $OUR лежит чужая тема Ulauncher: не перезаписываю, лаунчер остаётся как есть" >&2
+  exit 1
+fi
 mkdir -p "$OUR"
 
 # Снимок прошлого theme.css ДО копирования базы: иначе сравнивали бы с

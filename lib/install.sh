@@ -116,12 +116,20 @@ install_compositing() {
 }
 
 # install_autostart - одна запись, без дублей.
+#
+# OnlyShowIn=XFCE: - запись не срабатывает в Hyprland (у которого нет
+# xdg-autostart вовсе) и в любом другом рабочем столе. Проверяется по файлу,
+# без запуска: строка есть в .desktop, а xdg-autostart её учитывает.
+# Hidden=false обязателен: если владелец когда-то спрятал нашу запись, без
+# явного Hidden=false autostart молча продолжал бы её пропускать.
 install_autostart() {
   _f="$HOME/.config/autostart/bdi.desktop"
   mkdir -p "$HOME/.config/autostart"
   _want="$ROOT/scripts/run-island.sh"
 
-  if [ -f "$_f" ] && grep -qxF "Exec=$_want" "$_f" 2>/dev/null; then
+  if [ -f "$_f" ] && grep -qxF "Exec=$_want" "$_f" 2>/dev/null &&
+     grep -qxF "OnlyShowIn=XFCE;" "$_f" 2>/dev/null &&
+     grep -qxF "Hidden=false" "$_f" 2>/dev/null; then
     log_ok "автозапуск уже на своём месте"
     return 0
   fi
@@ -140,9 +148,56 @@ Name=Black Dog Island
 Comment=Остров вместо панели XFCE
 Exec=$_want
 Terminal=false
+Hidden=false
 X-GNOME-Autostart-enabled=true
+OnlyShowIn=XFCE;
 EOF
-  log_ok "автозапуск: $_f"
+  log_ok "автозапуск: $_f (только в XFCE)"
+}
+
+# disable_stale_autostart - погасить НАШ ЖЕ автозапуск под старым именем
+# (у владельца это eww-island.desktop от прошлых сборок). Иначе при входе
+# поднимались бы два острова: старый файл и новый bdi.desktop.
+# Файл не удаляем: ставим Hidden=true и пишем в журнал, откат вернёт строку.
+# Чужой .desktop (не с нашим Exec) не трогаем ни при каких условиях.
+disable_stale_autostart() {
+  for _g in "$HOME/.config/autostart"/*.desktop; do
+    [ -f "$_g" ] || continue
+    [ "$_g" = "$HOME/.config/autostart/bdi.desktop" ] && continue
+    grep -qF "$ROOT/scripts/run-island.sh" "$_g" 2>/dev/null || continue
+    grep -qxF "Hidden=true" "$_g" && continue
+    journal_add autostart "$_g" "Hidden=false" "Hidden=true"
+    if grep -q '^Hidden=' "$_g"; then
+      _tmp="$_g.bdi-tmp"
+      sed 's/^Hidden=.*/Hidden=true/' "$_g" > "$_tmp" && mv "$_tmp" "$_g"
+    else
+      printf 'Hidden=true\n' >> "$_g"
+    fi
+    log_ok "погашен старый автозапуск: $_g (Hidden=true, вернуть - uninstall)"
+  done
+}
+
+# install_skin_consent - спросить один раз, можно ли красить док и лаунчер.
+# Дальше смена темы делает это молча: спрашивать про док на каждое нажатие
+# «Цвета» - то же самое, что не спрашивать вовсе. Ответ лежит в
+# ~/.config/bdi/skin-<программа>; нет файла - не спрашивали (старая установка),
+# тогда красим как раньше.
+install_skin_consent() {
+  for _p in plank ulauncher; do
+    command -v "$_p" >/dev/null 2>&1 || { log_info "$_p не установлен - пропускаю"; continue; }
+    if [ -f "$BDI_CONFIG/skin-$_p" ]; then
+      log_ok "$_p: уже решено ($(cat "$BDI_CONFIG/skin-$_p"))"
+      continue
+    fi
+    mkdir -p "$BDI_CONFIG"
+    if log_ask "Красить $_p в цвета острова (своя тема рядом с твоими)?"; then
+      printf '%s\n' yes > "$BDI_CONFIG/skin-$_p"
+      log_ok "$_p: буду красить"
+    else
+      printf '%s\n' no > "$BDI_CONFIG/skin-$_p"
+      log_info "$_p: оставил как есть, тему не трогаю"
+    fi
+  done
 }
 
 # install_extras - автозапуск Plank и Ulauncher, если они установлены.
@@ -163,13 +218,17 @@ install_extras() {
       ulauncher) _exec="ulauncher --hide-window" ;;
     esac
     journal_add autostart "$_f" "" "$_exec"
+    # OnlyShowIn=XFCE: и здесь - иначе Plank поднимался бы и в Hyprland, где
+    # у владельца свой док и своя тема.
     cat > "$_f" <<EOF
 [Desktop Entry]
 Type=Application
 Name=$_p
 Exec=$_exec
 Terminal=false
+Hidden=false
 X-GNOME-Autostart-enabled=true
+OnlyShowIn=XFCE;
 EOF
     log_ok "автозапуск: $_f"
     _n=$((_n + 1))
@@ -273,6 +332,7 @@ install_all() {
   log_info "2. сборка движка с нашими патчами (10-25 минут, ~2 ГБ в build/)"
   log_info "3. отключение панели XFCE (настройки не удаляются)"
   log_info "4. автозапуск острова при входе (и Plank с Ulauncher, если стоят)"
+  log_info "5. спрошу, красить ли док и лаунчер в цвета острова"
   log_ask "Продолжаем?" || { log_info "отменено, ничего не менял"; return 1; }
 
   log_step "Резервная копия"
@@ -289,7 +349,11 @@ install_all() {
 
   log_step "Автозапуск"
   install_autostart || return 1
+  disable_stale_autostart
   install_extras
+
+  log_step "Док и лаунчер"
+  install_skin_consent
 
   log_step "Выбор обоев"
   install_wallpicker

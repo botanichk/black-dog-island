@@ -303,6 +303,81 @@ _hits=$(grep -rn 'strtonum' --include='*.sh' "$ROOT/adapters" "$ROOT/lib" \
 [ -z "$_hits" ] && printf 'ok   нет gawk-функции strtonum\n' ||
   { printf 'FAIL strtonum вернулся:\n%s\n' "$_hits"; fail=1; }
 
+# --- 12. охрана сеанса: без X11+XFCE установка и остров не идут -------------
+# Пять случаев из задания 17, часть C. bdi_session_ok ничего не печатает и
+# не меняет - проверяем только код возврата.
+check "wayland отклонён" 1 \
+  "$(env -i XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=Hyprland \
+      sh -c '. "$1/lib/session.sh"; bdi_session_ok' sh "$ROOT" >/dev/null 2>&1; echo $?)"
+check "x11+Hyprland отклонён" 1 \
+  "$(env -i XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=Hyprland DISPLAY=:0 \
+      sh -c '. "$1/lib/session.sh"; bdi_session_ok' sh "$ROOT" >/dev/null 2>&1; echo $?)"
+check "x11+XFCE разрешён" 0 \
+  "$(env -i XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=XFCE DISPLAY=:0 \
+      sh -c '. "$1/lib/session.sh"; bdi_session_ok' sh "$ROOT" >/dev/null 2>&1; echo $?)"
+check "без переменных, но DISPLAY есть" 0 \
+  "$(env -i DISPLAY=:0 \
+      sh -c '. "$1/lib/session.sh"; bdi_session_ok' sh "$ROOT" >/dev/null 2>&1; echo $?)"
+check "нет ни сеанса, ни DISPLAY" 1 \
+  "$(env -i sh -c '. "$1/lib/session.sh"; bdi_session_ok' sh "$ROOT" >/dev/null 2>&1; echo $?)"
+
+# --- 13. run-island.sh в чужом сеансе: код 1 и причина, без запуска ---------
+_out=$(env -i HOME="$BASE/home" PATH="$PATH" XDG_SESSION_TYPE=wayland \
+         XDG_CURRENT_DESKTOP=Hyprland sh "$ROOT/scripts/run-island.sh" 2>&1)
+check "run-island в Wayland: код 1" 1 "$?"
+case "$_out" in
+  *"остров не запущен"*Wayland*) printf 'ok   run-island сказал причину\n' ;;
+  *) printf 'FAIL run-island: нет причины [%s]\n' "$_out"; fail=1 ;;
+esac
+
+# --- 14. install.sh в чужом сеансе: отказ до каких-либо действий -----------
+_out=$(env -i HOME="$BASE/home" PATH="$PATH" XDG_SESSION_TYPE=wayland \
+         XDG_CURRENT_DESKTOP=Hyprland sh "$ROOT/install.sh" install 2>&1)
+check "install в Wayland: код 1" 1 "$?"
+case "$_out" in
+  *"не выполн"*) printf 'ok   install сказал причину\n' ;;
+  *) printf 'FAIL install: нет причины [%s]\n' "$_out"; fail=1 ;;
+esac
+[ ! -f "$BASE/home/.local/state/bdi/changes.log" ] &&
+  printf 'ok   install ничего не записал\n' ||
+  { printf 'FAIL install оставил журнал в чужом сеансе\n'; fail=1; }
+
+# --- 15. автозапуск: OnlyShowIn и гашение старого файла ---------------------
+mk_sandbox
+mkdir -p "$BASE/home/.config/autostart"
+printf '[Desktop Entry]\nType=Application\nExec=%s/scripts/run-island.sh\nHidden=false\n' \
+  "$ROOT" > "$BASE/home/.config/autostart/eww-island.desktop"
+printf '[Desktop Entry]\nType=Application\nExec=чужое\n' \
+  > "$BASE/home/.config/autostart/foreign.desktop"
+BDI_STATE="$BASE/home/.local/state/bdi" \
+  sh -c '. "$1/lib/log.sh"; . "$1/lib/journal.sh"; . "$1/lib/install.sh";
+         ROOT=$1; install_autostart >/dev/null; disable_stale_autostart >/dev/null' \
+  sh "$ROOT" 2>/dev/null
+check "новая запись с OnlyShowIn=XFCE;" 1 \
+  "$(grep -c '^OnlyShowIn=XFCE;' "$BASE/home/.config/autostart/bdi.desktop" 2>/dev/null)"
+check "старый наш автозапуск погашен" 1 \
+  "$(grep -c '^Hidden=true' "$BASE/home/.config/autostart/eww-island.desktop" 2>/dev/null)"
+check "чужой автозапуск не тронут" 0 \
+  "$(grep -c '^Hidden=' "$BASE/home/.config/autostart/foreign.desktop" 2>/dev/null)"
+check "повтор: запись осталась одна" 1 \
+  "$(sh -c '. "$1/lib/log.sh"; . "$1/lib/journal.sh"; . "$1/lib/install.sh";
+            ROOT=$1; install_autostart >/dev/null; ls "$HOME/.config/autostart"/*.desktop | wc -l' \
+       sh "$ROOT" 2>/dev/null | grep -c . )"
+
+# --- 16. процессы: pkill по имени не осталось -------------------------------
+# pkill -x plank убивал бы док другого пользователя, если он в этой же машине.
+_hits=$(grep -rn 'pkill\|killall' --include='*.sh' "$ROOT/adapters" "$ROOT/lib" \
+          "$ROOT/scripts" "$ROOT/theme" 2>/dev/null | grep -v 'selftest-guard' \
+          | grep -v '^[^:]*:[0-9]*: *#' | grep -v 'pw-play')
+[ -z "$_hits" ] && printf 'ok   нет pkill/killall по имени\n' ||
+  { printf 'FAIL pkill по имени вернулся:\n%s\n' "$_hits"; fail=1; }
+
+# --- 17. своя тема не пишется в каталог Noctalia ----------------------------
+check "theme-save пишет в свой каталог" 1 \
+  "$(grep -c 'PALETTES_DIR:-\$BDI_CONFIG/palettes' "$ROOT/theme/theme-save.sh")"
+check "Plank: имя темы с префиксом bdi-" 1 \
+  "$(grep -c '^THEME_NAME=bdi-' "$ROOT/theme/plank.sh")"
+
 printf '\n'
 if [ "$fail" -eq 0 ]; then echo "всё сошлось"; else echo "есть провалы"; fi
 exit "$fail"

@@ -120,17 +120,9 @@ else:
         # каталог сообщества: id строит та же read_community, что и список
         palette = next((p for cid, p, _f in lib.read_community()
                         if cid == current), None)
-    else:
-        user_dir = pathlib.Path(os.path.expanduser("~/.config/noctalia/palettes"))
-        if user_dir.is_dir():
-            for path in sorted(user_dir.glob("*.json")):
-                if "u-" + lib.slug_unique(path.stem) != current:
-                    continue
-                try:
-                    palette = lib.read_palette(path)
-                except ValueError as exc:
-                    print("пропуск своей палитры: %s" % exc, file=sys.stderr)
-                break
+    elif current.startswith("u-"):
+        # свои палитры: bdi/palettes, плюс старый каталог Noctalia на чтение
+        palette = next((p for cid, p, _f in lib.read_user() if cid == current), None)
     if palette:
         items = filter_accents(lib.accents_for(palette, mode))
 

@@ -4,8 +4,11 @@
 # usage: theme/theme-save.sh "<название>"
 #
 # Что сохраняется: палитра (обе ветки, тёмная и светлая) в формате Noctalia,
-# в ~/.config/noctalia/palettes/<название>.json. Файл сразу появляется в
-# разделе «Свои» вкладки «Цвета» и применяется.
+# в ~/.config/bdi/palettes/<название>.json. Файл сразу появляется в разделе
+# «Свои» вкладки «Цвета» и применяется.
+#
+# Почему свой каталог, а не ~/.config/noctalia/palettes: это наше состояние.
+# Пока писали в чужой, удаление своей темы у нас удаляло файл у Noctalia.
 #
 # Почему из ответа `noctalia theme`, а не из готовой схемы: в схеме
 # (theme/schemes/wallpaper.json) уже один режим - только светлый или только
@@ -27,7 +30,7 @@ THEME="$ROOT/theme"
 BDI_CONFIG="${BDI_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/bdi}"
 # PALETTES_DIR/SAVE_SOURCE/SAVE_NO_APPLY - только для --selftest: пишем в
 # временный каталог и не трогаем действующую тему.
-DIR=${PALETTES_DIR:-$HOME/.config/noctalia/palettes}
+DIR=${PALETTES_DIR:-$BDI_CONFIG/palettes}
 
 NAME=${1:-}
 NAME=$(printf '%s' "$NAME" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')

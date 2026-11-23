@@ -7,6 +7,10 @@
 #   ./install.sh update    # git pull, пересборка при новом пине или патчах, перезапуск
 #   ./install.sh help      # эта справка
 #
+# install и update работают только в сеансе X11 + XFCE: в Wayland и в чужих
+# рабочих столах (Hyprland и т. п.) установщик печатает причину и выходит,
+# ничего не меняя. check работает в любом сеансе.
+#
 # sudo не зовётся нигде: пакеты ставит владелец сам по подсказке из check.
 # Всё остальное делается в домашнем каталоге и в клоне репозитория.
 set -eu
@@ -26,13 +30,25 @@ export BDI_CONFIG BDI_STATE BDI_CACHE
 . "$ROOT/lib/check.sh"
 
 usage() {
-  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 case "${1:-help}" in
+  # check работает в любом сеансе: он только читает. uninstall тоже будет
+  # разрешён везде, когда появится (часть D задания 17).
   check)   check_all ;;
-  install) . "$ROOT/lib/install.sh"; install_all ;;
-  update)  . "$ROOT/lib/install.sh"; update_all ;;
+  install|update)
+    . "$ROOT/lib/session.sh"
+    _what="Установка не выполнена"
+    [ "$1" = update ] && _what="Обновление не выполнено"
+    if ! bdi_session_ok; then
+      printf '%s: %s\n' "$_what" "$(bdi_session_why)"
+      printf 'Сеанс: %s\n' "$(bdi_session_name)"
+      printf 'Нужен сеанс X11 + XFCE. Ничего не изменено.\n'
+      exit 1
+    fi
+    . "$ROOT/lib/install.sh"
+    if [ "$1" = install ]; then install_all; else update_all; fi ;;
   help|-h|--help) usage ;;
   *) usage; exit 2 ;;
 esac

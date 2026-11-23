@@ -12,8 +12,8 @@ Plank повторяет остров: заливка — `$surface` остро�
 ```
 theme/apply.sh                 рендерит eww/colors.scss ($surface, $primary)
   -> theme/plank.sh apply      берёт цвета, соберёт тему, перезапустит Plank
-  -> ~/.local/share/plank/themes/EwwIsland/dock.theme
-  -> dconf /net/launchpad/plank/docks/dock1/theme = 'EwwIsland'
+  -> ~/.local/share/plank/themes/bdi-EwwIsland/dock.theme
+  -> dconf /net/launchpad/plank/docks/dock1/theme = 'bdi-EwwIsland'
 ```
 
 `theme/plank.sh` вызывается из `theme/apply.sh` последним шагом, поэтому
@@ -24,7 +24,7 @@ theme/apply.sh                 рендерит eww/colors.scss ($surface, $prim
 
 ## Что меняется, а что нет
 
-`EwwIsland` — **полная копия** исходной темы, в которой заменены только
+`bdi-EwwIsland` — **полная копия** исходной темы, в которой заменены только
 строки вида:
 
 | Строка | Значение | Откуда |
@@ -72,7 +72,7 @@ theme/plank.sh status    # тема, исходная тема, рамка, за
 theme/plank.sh restore   # вернуть исходную тему, нашу убрать
 ```
 
-`restore` возвращает `dconf` на исходную тему, удаляет `EwwIsland` и файл
+`restore` возвращает `dconf` на исходную тему, удаляет `bdi-EwwIsland` и файл
 состояния. Повторный `restore` отвечает «нечего возвращать» и выходит с
 кодом 1.
 
@@ -108,7 +108,7 @@ dconf write /net/launchpad/plank/docks/dock1/hide-mode "$ORIG"
 - Нужны `plank`, `dconf`, `gsettings`, `wmctrl`, `pgrep`/`pkill` — всё из
   системы.
 - Если сменить тему Plank вручную (через `plank --preferences`), наша
-  `EwwIsland` перестанет показываться, и `apply.sh` вернёт её при следующей
+  `bdi-EwwIsland` перестанет показываться, и `apply.sh` вернёт её при следующей
   смене палитры. Исходная тема при этом не потеряется: она в state-файле.
 - Прозрачность заливки работает благодаря композитингу xfwm4
   (`/general/use_compositing = true`). Если его выключить, док станет

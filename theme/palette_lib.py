@@ -210,6 +210,48 @@ def read_palette(path):
     return {"name": name, "label": label, "roles": roles}
 
 
+# --- каталог своих тем -----------------------------------------------------
+# Наши темы лежат в ~/.config/bdi/palettes: это НАШЕ состояние, а не чужое.
+# Раньше theme-save.sh писал в ~/.config/noctalia/palettes - каталог Noctalia,
+# и удаление палитры у нас стирало файл у неё. Чужой каталог теперь только
+# читается (см. USER_DIR ниже), чтобы темы, сохранённые до переезда, не
+# пропали из списка.
+OWN_DIR = "~/.config/bdi/palettes"
+USER_DIR = "~/.config/noctalia/palettes"
+
+
+def own_dir():
+    return pathlib.Path(os.path.expanduser(OWN_DIR))
+
+
+def user_dir():
+    return pathlib.Path(os.path.expanduser(USER_DIR))
+
+
+def read_user() -> list:
+    """Свои палитры: [(id, палитра, файл)] - сначала bdi/palettes, потом
+    старый noctalia/palettes. Один слаг у двух файлов (перенесли, но старая
+    копия осталась) - побеждает наш, чужой дубль пропускаем."""
+    out = []
+    seen = set()
+    for directory in (own_dir(), user_dir()):
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("*.json")):
+            name = urllib.parse.unquote(path.stem)
+            slug_name = slug_unique(name)
+            if slug_name in seen:
+                continue
+            try:
+                palette = read_palette(path)
+            except ValueError as exc:
+                print("пропуск своей палитры: %s" % exc, file=sys.stderr)
+                continue
+            seen.add(slug_name)
+            out.append(("u-" + slug_name, palette, path))
+    return out
+
+
 # --- каталог сообщества ---------------------------------------------------
 # `noctalia` кладёт скачанные палитры в ~/.local/state/noctalia, а не в
 # ~/.config: это состояние, а не настройки, при обновлении каталога файлы

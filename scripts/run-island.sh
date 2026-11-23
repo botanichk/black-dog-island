@@ -13,6 +13,15 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # EWW_CONFIG_DIR движок в defpoll/defvar не пускает ("cannot access variables
 # here"), а в окружение команд не экспортирует, поэтому передаём своё.
 BDI_ROOT="$ROOT"
+
+# Охрана сеанса: на машине с Hyprland рядом этот скрипт мог бы поднять остров
+# в чужом сеансе (и держать там окно dock). В другом сеансе молча выходим.
+. "$ROOT/lib/session.sh"
+if ! bdi_session_ok; then
+  printf 'остров не запущен: %s\n' "$(bdi_session_why)"
+  printf 'Сеанс: %s. Нужен X11 + XFCE.\n' "$(bdi_session_name)"
+  exit 1
+fi
 # Состояние живёт вне репозитория: выбор темы - в ~/.config/bdi, схемы - в
 # ~/.local/state/bdi, кэш - в ~/.cache/bdi. Скрипты читают эти же переменные,
 # поэтому запуск руками (без run-island.sh) тоже работает.

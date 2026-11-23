@@ -19,10 +19,12 @@
 | `~/.cache/bdi/` (`$BDI_CACHE`) | `timer.sh:28`, `forecast.sh:17`, `wifi.sh:26`, `mpris.sh:30`, `screenshot.sh:107`, `wall-schemes.sh:66` | кэши, логи, `kbdlayout`, `pointer`, `theme.log` | `rm -rf` |
 | `~/.config/bdi/` (`$BDI_CONFIG`) | `plank.sh:31`, `ulauncher.sh:41` | выбор темы, база и цвет темы Plank, тема Ulauncher | `rm -rf` |
 | `~/.local/state/bdi/` (`$BDI_STATE`) | `apply.sh`, `colors-pick.sh`, `accents.sh`, `switch.sh`, `from-wallpaper.sh` | сгенерированные схемы (`schemes/`) | `rm -rf` |
-| `~/.local/share/plank/themes/EwwIsland/` | `plank.sh` | док в цвет острова | `rm -rf` + тема через `dconf` |
+| `~/.local/share/plank/themes/bdi-EwwIsland/` | `plank.sh` | док в цвет острова | `rm -rf` + тема через `dconf` |
 | `~/.config/ulauncher/user-themes/light/` | `ulauncher.sh` | Ulauncher в цвета острова | `rm -rf` |
-| `~/.config/noctalia/palettes/*.json` | `theme-save.sh` (по клику) | свои темы | удалить файл |
-| `dconf` ключ темы Plank | `plank.sh:130` | переключить Plank на `EwwIsland` | прежнее имя |
+| `~/.config/bdi/palettes/*.json` | `theme-save.sh` (по клику) | свои темы | удалить файл |
+| `~/.config/bdi/skin-plank`, `skin-ulauncher` | `install.sh` (`install_skin_consent`) | согласие красить док и лаунчер | удалить файл (снова спросит) |
+| `~/.config/noctalia/palettes/*.json` | **только чтение** (до задания 17 части C писал `theme-save.sh`) | старые свои темы | не наш, не трогаем |
+| `dconf` ключ темы Plank | `plank.sh:130` | переключить Plank на `bdi-EwwIsland` | прежнее имя |
 | `xfce4-panel` канал | никто | панель отключена вручную (B2) | — |
 
 `gsettings set` в проекте **нет** (`rg` пуст). Записей в `~/.config/autostart`
@@ -41,7 +43,7 @@
 ~/.local/state/bdi/:   schemes/  (22 сгенерированные схемы)
 ~/.cache/bdi/:         кэш, pid автоскрытия, island-width, логи
 ~/.config/hypr-wallpicker/apply-wallpaper.sh -> <клон>/adapters/wallpicker/apply.sh
-~/.local/share/plank/themes/EwwIsland/   (19 ноября; остальные темы от янв. 2023)
+~/.local/share/plank/themes/bdi-EwwIsland/   (19 ноября; остальные темы от янв. 2023)
 ~/.config/ulauncher/user-themes/light/   (18 ноября, наша)
 ~/src/hypr-wallpicker                    (исходники wallpicker, вне репозитория)
 ```
@@ -226,7 +228,7 @@ xfce4-panel &
 | Noctalia | `[не известно]`: `pacman -Qi` лицензию не печатает | палитры уже лежат в `theme/palettes/` (10), источник в `docs/THEME.md` |
 | 41 палитра сообщества | в файлах **нет** ни автора, ни лицензии (ключи только `dark`/`light`) | **не включать без проверки** |
 | Meslo Nerd Font | `[не известно]` | не включать: ставится пакетом |
-| Темы Plank | наша `EwwIsland` - копия исходной с одной строкой (`plank.sh:10-13`) | нашу можно, чужие не тащим |
+| Темы Plank | наша `bdi-EwwIsland` - копия исходной с одной строкой (`plank.sh:10-13`) | нашу можно, чужие не тащим |
 | Наши SVG | наши, генерируются из `theme/templates/` | да |
 | Иллюстрации погоды (16 JPEG) | сгенерированы Qwen (`tasks/06...:16`) | условия сервиса `[не известно: владелец]` |
 | Обои | личные картинки владельца | **нет**, вне репозитория |
@@ -465,6 +467,49 @@ POSIX). Колонки `wmctrl -lG` сдвинуты на одну вправо 
 кода: раньше `$3..$6`, теперь `$3..$6` после отбрасывания заголовка - проверено
 на живом окне: `0x1e00003 373 0 619 50`.
 
+## B16. Совместная жизнь с чужим сеансом (задание 17, часть C, 2026-11-23)
+
+На ноутбуке владельца кроме XFCE есть сеанс Hyprland с Noctalia и, возможно,
+своими виджетами Eww. Правило: проект работает только в X11 + XFCE, всё
+остальное в чужом сеансе и в чужих каталогах - только чтение.
+
+| Что | Как теперь | Где |
+|---|---|---|
+| установка и обновление | отказ с причиной, если не X11 + XFCE | `install.sh` (`lib/session.sh`) |
+| запуск острова | отказ с причиной, код 1 | `scripts/run-island.sh` |
+| автозапуск | `OnlyShowIn=XFCE;` + `Hidden=false` | `lib/install.sh` (`install_autostart`) |
+| старый `eww-island.desktop` | гасится `Hidden=true` и пишется в журнал (иначе два острова) | `disable_stale_autostart` |
+| `check` | читает в любом сеансе, ничего не меняет | `lib/check.sh` |
+| `uninstall` | будет разрешён в любом сеансе, без X (часть D) | — |
+| свои темы | `~/.config/bdi/palettes` (было в каталоге Noctalia) | `theme-save.sh`, `palette_lib.read_user` |
+| каталог Noctalia | только чтение; старые темы видны и копируются кнопкой «Папка» | `palette_lib.py`, `colors-pick.sh` |
+| док Plank и Ulauncher | красятся только с согласия из install (`skin-plank`, `skin-ulauncher`) | `install_skin_consent` |
+| тема Plank | зовётся `bdi-EwwIsland`, старое `EwwIsland` убирается | `theme/plank.sh` |
+| процессы | `kill` по pid, только свой `DISPLAY`; `pkill` по имени нет | `plank.sh`, `ulauncher.sh` |
+| скрипты Eww | свой бинарник `build/target/release/eww`, свой сокет по конфигу | `lib/eww-proc.sh` |
+
+Разбор `grep -rn 'pkill\|killall\|pidof'` (до части C, 5 мест):
+
+- `theme/plank.sh:70` `pkill -x plank` - **заменено** на kill по pids с
+  проверкой `DISPLAY` из `/proc/<pid>/environ`; `:0` и `:0.0` считаются одной
+  сессией. Живой случай: два дока (`:0` и `:0.0`) на одном экране - старый
+  код убивал оба, новый - оба и должен, но сосед на `:1` не тронут.
+- `theme/ulauncher.sh` - `pgrep -f '[/]usr/bin/ulauncher'` теперь с тем же
+  фильтром по `DISPLAY` перед `kill -HUP`/`-TERM`/`-KILL`.
+- `adapters/timer/timer.sh:142` `pkill -f 'pw-play.*adapters/timer/sounds/'` -
+  оставлено: шаблон по полному пути к нашим звукам, чужие `pw-play` не
+  совпадут. Проверено глазами по коду; чужой процесс с таким путём
+  невозможен, путь уникален для проекта.
+- `scripts/stop-island.sh` - `kill` по pids из `/proc`, найденным по
+  `--config` этого проекта; чужие демоны Eww не тронуты.
+- `scripts/selftest-guard.sh:51` - заглушка в песочнице, не в работе.
+
+`pidof` и `killall` в коде не встречаются вовсе.
+
+`~/.config/eww` и `~/.config/hypr` проект не пишет: путь к движку -
+`build/target/release/eww`, конфиг - `<репозиторий>/eww`, каталог хука обоев -
+`~/.config/hypr-wallpicker` (создаётся, потому что это хук, а не конфиг
+Hyprland; он нужен, когда обои меняются из сот под XFCE).
 
 ## Что проверено не до конца
 

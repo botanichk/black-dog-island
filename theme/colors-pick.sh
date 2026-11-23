@@ -9,7 +9,7 @@
 #        theme/colors-pick.sh path [<id>]     (файл палитры действующей темы)
 #
 # id - из theme/colors-list.sh: n-island (наши схемы), p-<слаг> (встроенная
-# палитра Noctalia), u-<слаг> (своя палитра из ~/.config/noctalia/palettes).
+# палитра Noctalia), u-<слаг> (своя палитра из ~/.config/bdi/palettes).
 #
 # Почему обёртка над apply.sh: reload закрывает окно хаба и сбрасывает
 # hub_tab на 0 (проверено). После применения скрипт сам переоткрывает хаб
@@ -112,7 +112,7 @@ read_wall_scheme() {
 }
 
 # Путь к файлу палитры по id схемы: p-<слаг> -> theme/palettes, u-<слаг> ->
-# ~/.config/noctalia/palettes. Нужен при смене режима: ~/.config/bdi/current хранит
+# ~/.config/bdi/palettes. Нужен при смене режима: ~/.config/bdi/current хранит
 # id схемы, а неисходный файл, и без этого «перекрасить в светлую» не знает,
 # откуда брать палитру.
 resolve_source() {
@@ -128,14 +128,14 @@ resolve_source() {
         return 0
       fi ;;
     u-*)
-      for path in "$HOME"/.config/noctalia/palettes/*.json; do
-        [ -f "$path" ] || continue
-        stem=$(basename "$path" .json)
-        if python3 -c "import sys; sys.path.insert(0,'$THEME'); import palette_lib as p; sys.exit(0 if 'u-' + p.slug_unique(sys.argv[1]) == sys.argv[2] else 1)" "$stem" "$1"; then
-          printf '%s\n' "$path"
-          return 0
-        fi
-      done ;;
+      # Свои палитры: свой каталог, затем старый каталог Noctalia (файлы,
+      # сохранённые до переезда). Ищем через palette_lib.read_user - правила
+      # id одни на весь проект, копии в awk/sed разъехались бы.
+      src=$(python3 -c "import sys; sys.path.insert(0,'$THEME'); import palette_lib as p; print(next((str(f) for cid, _, f in p.read_user() if cid == sys.argv[1]), ''))" "$1")
+      if [ -n "$src" ]; then
+        printf '%s\n' "$src"
+        return 0
+      fi ;;
     c-*)
       # Каталог сообщества: id -> файл через ту же read_community, что строит
       # список для вкладки. Через slug_unique(stem) нельзя: имена файлов
@@ -166,8 +166,15 @@ case "$ACTION" in
   # Менеджер берём по умолчанию (xdg-open), а не наутилус жёстко: у разных
   # людей разные файловые менеджеры. У владельца xdg-open ведёт в наутилус.
   open-palettes)
-    dir="$HOME/.config/noctalia/palettes"
+    dir="$BDI_CONFIG/palettes"
     mkdir -p "$dir"
+    # Перенос старых тем: до части C свои темы лежали в каталоге Noctalia.
+    # Копируем (не переносим) - Noctalia не должна терять свои файлы.
+    for _old in "$HOME"/.config/noctalia/palettes/*.json; do
+      [ -f "$_old" ] || continue
+      _n=$(basename "$_old")
+      [ -f "$dir/$_n" ] || cp "$_old" "$dir/$_n" 2>/dev/null || true
+    done
     if command -v xdg-open >/dev/null 2>&1; then
       setsid xdg-open "$dir" >/dev/null 2>&1 &
     else

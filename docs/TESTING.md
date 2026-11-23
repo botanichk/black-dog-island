@@ -28,7 +28,7 @@ env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR \
 
 ### Страж: смена темы и соты не виснут (`scripts/selftest-guard.sh`)
 
-35 проверок на заглушках, реальный сеанс не трогают. Запуск:
+52 проверки на заглушках, реальный сеанс не трогают. Запуск:
 
 ```
 env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR HOME=/tmp/fakehome \
@@ -37,7 +37,7 @@ env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR HOME=/tmp/fakehome \
     dbus-run-session -- sh scripts/selftest-guard.sh
 ```
 
-Ожидается 35 строк `ok` и `всё сошлось`, код 0. Проверено 2026-11-23,
+Ожидается 52 строки `ok` и `всё сошлось`, код 0. Проверено 2026-11-23,
 что именно ловится:
 
 - зависший `dconf`/`eww kill` обрывается таймаутом, а не держит кнопку;
@@ -49,7 +49,16 @@ env -u DBUS_SESSION_BUS_ADDRESS -u XDG_RUNTIME_DIR HOME=/tmp/fakehome \
   программу; на падении — код 4, и `xfdesktop-settings` не открывается
   молча; при отсутствии бинарника (код 1) — открывается;
 - `strtonum` не вернулся в скрипты (функция gawk; у mawk её нет, и остров
-  терял бы геометрию).
+  терял бы геометрию);
+- охрана сеанса: Wayland и `x11+Hyprland` отклоняются, `x11+XFCE` и
+  «пусто, но `$DISPLAY` есть» пропускаются; `run-island.sh` и `install.sh`
+  в чужом сеансе выходят с кодом 1, называют причину и не пишут журнал;
+- автозапуск: в `bdi.desktop` есть `OnlyShowIn=XFCE;`, старый наш
+  `eww-island.desktop` гасится `Hidden=true`, чужой `.desktop` не тронут,
+  повторный запуск не плодит записей;
+- `pkill`/`killall` по имени не вернулись в скрипты;
+- свои темы пишутся в `~/.config/bdi/palettes`, тема Plank называется
+  `bdi-EwwIsland`.
 
 ## 1. Проверка системы (только чтение)
 
@@ -169,7 +178,7 @@ Arch (`ID=cachyos`): `sudo pacman -S --needed ...`, те же пакеты по�
 ### Plank и Ulauncher
 
 Их тема ставится не установщиком, а `theme/apply.sh` (шаги 5–6) при каждом
-запуске острова: `theme/plank.sh` собирает тему `EwwIsland` из `$primary` и
+запуске острова: `theme/plank.sh` собирает тему `bdi-EwwIsland` из `$primary` и
 перезапускает Plank (он не перечитывает тему на лету), `theme/ulauncher.sh`
 кладёт копию темы в `~/.config/ulauncher/user-themes/` и шлёт SIGHUP.
 Оба шага необязательные: нет программы — `apply.sh` идёт дальше.
@@ -183,6 +192,41 @@ Arch (`ID=cachyos`): `sudo pacman -S --needed ...`, те же пакеты по�
 - повторный запуск с появившимся `ulauncher` → `plank.desktop` не тронут
   («уже есть, не трогаю»), создан `ulauncher.desktop`;
 - существующая запись владельца не перезаписывается.
+
+### Чужой сеанс и чужое имущество (задание 17, часть C)
+
+Проверено 2026-11-23 на заглушках и на живой машине:
+
+```
+# в чужом сеансе ничего не происходит
+XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=Hyprland sh scripts/run-island.sh
+# остров не запущен: сеанс Wayland: остров работает только на X11
+# код 1
+
+XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=Hyprland sh ./install.sh install
+# install не выполнено: сеанс Wayland: остров работает только на X11
+# код 1, changes.log не появился
+
+# в своём сеансе - как раньше
+XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=XFCE sh ./install.sh check
+```
+
+- `check` в чужом сеансе печатает отчёт (строка `FAIL` про Wayland есть) и
+  возвращает 0: он ничего не меняет и его читают как справку.
+- в `~/.config/autostart/bdi.desktop` обязательны `OnlyShowIn=XFCE;` и
+  `Hidden=false`; старый `eww-island.desktop` с нашим `Exec` установщик
+  гасит (`Hidden=true`, запись в журнале), чужой `.desktop` не трогает.
+- `install` один раз спрашивает про док и лаунчер и пишет ответ в
+  `~/.config/bdi/skin-plank` / `skin-ulauncher`; ответ `no` - `theme/apply.sh`
+  их больше не красит, но `restore` и `status` работают.
+- свои темы лежат в `~/.config/bdi/palettes`; `~/.config/noctalia/palettes`
+  читается, но не пишется.
+
+Что проверить руками (у агента нет второго сеанса):
+
+1. Войти в Hyprland и убедиться, что при входе не поднимается ни остров, ни
+   второй док, и в `~/.config/hypr` ничего не появилось.
+2. Вернуться в XFCE: остров, док и лаунчер на месте, тема прежняя.
 
 ## 3. Обновление (`update`)
 
