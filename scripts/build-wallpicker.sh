@@ -25,32 +25,29 @@ cd "$SRC"
 
 # Патчи по имени, а не по алфавиту: blur-backdrop должен идти после
 # size-and-cancel. Явный список надёжнее сортировки.
-# Повторный запуск: reverse-check не годится - hunks патчей перекрываются,
-# после полного применения reverse не встаёт. Проверяем след последнего
-# патча (blur-backdrop) в дереве.
-if grep -qs "scrim_percent" src/wallpaper.c; then
-  # Фикс 2026-11-23: целочисленный crop. Его нет - в дереве патчи до него,
-  # после git pull молча пересобирать старое нельзя.
-  if ! grep -qsF "(int)((float)img.height * win_aspect)" src/wallpaper.c; then
-    echo "ошибка: в дереве патчи без фикса crop, обнови их:" >&2
-    echo "  git -C \"$SRC\" checkout -- src include" >&2
-    echo "и запусти скрипт снова" >&2
+#
+# Дерево каждый раз собирается с нуля от пина: частично применённые патчи
+# (и старые версии патчей после git pull) иначе не распознать - hunks
+# перекрываются, reverse-check не работает. Прежние правки не теряем:
+# сохраняем их в файл рядом.
+if ! git diff --quiet -- src include; then
+  bak="$SRC/patched-$(date +%Y%m%d-%H%M%S).diff"
+  git diff -- src include > "$bak"
+  echo "  прежние правки в дереве -> $bak, сбрасываю к пину"
+  git checkout -- src include
+fi
+
+for p in "$PATCHES/hypr-wallpicker-size-and-cancel.patch" \
+         "$PATCHES/hypr-wallpicker-blur-backdrop.patch"; do
+  [ -f "$p" ] || { echo "нет патча $p" >&2; exit 1; }
+  if ! git apply --check "$p"; then
+    echo "ошибка: $(basename "$p") не встаёт на коммит $(git rev-parse --short HEAD)" >&2
+    echo "  проверь пин в deps/wallpicker.txt" >&2
     exit 1
   fi
-  echo "  патчи уже применены, пропускаю"
-else
-  for p in "$PATCHES/hypr-wallpicker-size-and-cancel.patch" \
-           "$PATCHES/hypr-wallpicker-blur-backdrop.patch"; do
-    [ -f "$p" ] || { echo "нет патча $p" >&2; exit 1; }
-    git apply --check "$p" || {
-      echo "ошибка: $(basename "$p") не встаёт на этот коммит" >&2
-      echo "  проверь пин в deps/wallpicker.txt" >&2
-      exit 1
-    }
-    git apply "$p"
-    echo "  $(basename "$p"): применён"
-  done
-fi
+  git apply "$p"
+  echo "  $(basename "$p"): применён"
+done
 
 echo "собираю (около 80 с на 4 ядрах)"
 make 2>&1 | tail -20

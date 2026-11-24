@@ -192,7 +192,7 @@ index 3cb76e4..0a8a599 100644
      DrawText("Loading & Caching Wallpapers...", GetScreenWidth() / 2 - 250,
               GetScreenHeight() / 2, 30, WHITE);
      DrawText(ent->d_name, GetScreenWidth() / 2 - 250,
-@@ -246,6 +249,124 @@ cleanup:
+@@ -246,6 +249,126 @@ cleanup:
  }
  
  
